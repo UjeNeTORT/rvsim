@@ -1,6 +1,8 @@
 #ifndef REGISTER_FILE_HPP
 #define REGISTER_FILE_HPP
 
+#include <iostream>
+
 #include "encoding.hpp"
 #include "registers.hpp"
 
@@ -12,14 +14,24 @@ class RegisterFile {
 public:
   RegisterFile() {}
 
-  explicit
   RegisterFile(std::array<word_t, N_REGS> init_regs_state) : regs_(init_regs_state) {}
 
-  inline void set(Register reg, addr_t val) {
+  RegisterFile(std::ifstream regs_file) {
+    if (!regs_file) {
+      std::cerr << "ERROR: wrong registers file\n";
+      return;
+    }
+
+    for (int i = 0; i != N_REGS; ++i) {
+      regs_file.read(reinterpret_cast<char *>(&regs_[i]), sizeof(word_t));
+    }
+  }
+
+  void set(Register reg, addr_t val) {
     regs_[static_cast<uint8_t>(reg)] = val;
   }
 
-  inline addr_t get(Register reg) {
+  addr_t get(Register reg) {
     return regs_[static_cast<uint8_t>(reg)];
   }
 

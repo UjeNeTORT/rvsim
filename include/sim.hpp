@@ -27,9 +27,12 @@ public:
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
   void init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init) {
-
+    mem_ = mem_init;
+    regs_ = regs_init;
+    pc_ = pc_init;
   }
 
+  // todo read from general state binary and elf
   void setPC(addr_t pc_new) {
     pc_ = pc_new;
   }
@@ -48,7 +51,6 @@ private:
       Register dst = insn_.rd();
       word_t op1 = regs_.get(insn_.rs1());
       word_t op2 = regs_.get(insn_.rs2());
-
 
       switch (static_cast<RV32i_ISA>(insn_.code_opless()))
       {
@@ -124,15 +126,13 @@ private:
 
 public:
   void execute() {
-
     while(true) {
       decode();
-      if (insn_.type() == RVInsnType::UNDEF_TYPE_INSN) break;
+      if (insn_.type() == RVInsnType::UNDEF_TYPE_INSN) break; // todo this is shit
 
       insn_execute();
       setPC(pc_ + sizeof(word_t));
     }
-
   }
 
   std::ostream& dump(std::ostream& out) {

@@ -2,7 +2,7 @@
 
 #include "sim.hpp"
 
-int main() {
+void test() {
   rv32i_sim::MemoryModel memory;
   memory.writeWord(0, 0x00c58533);
   memory.writeWord(sizeof(rv32i_sim::word_t), 0x00c5f6b3);
@@ -18,6 +18,15 @@ int main() {
   model.execute();
 
   std::cout << model << '\n';
+}
 
+int main() {
+  rv32i_sim::MemoryModel mem{std::filesystem::path{"mem.bin"}};
+  rv32i_sim::RegisterFile regs{std::filesystem::path{"regs.bin"}};
+
+  rv32i_sim::RVModel model{mem, regs, 0x34};
+  model.execute();
+  std::cout << model << '\n';
+  
   return 0;
 }

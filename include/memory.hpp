@@ -1,37 +1,46 @@
 #ifndef MEMORY_HPP
 #define MEMORY_HPP
 
-#include "encoding.hpp"
+#include <fstream>
+#include <filesystem>
+#include <string>
 
+#include "encoding.hpp"
 
 namespace rv32i_sim {
 
-const unsigned BITS_BYTE = 8; // n bits in byte
-constexpr std::size_t ADDR_SPACE_CAPACITY = 1 << 16; // 64K - less than all
-                                                     // addr space
+constexpr unsigned BITS_BYTE = 8; // n bits in byte
 
-enum class Endianness { SMALL, BIG, }; // todo support big endian
+constexpr std::size_t ADDR_SPACE_CAPACITY = 1 << 16; // 64K - addr space
+enum class Endianness { LITTLE, BIG, }; // todo support big endian
 
 /** provides memory model for the simulator
  * model is abstract and represents continuous virtual memory
  *
- * endianness: small (default)
+ * endianness: little (default)
 */
 class MemoryModel {
   std::array<byte_t, ADDR_SPACE_CAPACITY> mem_ = {};
-  Endianness endian_ = Endianness::SMALL;
+  Endianness endian_ = Endianness::LITTLE;
 
 public:
-  MemoryModel(Endianness endian = Endianness::SMALL) {}
+  MemoryModel(Endianness endian = Endianness::LITTLE) {}
 
-  explicit
   MemoryModel(std::array<byte_t, ADDR_SPACE_CAPACITY> mem) : mem_(mem) {}
 
-  inline byte_t readByte(addr_t addr) {
+  MemoryModel(std::ifstream mem_file) {
+    if (!mem_file) {
+      std::cerr << "ERROR: wrong memory file\n";
+    }
+
+    mem_file.read(std::bit_cast<char *>(mem_.data()), ADDR_SPACE_CAPACITY);
+  }
+
+  byte_t readByte(addr_t addr) {
     return mem_[addr];
   }
 
-  inline half_t readHalf(addr_t addr) {
+  half_t readHalf(addr_t addr) {
     half_t res = 0;
     for (int i = sizeof(half_t) - 1; i >= 0; --i) {
       res <<= sizeof(byte_t) * BITS_BYTE;
@@ -41,7 +50,7 @@ public:
     return res;
   }
 
-  inline word_t readWord(addr_t addr) {
+  word_t readWord(addr_t addr) {
     word_t res = 0;
     for (int i = sizeof(word_t) - 1; i >= 0; --i) {
       res <<= sizeof(byte_t) * BITS_BYTE;
@@ -52,7 +61,7 @@ public:
   }
 
 #ifdef RVBITS64
-  inline dword_t readDWord(addr_t addr) {
+  dword_t readDWord(addr_t addr) {
     dword_t res = 0;
     for (int i = sizeof(dword_t) - 1; i >= 0; --i) {
       res << sizeof(byte_t) * BITS_BYTE;

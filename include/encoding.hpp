@@ -93,14 +93,14 @@ public:
   // opcode = code & RV_OPCODE_MASK
   explicit RVInsn(addr_t code) : code_(code), opcode_(code & RV_OPCODE_MASK)
   {
-    rd_ = (code >> 7) & ((1 << 5) - 1);
-    func3_ = (code >> 12) & ((1 << 3) - 1);
-    rs1_ = (code >> 15) & ((1 << 5) - 1);
-    rs2_ = (code >> 20) & ((1 << 5) - 1);
-    func7_ = (code >> 25) & ((1 << 7) - 1);
-    imm11_0_ = (code >> 20) & ((1 << 12) - 1);
-    imm11_5_ = (code >> 25) & ((1 << 7) - 1);
-    imm4_0_ = (code >> 7) & ((1 << 5) - 1);
+    rd_       = (code >> 7)  & ((1 << 5)  - 1);
+    func3_    = (code >> 12) & ((1 << 3)  - 1);
+    rs1_      = (code >> 15) & ((1 << 5)  - 1);
+    rs2_      = (code >> 20) & ((1 << 5)  - 1);
+    func7_    = (code >> 25) & ((1 << 7)  - 1);
+    imm11_0_  = (code >> 20) & ((1 << 12) - 1);
+    imm11_5_  = (code >> 25) & ((1 << 7)  - 1);
+    imm4_0_   = (code >> 7)  & ((1 << 5)  - 1);
     imm31_12_ = (code >> 12) & ((1 << 20) - 1);
 
     switch (opcode_) {
