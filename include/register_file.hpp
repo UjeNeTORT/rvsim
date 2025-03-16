@@ -38,7 +38,7 @@ public:
     }
   }
 
-  void set(Register reg, addr_t val) {
+  void set(Register reg, sword_t val) {
     regs_[static_cast<uint8_t>(reg)] = val;
   }
 

@@ -13,6 +13,22 @@
 
 namespace rv32i_sim {
 
+int32_t sign_extend_8_to_32(uint8_t val) {
+  return static_cast<int32_t>(uint32_t(val) << 24) >> 24;
+}
+
+int32_t sign_extend_12_to_32(uint16_t val) {
+  return static_cast<int32_t>(uint32_t(val) << 20) >> 20;
+}
+
+int32_t sign_extend_16_to_32(uint16_t val) {
+  return static_cast<int32_t>(uint32_t(val) << 16) >> 16;
+}
+
+int32_t sign_extend_32_to_32(uint32_t val) {
+  return std::bit_cast<int32_t>(val);
+}
+
 const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 
 class RVModel final {
@@ -136,8 +152,73 @@ private:
       }
     }
       break;
-    // todo
+
     case RVInsnType::I_TYPE_INSN:
+    {
+      Register dst = insn_.rd();
+      word_t op1 = regs_.get(insn_.rs1());
+      uint16_t imm = insn_.imm11_0();
+
+      switch (static_cast<RV32i_ISA>(insn_.code_opless()))
+      {
+      // Jump to an address formed by adding rs1 to
+      // a signed offset then clearing the least significant bit,
+      // and store the return address in rd.
+      case RV32i_ISA::JALR:
+        regs_.set(dst, pc_ + sizeof(addr_t));
+        setPC(op1 + sign_extend_12_to_32(imm));
+        break;
+
+      case RV32i_ISA::LB:
+        regs_.set(dst, sign_extend_8_to_32(mem_.readByte(op1 + sign_extend_12_to_32(imm))));
+        break;
+
+      case RV32i_ISA::LH:
+        regs_.set(dst, sign_extend_16_to_32(mem_.readHalf(op1 + sign_extend_12_to_32(imm))));
+        break;
+
+      case RV32i_ISA::LW:
+        regs_.set(dst, sign_extend_32_to_32(mem_.readWord(op1 + sign_extend_12_to_32(imm))));
+        break;
+
+      case RV32i_ISA::LBU:
+        regs_.set(dst, mem_.readByte(op1 + sign_extend_12_to_32(imm)));
+        break;
+
+      case RV32i_ISA::LHU:
+        regs_.set(dst, mem_.readHalf(op1 + sign_extend_12_to_32(imm)));
+        break;
+
+      case RV32i_ISA::ADDI:
+        regs_.set(dst, op1 + sign_extend_12_to_32(imm));
+        break;
+
+      case RV32i_ISA::SLTI:
+        regs_.set(dst, sign_extend_32_to_32(op1) < sign_extend_12_to_32(imm));
+        break;
+
+      case RV32i_ISA::SLTIU:
+        regs_.set(dst, op1 < std::bit_cast<uint32_t>(sign_extend_12_to_32(imm)));
+        break;
+
+      case RV32i_ISA::XORI:
+        regs_.set(dst, op1 ^ sign_extend_12_to_32(imm));
+        break;
+
+      case RV32i_ISA::ORI:
+        regs_.set(dst, op1 | sign_extend_12_to_32(imm));
+        break;
+
+      case RV32i_ISA::ANDI:
+        regs_.set(dst, op1 & sign_extend_12_to_32(imm));
+        break;
+
+      default:
+        break;
+      }
+    }
+      break;
+    // todo
     case RVInsnType::S_TYPE_INSN:
     case RVInsnType::U_TYPE_INSN:
     case RVInsnType::UNDEF_TYPE_INSN:
@@ -151,7 +232,7 @@ public:
     std::cerr << "DBG: begin execution (pc = " << pc_ << ")\n";
     while(true) {
       decode();
-      // std::cerr << insn_ << '\n';
+      std::cerr << insn_ << '\n';
       if (insn_.type() == RVInsnType::UNDEF_TYPE_INSN) break; // todo this is shit
       insn_execute();
       setPC(pc_ + sizeof(word_t));

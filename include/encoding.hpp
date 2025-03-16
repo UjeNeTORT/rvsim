@@ -52,6 +52,21 @@ enum class RV32i_ISA : addr_t {
   AND = 0x00007033,
 
   // I-Type
+  JALR = 0x00000067,
+  LB = 0x00000003,
+  LH = 0x00001003,
+  LW = 0x00002003,
+  LBU = 0x00004003,
+  LHU = 0x00005003,
+  ADDI = 0x00000013,
+  SLTI = 0x00002013,
+  SLTIU = 0x00003013,
+  XORI = 0x00004013,
+  ORI = 0x00006013,
+  ANDI = 0x00007013,
+  SLLI = 0x00001013,
+  SRLI = 0x00005013,
+  SRAI = 0x40005013, // poor creature... how should i decode you?
   // S-Type
   // U-Type
 };
@@ -59,14 +74,14 @@ enum class RV32i_ISA : addr_t {
 constexpr uint8_t RV_R_TYPE_OPCODE = 0b011'0011;
 
 constexpr uint8_t RV_I_TYPE_OPCODE     = 0b001'0011;
-constexpr uint8_t RV_ILOAD_TYPE_OPCODE = 0b000'0011;
+constexpr uint8_t RV_ILOAD_TYPE_OPCODE = 0b000'0011; // todo
 constexpr uint8_t RV_IJALR_TYPE_OPCODE = 0b110'0111;
 
-constexpr uint8_t RV_S_TYPE_OPCODE  = 0b010'0011;
-constexpr uint8_t RV_SB_TYPE_OPCODE = 0b110'0011;
+constexpr uint8_t RV_S_TYPE_OPCODE  = 0b010'0011; // todo
+constexpr uint8_t RV_SB_TYPE_OPCODE = 0b110'0011; // todo
 
-constexpr uint8_t RV_U1_TYPE_OPCODE = 0b011'0111;
-constexpr uint8_t RV_U2_TYPE_OPCODE = 0b001'0111;
+constexpr uint8_t RV_U1_TYPE_OPCODE = 0b011'0111; // todo
+constexpr uint8_t RV_U2_TYPE_OPCODE = 0b001'0111; // todo
 
 class RVInsn {
   addr_t code_; // instr itself
@@ -113,7 +128,7 @@ public:
     case RV_ILOAD_TYPE_OPCODE:
     case RV_IJALR_TYPE_OPCODE:
       type_ = RVInsnType::I_TYPE_INSN;
-      // todo decode opless
+      code_opless_ = code & (addr_t(func3_) << 12 | opcode_);
       break;
     case RV_S_TYPE_OPCODE:
     case RV_SB_TYPE_OPCODE:
@@ -160,6 +175,12 @@ public:
           << std::bitset<7>{opcode_} << " (R)";
       break;
     case RVInsnType::I_TYPE_INSN:
+      out << std::bitset<12>{imm11_0_} << "'"
+          << std::bitset<5>{rs1_} << "'"
+          << std::bitset<3>{func3_} << "'"
+          << std::bitset<5>{rd_} << "'"
+          << std::bitset<7>{opcode_} << " (I)";
+      break;
     case RVInsnType::S_TYPE_INSN:
     case RVInsnType::U_TYPE_INSN:
     case RVInsnType::UNDEF_TYPE_INSN:
