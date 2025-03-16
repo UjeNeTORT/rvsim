@@ -11,6 +11,7 @@ int main(int argc, char *argv[]) {
 
   bool checkpoints = false;
   int logs = 0;
+  rv32i_sim::addr_t pc_init = 0;
   std::filesystem::path istate;
   std::filesystem::path ostate;
   std::filesystem::path imem;
@@ -42,6 +43,8 @@ int main(int argc, char *argv[]) {
     ("omem", po::value<std::filesystem::path>(&omem),
         "output simulator memory to a binary file at the end of execution")
 
+    ("pc", po::value<rv32i_sim::addr_t>(&pc_init), "initial pc")
+
     ("elf", po::value<std::filesystem::path>(),
         "run simulator on an elf file")
 
@@ -69,11 +72,29 @@ int main(int argc, char *argv[]) {
   if (vm.count("istate")) {
     std::ifstream model_state_file{istate};
     if (!model_state_file) {
-      std::cerr << "ERROR: wrong istate file\n";
+      std::cerr << "ERROR: wrong initial state file\n";
       return 1;
     }
 
     model.init(model_state_file);
+    if (vm.count("pc")) model.setPC(pc_init);
+
+  } else if (vm.count("imem") && vm.count("iregs") && vm.count("pc")) {
+    std::ifstream imem_file{imem};
+    if (!imem_file) {
+      std::cerr << "ERROR: wrong initial memory file\n";
+      return 1;
+    }
+
+    std::ifstream iregs_file{iregs};
+    if (!iregs_file) {
+      std::cerr << "ERROR: wrong initial regs file\n";
+      return 1;
+    }
+
+    rv32i_sim::MemoryModel memory{imem_file};
+    rv32i_sim::RegisterFile regs{iregs_file};
+    model.init(std::move(memory), std::move(regs), pc_init);
   }
 
   model.execute();

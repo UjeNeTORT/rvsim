@@ -37,7 +37,6 @@ public:
 
     std::string signature(RV32I_MODEL_STATE_SIGNATURE.size(), ' ');
     model_state_file.read(signature.data(), RV32I_MODEL_STATE_SIGNATURE.size() + 1);
-
     if (signature != RV32I_MODEL_STATE_SIGNATURE) {
       std::cerr << "ERROR: model state file signature mismatch:\n"
                 << "      <" << signature << "> vs <" << RV32I_MODEL_STATE_SIGNATURE <<">\n";
@@ -49,19 +48,17 @@ public:
     mem_ = MemoryModel{model_state_file};
   }
 
+  void init(const MemoryModel& mem_init, const RegisterFile& regs_init, addr_t pc_init) {
+    mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
+  }
+
   void init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init) {
-    mem_ = mem_init;
-    regs_ = regs_init;
-    pc_ = pc_init;
+    mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
   }
 
-  RVModel(std::ifstream& model_state_file) {
-    init(model_state_file);
-  }
+  RVModel(std::ifstream& model_state_file) { init(model_state_file); }
 
-  void setPC(addr_t pc_new) {
-    pc_ = pc_new;
-  }
+  void setPC(addr_t pc_new) { pc_ = pc_new; }
 
 private:
   void decode() {
@@ -147,17 +144,19 @@ private:
     default:
       break;
     }
-
   }
 
 public:
   void execute() {
+    std::cerr << "DBG: begin execution (pc = " << pc_ << ")\n";
     while(true) {
       decode();
+      // std::cerr << insn_ << '\n';
       if (insn_.type() == RVInsnType::UNDEF_TYPE_INSN) break; // todo this is shit
       insn_execute();
       setPC(pc_ + sizeof(word_t));
     }
+    std::cerr << "DBG: end execution (pc = " << pc_ << ")\n";
   }
 
   std::ostream& dump(std::ostream& out) {

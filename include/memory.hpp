@@ -26,7 +26,7 @@ class MemoryModel {
   Endianness endian_ = Endianness::LITTLE;
 
 public:
-  MemoryModel(Endianness endian = Endianness::LITTLE) {}
+  MemoryModel(Endianness endian = Endianness::LITTLE) : endian_(endian) {}
 
   MemoryModel(std::array<byte_t, ADDR_SPACE_CAPACITY> mem) : mem_(mem) {}
 
