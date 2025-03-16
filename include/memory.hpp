@@ -121,6 +121,7 @@ public:
       return out;
     }
 
+    // todo i know this is bad, dont want to generalize this at the moment
     for (addr_t i = start_addr; i != end_addr; i += 4 * sizeof(word_t)) {
       out << "| " << std::hex << std::uppercase
                   << +readByte(i+0) << ' ' << +readByte(i+1) << ' '

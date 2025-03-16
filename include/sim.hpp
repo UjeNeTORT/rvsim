@@ -29,13 +29,7 @@ public:
   RVModel(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
-  void init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init) {
-    mem_ = mem_init;
-    regs_ = regs_init;
-    pc_ = pc_init;
-  }
-
-  RVModel(std::ifstream& model_state_file) {
+  void init(std::ifstream& model_state_file) {
     if (!model_state_file) {
       std::cerr << "ERROR: wrong model state file\n";
       return;
@@ -53,6 +47,16 @@ public:
     model_state_file.read(reinterpret_cast<char *>(&pc_), sizeof(addr_t));
     regs_ = RegisterFile{model_state_file};
     mem_ = MemoryModel{model_state_file};
+  }
+
+  void init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init) {
+    mem_ = mem_init;
+    regs_ = regs_init;
+    pc_ = pc_init;
+  }
+
+  RVModel(std::ifstream& model_state_file) {
+    init(model_state_file);
   }
 
   void setPC(addr_t pc_new) {
