@@ -27,3 +27,6 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_link_libraries(${PROJECT_NAME} Boost::program_options)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
+add_executable(test ${CMAKE_CURRENT_SOURCE_DIR}/test.cc)
+target_link_libraries(test gtest)
