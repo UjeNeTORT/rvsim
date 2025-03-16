@@ -8,6 +8,8 @@
 
 namespace rv32i_sim {
 
+const std::string RV32I_REGS_STATE_SIGNATURE = "RV32I_REG_STATE";
+
 class RegisterFile {
   std::array<word_t, N_REGS> regs_ = {};
 
@@ -16,9 +18,18 @@ public:
 
   RegisterFile(std::array<word_t, N_REGS> init_regs_state) : regs_(init_regs_state) {}
 
-  RegisterFile(std::ifstream regs_file) {
+  RegisterFile(std::ifstream& regs_file) {
     if (!regs_file) {
       std::cerr << "ERROR: wrong registers file\n";
+      return;
+    }
+
+    std::string signature(RV32I_REGS_STATE_SIGNATURE.size(), ' ');
+    regs_file.read(signature.data(), RV32I_REGS_STATE_SIGNATURE.size() + 1);
+
+    if (signature != RV32I_REGS_STATE_SIGNATURE) {
+      std::cerr << "ERROR: regs state file signature mismatch:\n"
+                << "      <" << signature << "> vs <" << RV32I_REGS_STATE_SIGNATURE <<">\n";
       return;
     }
 
@@ -43,6 +54,18 @@ public:
     }
 
     return out;
+  }
+
+  void binary_dump(std::ofstream& fout) {
+    if (!fout) {
+      std::cerr << "ERROR: wrong output file for registers binary dump\n";
+      return;
+    }
+
+    fout.write(RV32I_REGS_STATE_SIGNATURE.c_str(),
+               RV32I_REGS_STATE_SIGNATURE.size() + 1);
+
+    fout.write(reinterpret_cast<char *>(regs_.data()), regs_.size() * sizeof(word_t));
   }
 };
 

@@ -14,6 +14,8 @@ constexpr unsigned BITS_BYTE = 8; // n bits in byte
 constexpr std::size_t ADDR_SPACE_CAPACITY = 1 << 16; // 64K - addr space
 enum class Endianness { LITTLE, BIG, }; // todo support big endian
 
+const std::string RV32I_MEMORY_STATE_SIGNATURE = "RV32I_MEM_STATE";
+
 /** provides memory model for the simulator
  * model is abstract and represents continuous virtual memory
  *
@@ -28,9 +30,18 @@ public:
 
   MemoryModel(std::array<byte_t, ADDR_SPACE_CAPACITY> mem) : mem_(mem) {}
 
-  MemoryModel(std::ifstream mem_file) {
+  MemoryModel(std::ifstream& mem_file) {
     if (!mem_file) {
       std::cerr << "ERROR: wrong memory file\n";
+    }
+
+    std::string signature(RV32I_MEMORY_STATE_SIGNATURE.size(), ' ');
+    mem_file.read(signature.data(), RV32I_MEMORY_STATE_SIGNATURE.size() + 1);
+
+    if (signature != RV32I_MEMORY_STATE_SIGNATURE) {
+      std::cerr << "ERROR: mem state file signature mismatch:\n"
+                << "      <" << signature << "> vs <" << RV32I_MEMORY_STATE_SIGNATURE <<">\n";
+      return;
     }
 
     mem_file.read(std::bit_cast<char *>(mem_.data()), ADDR_SPACE_CAPACITY);
@@ -110,12 +121,17 @@ public:
       return out;
     }
 
-    for (addr_t i = start_addr; i != end_addr; i += 2 * sizeof(word_t)) {
-      out << "| " << std::hex
+    for (addr_t i = start_addr; i != end_addr; i += 4 * sizeof(word_t)) {
+      out << "| " << std::hex << std::uppercase
                   << +readByte(i+0) << ' ' << +readByte(i+1) << ' '
                   << +readByte(i+2) << ' ' << +readByte(i+3) << " | "
                   << +readByte(i+4) << ' ' << +readByte(i+5) << ' '
-                  << +readByte(i+6) << ' ' << +readByte(i+7) << " |\n";
+                  << +readByte(i+6) << ' ' << +readByte(i+7) << " | "
+                  << +readByte(i+8) << ' ' << +readByte(i+9) << ' '
+                  << +readByte(i+10) << ' ' << +readByte(i+11) << " | "
+                  << +readByte(i+12) << ' ' << +readByte(i+13) << ' '
+                  << +readByte(i+14) << ' ' << +readByte(i+15) << " |\n"
+                  << std::nouppercase;
     }
 
     return out;
@@ -124,6 +140,13 @@ public:
   std::ostream& dump(std::ostream& out) {
     dump(out, 0, ADDR_SPACE_CAPACITY);
     return out;
+  }
+
+  void binary_dump(std::ofstream& fout) {
+    fout.write(RV32I_MEMORY_STATE_SIGNATURE.c_str(),
+               RV32I_MEMORY_STATE_SIGNATURE.size() + 1);
+
+    fout.write(reinterpret_cast<char *>(mem_.data()), ADDR_SPACE_CAPACITY);
   }
 };
 

@@ -4,6 +4,7 @@
 #include <array>
 #include <cstdint>
 #include <iostream>
+#include <string>
 #include <vector>
 
 #include "encoding.hpp"
@@ -11,6 +12,8 @@
 #include "register_file.hpp"
 
 namespace rv32i_sim {
+
+const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 
 class RVModel final {
   MemoryModel mem_;
@@ -32,7 +35,26 @@ public:
     pc_ = pc_init;
   }
 
-  // todo read from general state binary and elf
+  RVModel(std::ifstream& model_state_file) {
+    if (!model_state_file) {
+      std::cerr << "ERROR: wrong model state file\n";
+      return;
+    }
+
+    std::string signature(RV32I_MODEL_STATE_SIGNATURE.size(), ' ');
+    model_state_file.read(signature.data(), RV32I_MODEL_STATE_SIGNATURE.size() + 1);
+
+    if (signature != RV32I_MODEL_STATE_SIGNATURE) {
+      std::cerr << "ERROR: model state file signature mismatch:\n"
+                << "      <" << signature << "> vs <" << RV32I_MODEL_STATE_SIGNATURE <<">\n";
+      return;
+    }
+
+    model_state_file.read(reinterpret_cast<char *>(&pc_), sizeof(addr_t));
+    regs_ = RegisterFile{model_state_file};
+    mem_ = MemoryModel{model_state_file};
+  }
+
   void setPC(addr_t pc_new) {
     pc_ = pc_new;
   }
@@ -129,7 +151,6 @@ public:
     while(true) {
       decode();
       if (insn_.type() == RVInsnType::UNDEF_TYPE_INSN) break; // todo this is shit
-
       insn_execute();
       setPC(pc_ + sizeof(word_t));
     }
@@ -138,17 +159,21 @@ public:
   std::ostream& dump(std::ostream& out) {
     out << "pc = " << pc_ << '\n';
     regs_.dump(out);
-    addr_t start_addr = 0;
-    addr_t end_addr = (pc_ > ADDR_SPACE_CAPACITY - 4) ? ADDR_SPACE_CAPACITY : pc_ + 4;
-    mem_.dump(out, start_addr, end_addr); // todo fix magic numbers
+    mem_.dump(out);
     return out;
   }
 
-  std::ostream& dump_all(std::ostream& out) {
-    out << "pc = " << pc_ << '\n';
-    regs_.dump(out);
-    mem_.dump(out);
-    return out;
+  void binary_dump(std::ofstream& fout) {
+    if (!fout) {
+      std::cerr << "ERROR: wrong fout\n";
+      return;
+    }
+
+    fout.write(RV32I_MODEL_STATE_SIGNATURE.c_str(),
+               RV32I_MODEL_STATE_SIGNATURE.size() + 1);
+    fout.write(reinterpret_cast<char *>(&pc_), sizeof(addr_t));
+    regs_.binary_dump(fout);
+    mem_.binary_dump(fout);
   }
 };
 
