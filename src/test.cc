@@ -25,7 +25,6 @@ protected:
       return;
     }
 
-    
     model.init(testf);
     model.execute();
   }

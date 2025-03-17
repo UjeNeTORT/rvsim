@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include "isa.hpp"
+#include "instruction.hpp"
 #include "encoding.hpp"
 #include "memory.hpp"
 #include "register_file.hpp"
@@ -35,7 +37,7 @@ class RVModel final {
   MemoryModel mem_;
   RegisterFile regs_;
   addr_t pc_;
-  RVInsn insn_ = RVInsn{}; // current fetched insctruction
+  IInsn *insn_ = nullptr; // current fetched insctruction
 
 public:
   RVModel(addr_t pc_init = 0) : pc_(pc_init) {}
@@ -79,152 +81,11 @@ public:
 private:
   void decode() {
     addr_t instr_code = mem_.readWord(pc_); // insn fetch
-    insn_ = RVInsn{instr_code}; // insn decode
+    insn_ = RVInsnNew::decode(instr_code);
   }
 
   void insn_execute() {
-    switch (insn_.type())
-    {
-    case RVInsnType::R_TYPE_INSN:
-    {
-      Register dst = insn_.rd();
-      word_t op1 = regs_.get(insn_.rs1());
-      word_t op2 = regs_.get(insn_.rs2());
-
-      switch (static_cast<RV32i_ISA>(insn_.code_opless()))
-      {
-      case RV32i_ISA::ADD:
-        regs_.set(dst, op1 + op2);
-        break;
-
-      case RV32i_ISA::SUB:
-        regs_.set(dst, op1 - op2);
-        break;
-
-      case RV32i_ISA::SLL:
-        // performs logical left shift on the value in register rs1
-        // by the shift amount held in the lower 5 bits of register rs2.
-        regs_.set(dst, op1 << (op2 & 0x1F));
-        break;
-
-      case RV32i_ISA::SLT:
-        // place the value 1 in register rd if register rs1
-        // is less than register rs2 when both are treated
-        // as signed numbers, else 0 is written to rd.
-        regs_.set(dst, std::bit_cast<sword_t>(op1) < std::bit_cast<sword_t>(op2));
-        break;
-
-      case RV32i_ISA::SLTU:
-        // place the value 1 in register rd if register rs1
-        // is less than register rs2 when both are treated
-        // as unsigned numbers, else 0 is written to rd.
-        regs_.set(dst, op1 < op2);
-        break;
-
-      case RV32i_ISA::XOR:
-        regs_.set(dst, op1 ^ op2);
-        break;
-
-      case RV32i_ISA::SRL:
-        // logical right shift on the value in register rs1
-        // by the shift amount held in the lower 5 bits of register rs2
-        regs_.set(dst, op1 >> (op2 & 0x1F));
-        break;
-
-      case RV32i_ISA::SRA:
-        // performs arithmetic right shift on the value
-        // in register rs1 by the shift amount held
-        // in the lower 5 bits of register rs2
-        regs_.set(dst, std::bit_cast<sword_t>(op1) >> (op2 & 0x1F));
-        break;
-
-      case RV32i_ISA::OR:
-        regs_.set(dst, op1 | op2);
-        break;
-
-      case RV32i_ISA::AND:
-        regs_.set(dst, op1 & op2);
-        break;
-
-      default:
-        std::cerr << "R type invalid insn\n";
-        break;
-      }
-    }
-      break;
-
-    case RVInsnType::I_TYPE_INSN:
-    {
-      Register dst = insn_.rd();
-      word_t op1 = regs_.get(insn_.rs1());
-      uint16_t imm = insn_.imm11_0();
-
-      switch (static_cast<RV32i_ISA>(insn_.code_opless()))
-      {
-      // Jump to an address formed by adding rs1 to
-      // a signed offset then clearing the least significant bit,
-      // and store the return address in rd.
-      case RV32i_ISA::JALR:
-        regs_.set(dst, pc_ + sizeof(addr_t));
-        setPC(op1 + sign_extend_12_to_32(imm));
-        break;
-
-      case RV32i_ISA::LB:
-        regs_.set(dst, sign_extend_8_to_32(mem_.readByte(op1 + sign_extend_12_to_32(imm))));
-        break;
-
-      case RV32i_ISA::LH:
-        regs_.set(dst, sign_extend_16_to_32(mem_.readHalf(op1 + sign_extend_12_to_32(imm))));
-        break;
-
-      case RV32i_ISA::LW:
-        regs_.set(dst, sign_extend_32_to_32(mem_.readWord(op1 + sign_extend_12_to_32(imm))));
-        break;
-
-      case RV32i_ISA::LBU:
-        regs_.set(dst, mem_.readByte(op1 + sign_extend_12_to_32(imm)));
-        break;
-
-      case RV32i_ISA::LHU:
-        regs_.set(dst, mem_.readHalf(op1 + sign_extend_12_to_32(imm)));
-        break;
-
-      case RV32i_ISA::ADDI:
-        regs_.set(dst, op1 + sign_extend_12_to_32(imm));
-        break;
-
-      case RV32i_ISA::SLTI:
-        regs_.set(dst, sign_extend_32_to_32(op1) < sign_extend_12_to_32(imm));
-        break;
-
-      case RV32i_ISA::SLTIU:
-        regs_.set(dst, op1 < std::bit_cast<uint32_t>(sign_extend_12_to_32(imm)));
-        break;
-
-      case RV32i_ISA::XORI:
-        regs_.set(dst, op1 ^ sign_extend_12_to_32(imm));
-        break;
-
-      case RV32i_ISA::ORI:
-        regs_.set(dst, op1 | sign_extend_12_to_32(imm));
-        break;
-
-      case RV32i_ISA::ANDI:
-        regs_.set(dst, op1 & sign_extend_12_to_32(imm));
-        break;
-
-      default:
-        break;
-      }
-    }
-      break;
-    // todo
-    case RVInsnType::S_TYPE_INSN:
-    case RVInsnType::U_TYPE_INSN:
-    case RVInsnType::UNDEF_TYPE_INSN:
-    default:
-      break;
-    }
+    insn_->execute(*this);
   }
 
 public:
@@ -232,9 +93,8 @@ public:
     std::cerr << "DBG: begin execution (pc = " << pc_ << ")\n";
     while(true) {
       decode();
-      std::cerr << insn_ << '\n';
-      if (insn_.type() == RVInsnType::UNDEF_TYPE_INSN) break; // todo this is shit
       insn_execute();
+      delete insn_;
       setPC(pc_ + sizeof(word_t));
     }
     std::cerr << "DBG: end execution (pc = " << pc_ << ")\n";

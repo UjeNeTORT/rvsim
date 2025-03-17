@@ -26,7 +26,6 @@ using dword_t = uint64_t;
 using sdword_t = int64_t;
 #endif // RVBITS64
 
-constexpr uint8_t RV_OPCODE_MASK = 0b0111'1111;
 
 enum class RVInsnType : uint8_t {
   UNDEF_TYPE_INSN = 0,
@@ -37,6 +36,23 @@ enum class RVInsnType : uint8_t {
   B_TYPE_INSN = 5,
   J_TYPE_INSN = 6,
 };
+
+constexpr uint32_t MASK_31_25 = 0xFF000000;
+constexpr uint32_t MASK_24_20 = 0x01F00000;
+constexpr uint32_t MASK_19_15 = 0x000F8000;
+constexpr uint32_t MASK_14_12 = 0x00007000;
+constexpr uint32_t MASK_11_7  = 0x00000F80;
+constexpr uint32_t MASK_6_0   = 0x0000007F;
+
+constexpr uint32_t MASK_31_20 = 0xFFF00000;
+constexpr uint32_t MASK_31_12 = 0xFFFFF000;
+
+constexpr uint32_t DEFAULT_OPCODE_MASK = MASK_6_0;
+constexpr uint32_t DEFAULT_RD_MASK = MASK_11_7;
+constexpr uint32_t DEFAULT_FUNC3_MASK = MASK_14_12;;
+constexpr uint32_t DEFAULT_RS1_MASK = MASK_19_15;
+constexpr uint32_t DEFAULT_RS2_MASK = MASK_24_20;
+constexpr uint32_t DEFAULT_FUNC7_MASK = MASK_31_25;
 
 enum class RV32i_ISA : addr_t {
   // R-Type
@@ -67,7 +83,9 @@ enum class RV32i_ISA : addr_t {
   SLLI = 0x00001013,
   SRLI = 0x00005013,
   SRAI = 0x40005013, // poor creature... how should i decode you?
+
   // S-Type
+
   // U-Type
 };
 
@@ -105,8 +123,8 @@ class RVInsn {
 public:
   RVInsn(RVInsnType type = RVInsnType::UNDEF_TYPE_INSN) : type_(type) {}
 
-  // opcode = code & RV_OPCODE_MASK
-  explicit RVInsn(addr_t code) : code_(code), opcode_(code & RV_OPCODE_MASK)
+  // opcode = code & DEFAULT_OPCODE_MASK
+  explicit RVInsn(addr_t code) : code_(code), opcode_(code & DEFAULT_OPCODE_MASK)
   {
     rd_       = (code >> 7)  & ((1 << 5)  - 1);
     func3_    = (code >> 12) & ((1 << 3)  - 1);
