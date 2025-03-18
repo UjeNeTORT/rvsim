@@ -42,11 +42,11 @@ public:
     regs_[static_cast<uint8_t>(reg)] = val;
   }
 
-  addr_t get(Register reg) {
+  addr_t get(Register reg) const {
     return regs_[static_cast<uint8_t>(reg)];
   }
 
-  std::ostream& dump(std::ostream& out) {
+  std::ostream& print(std::ostream& out) {
     for (int i = 0; i != N_REGS; ++i) {
       out << "X" << i << " = "
           << std::hex << regs_[i] << '\n'
@@ -56,7 +56,7 @@ public:
     return out;
   }
 
-  void binary_dump(std::ofstream& fout) {
+  void binaryDump(std::ofstream& fout) {
     if (!fout) {
       std::cerr << "ERROR: wrong output file for registers binary dump\n";
       return;
@@ -70,7 +70,7 @@ public:
 };
 
 std::ostream& operator<<(std::ostream& out, RegisterFile& rf) {
-  rf.dump(out);
+  rf.print(out);
   return out;
 }
 

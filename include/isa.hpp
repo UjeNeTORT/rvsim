@@ -7,29 +7,56 @@
 
 namespace rv32i_sim {
 
-class RTypeInsn : public RVInsnNew {
+class RTypeInsn : public RVInsn {
 
 public:
-  RTypeInsn(addr_t code) : RVInsnNew{code} {
+  RTypeInsn(addr_t code) : RVInsn{code, RVInsnType::R_TYPE_INSN} {
     addOperand(
-      Operand::createReg(
-        static_cast<Register>((code_ >> 7) & ((1 << 5)  - 1))
+      Operand::createEnc("opcode",
+        static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
       )
     );
 
     addOperand(
-      Operand::createReg(
-        static_cast<Register>((code_ >> 15) & ((1 << 5)  - 1))
+      Operand::createReg("rd",
+        static_cast<Register>((code_ >> 7) & ((1 << 5) - 1))
       )
     );
 
     addOperand(
-      Operand::createReg(
-        static_cast<Register>((code_ >> 20) & ((1 << 5)  - 1))
+      Operand::createEnc("func3",
+        static_cast<addr_t>((code_ >> 12) & ((1 << 3) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createReg("rs1",
+        static_cast<Register>((code_ >> 15) & ((1 << 5) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createReg("rs2",
+        static_cast<Register>((code_ >> 20) & ((1 << 5) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createEnc("func7",
+        static_cast<addr_t>((code_ >> 25) & ((1 << 7) - 1))
       )
     );
 
     opcode_ = RTypeInsn::getOpcode(code_);
+  }
+
+  void print(std::ostream& out) const override {
+    out << std::bitset<7>{static_cast<uint8_t>(getOperand(5).getEnc())} << "'"
+        << std::bitset<5>{static_cast<uint8_t>(getOperand(4).getReg())} << "'"
+        << std::bitset<5>{static_cast<uint8_t>(getOperand(3).getReg())} << "'"
+        << std::bitset<3>{static_cast<uint8_t>(getOperand(2).getEnc())} << "'"
+        << std::bitset<5>{static_cast<uint8_t>(getOperand(1).getReg())} << "'"
+        << std::bitset<7>{static_cast<uint8_t>(getOperand(0).getEnc())} << " (R)";
  }
 
   static addr_t getOpcode(addr_t code) {
@@ -49,106 +76,77 @@ class rvADD final : public RTypeInsn {
 public:
   rvADD(addr_t code) : RTypeInsn(code) {}
 
-  void execute(RVModel& model) const override {
-    std::cerr << "executing add insn\n";
-  }
+  void execute(IRVModel& model) const override;
 };
 
 class rvSUB final : public RTypeInsn {
 public:
   rvSUB(addr_t code) : RTypeInsn(code) {}
 
-  void execute(RVModel& model) const override {
-    std::cerr << "executing sub insn\n";
-  }
+  void execute(IRVModel& model) const override;
 };
 
 class rvSLL final : public RTypeInsn {
 public:
   rvSLL(addr_t code) : RTypeInsn(code) {}
 
-  void execute(RVModel& model) const override {
-    std::cerr << "executing sll insn\n";
-  }
+  void execute(IRVModel& model) const override;
 };
 
 class rvSLT final : public RTypeInsn {
 public:
   rvSLT(addr_t code) : RTypeInsn(code) {}
 
-  void execute(RVModel& model) const override {
-    std::cerr << "executing slt insn\n";
-  }
+  void execute(IRVModel& model) const override;
 };
 
 class rvSLTU final : public RTypeInsn {
 public:
   rvSLTU(addr_t code) : RTypeInsn(code) {}
 
-  void execute(RVModel& model) const override {
-    std::cerr << "executing sltu insn\n";
-  }
+  void execute(IRVModel& model) const override;
 };
 
 class rvXOR final : public RTypeInsn {
 public:
   rvXOR(addr_t code) : RTypeInsn(code) {}
 
-  void execute(RVModel& model) const override {
-    std::cerr << "executing xor insn\n";
-  }
+  void execute(IRVModel& model) const override;
 };
 
 class rvSRL final : public RTypeInsn {
 public:
   rvSRL(addr_t code) : RTypeInsn(code) {}
 
-  void execute(RVModel& model) const override {
-    std::cerr << "executing srl insn\n";
-  }
+  void execute(IRVModel& model) const override;
 };
 
 class rvSRA final : public RTypeInsn {
 public:
   rvSRA(addr_t code) : RTypeInsn(code) {}
 
-  void execute(RVModel& model) const override {
-    std::cerr << "executing sra insn\n";
-  }
+  void execute(IRVModel& model) const override;
 };
 
 class rvOR final : public RTypeInsn {
 public:
   rvOR(addr_t code) : RTypeInsn(code) {}
 
-  void execute(RVModel& model) const override {
-    std::cerr << "executing or insn\n";
-  }
+  void execute(IRVModel& model) const override;
 };
 
 class rvAND final : public RTypeInsn {
 public:
   rvAND(addr_t code) : RTypeInsn(code) {}
 
-  void execute(RVModel& model) const override {
-    std::cerr << "executing and insn\n";
-  }
+  void execute(IRVModel& model) const override;
 };
 
-class rvNOP final : public RVInsnNew {
+class rvUNDEF final : public RTypeInsn {
 public:
-  rvNOP() : RVInsnNew{0} {}
+  rvUNDEF(addr_t code) : RTypeInsn{code} {}
 
-  // todo nop encoding
-  addr_t getCode() const override { return 0; }
-  void setCode(addr_t code) override { return; };
-
-  // todo nop encoding
-  addr_t getOpcode() const override { return 0; };
-
-  void execute(RVModel& model) const override {
-    std::cerr << "nop insn\n";
-  }
+  void execute(IRVModel& model) const override;
 };
 
 RTypeInsn* RTypeInsn::decode(addr_t code) {
@@ -164,11 +162,11 @@ RTypeInsn* RTypeInsn::decode(addr_t code) {
   case RV32i_ISA::SRA: return new rvSRA{code};
   case RV32i_ISA::OR: return new rvOR{code};
   case RV32i_ISA::AND: return new rvAND{code};
-  default: return nullptr; // todo undefined instruction
+  default: return new rvUNDEF{code};
   }
 }
 
-RVInsnNew* RVInsnNew::decode(addr_t code) {
+RVInsn* RVInsn::decode(addr_t code) {
   addr_t opcode = code & DEFAULT_OPCODE_MASK;
   switch (opcode)
   {
@@ -190,8 +188,7 @@ RVInsnNew* RVInsnNew::decode(addr_t code) {
   // default:
     // return UndefTypeInsn::decode(code);
   default:
-    std::cerr << "undef insn\n";
-    return new rvNOP{};
+    return new GeneralUndefInsn{code};
     break;
   }
 }

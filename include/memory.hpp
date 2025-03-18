@@ -9,8 +9,6 @@
 
 namespace rv32i_sim {
 
-constexpr unsigned BITS_BYTE = 8; // n bits in byte
-
 constexpr std::size_t ADDR_SPACE_CAPACITY = 1 << 16; // 64K - addr space
 enum class Endianness { LITTLE, BIG, }; // todo support big endian
 
@@ -138,12 +136,12 @@ public:
     return out;
   }
 
-  std::ostream& dump(std::ostream& out) {
+  std::ostream& print(std::ostream& out) {
     dump(out, 0, ADDR_SPACE_CAPACITY);
     return out;
   }
 
-  void binary_dump(std::ofstream& fout) {
+  void binaryDump(std::ofstream& fout) {
     fout.write(RV32I_MEMORY_STATE_SIGNATURE.c_str(),
                RV32I_MEMORY_STATE_SIGNATURE.size() + 1);
 
@@ -152,7 +150,7 @@ public:
 };
 
 std::ostream& operator<<(std::ostream& out, MemoryModel& memory) {
-  memory.dump(out);
+  memory.print(out);
   return out;
 }
 

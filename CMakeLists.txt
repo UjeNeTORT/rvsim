@@ -21,7 +21,7 @@ include_directories( ${Boost_INCLUDE_DIR} )
 set (CMAKE_CURRENT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 
-add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/sim.cc)
+add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/main.cc)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_link_libraries(${PROJECT_NAME} Boost::program_options)
