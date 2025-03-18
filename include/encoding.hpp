@@ -87,6 +87,9 @@ enum class RV32i_ISA : addr_t {
   SRAI = 0x40005013, // poor creature... how should i decode you?
 
   // S-Type
+  SB = 0x00000023,
+  SH = 0x00001023,
+  SW = 0x00002023,
 
   // U-Type
 };
@@ -94,11 +97,11 @@ enum class RV32i_ISA : addr_t {
 constexpr uint8_t RV_R_TYPE_OPCODE = 0b011'0011;
 
 constexpr uint8_t RV_I_TYPE_OPCODE     = 0b001'0011;
-constexpr uint8_t RV_ILOAD_TYPE_OPCODE = 0b000'0011; // todo
+constexpr uint8_t RV_ILOAD_TYPE_OPCODE = 0b000'0011;
 constexpr uint8_t RV_IJALR_TYPE_OPCODE = 0b110'0111;
 
-constexpr uint8_t RV_S_TYPE_OPCODE  = 0b010'0011; // todo
-constexpr uint8_t RV_SB_TYPE_OPCODE = 0b110'0011; // todo
+constexpr uint8_t RV_S_TYPE_OPCODE  = 0b010'0011;
+constexpr uint8_t RV_SB_TYPE_OPCODE = 0b110'0011;
 
 constexpr uint8_t RV_U1_TYPE_OPCODE = 0b011'0111; // todo
 constexpr uint8_t RV_U2_TYPE_OPCODE = 0b001'0111; // todo

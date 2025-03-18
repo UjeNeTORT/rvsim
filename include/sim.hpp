@@ -404,6 +404,44 @@ void rvUNDEF_I::execute(IRVModel& model) const {
   std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
 }
 
+void rvSB::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  addr_t mem_addr = op1 + sign_extend_12_to_32(imm_);
+  byte_t val = op2 & 0xFF; // 8 bits mask
+
+  model.writeByte(mem_addr, val);
+
+  std::cerr << *this << "  sb <pc = " << model.getPC() << ">\n";
+};
+
+void rvSH::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  addr_t mem_addr = op1 + sign_extend_12_to_32(imm_);
+  half_t val = op2 & 0xFFFF; // 16 bits mask
+
+  model.writeHalf(mem_addr, val);
+
+  std::cerr << *this << "  sh <pc = " << model.getPC() << ">\n";
+};
+
+void rvSW::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  addr_t mem_addr = op1 + sign_extend_12_to_32(imm_);
+  word_t val = op2 & 0xFFFF'FFFF; // 32 bits mask
+
+  model.writeWord(mem_addr, val);
+
+  std::cerr << *this << "  sw <pc = " << model.getPC() << ">\n";
+};
+
+void rvUNDEF_S::execute(IRVModel& model) const {
+  // do nothing
+  std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
+}
+
 void GeneralUndefInsn::execute(IRVModel& model) const {
   // do nothing
   std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
