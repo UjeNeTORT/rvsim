@@ -149,7 +149,7 @@ public:
 
   virtual ~RVInsn() = default;
 
-  static RVInsn* decode(addr_t code);
+  static std::unique_ptr<RVInsn> decode(addr_t code);
 };
 
 std::ostream& operator<< (std::ostream& out, const RVInsn& insn) {

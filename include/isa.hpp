@@ -2,6 +2,7 @@
 #define ISA_HPP
 
 #include <iostream>
+#include <memory>
 
 #include "instruction.hpp"
 
@@ -67,7 +68,7 @@ public:
     return func_7 | func_3 | opcode_7_0;
   }
 
-  static RTypeInsn* decode(addr_t code);
+  static std::unique_ptr<RTypeInsn> decode(addr_t code);
 
   virtual ~RTypeInsn() = default;
 };
@@ -149,24 +150,24 @@ public:
   void execute(IRVModel& model) const override;
 };
 
-RTypeInsn* RTypeInsn::decode(addr_t code) {
+std::unique_ptr<RTypeInsn> RTypeInsn::decode(addr_t code) {
   switch (static_cast<RV32i_ISA>(RTypeInsn::getOpcode(code)))
   {
-  case RV32i_ISA::ADD: return new rvADD{code};
-  case RV32i_ISA::SUB: return new rvSUB{code};
-  case RV32i_ISA::SLL: return new rvSLL{code};
-  case RV32i_ISA::SLT: return new rvSLT{code};
-  case RV32i_ISA::SLTU: return new rvSLTU{code};
-  case RV32i_ISA::XOR: return new rvXOR{code};
-  case RV32i_ISA::SRL: return new rvSRL{code};
-  case RV32i_ISA::SRA: return new rvSRA{code};
-  case RV32i_ISA::OR: return new rvOR{code};
-  case RV32i_ISA::AND: return new rvAND{code};
-  default: return new rvUNDEF{code};
+  case RV32i_ISA::ADD: return std::make_unique<rvADD>(code);
+  case RV32i_ISA::SUB: return std::make_unique<rvSUB>(code);
+  case RV32i_ISA::SLL: return std::make_unique<rvSLL>(code);
+  case RV32i_ISA::SLT: return std::make_unique<rvSLT>(code);
+  case RV32i_ISA::SLTU: return std::make_unique<rvSLTU>(code);
+  case RV32i_ISA::XOR: return std::make_unique<rvXOR>(code);
+  case RV32i_ISA::SRL: return std::make_unique<rvSRL>(code);
+  case RV32i_ISA::SRA: return std::make_unique<rvSRA>(code);
+  case RV32i_ISA::OR: return std::make_unique<rvOR>(code);
+  case RV32i_ISA::AND: return std::make_unique<rvAND>(code);
+  default: return std::make_unique<rvUNDEF>(code);
   }
 }
 
-RVInsn* RVInsn::decode(addr_t code) {
+std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
   addr_t opcode = code & DEFAULT_OPCODE_MASK;
   switch (opcode)
   {
@@ -188,7 +189,7 @@ RVInsn* RVInsn::decode(addr_t code) {
   // default:
     // return UndefTypeInsn::decode(code);
   default:
-    return new GeneralUndefInsn{code};
+    return std::make_unique<GeneralUndefInsn>(code);
     break;
   }
 }

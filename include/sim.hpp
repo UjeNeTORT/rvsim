@@ -15,8 +15,6 @@
 #include "memory.hpp"
 #include "register_file.hpp"
 
-namespace rv32i_sim {
-
 int32_t sign_extend_8_to_32(uint8_t val) {
   return static_cast<int32_t>(uint32_t(val) << 24) >> 24;
 }
@@ -32,6 +30,8 @@ int32_t sign_extend_16_to_32(uint16_t val) {
 int32_t sign_extend_32_to_32(uint32_t val) {
   return std::bit_cast<int32_t>(val);
 }
+
+namespace rv32i_sim {
 
 const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 
@@ -59,7 +59,7 @@ public:
   void setPC(addr_t pc_new) override;
 
 private:
-  IInsn* decode();
+  std::unique_ptr<IInsn> decode(addr_t insn_code);
 
 public:
   byte_t readByte(addr_t addr) override;
@@ -138,23 +138,19 @@ void RVModel::writeWord(addr_t addr, word_t val) { mem_.writeWord(addr, val); }
 void RVModel::writeDWord(addr_t addr, dword_t val) { mem_.writeDword(addr, val); }
 #endif // RVBITS64
 
-IInsn* RVModel::decode() {
-  addr_t instr_code = mem_.readWord(pc_); // insn fetch
-  return RVInsn::decode(instr_code);
+std::unique_ptr<IInsn> RVModel::decode(addr_t insn_code) {
+  return RVInsn::decode(insn_code);
 }
 
 void RVModel::execute() {
   std::cerr << "DBG: begin execution (pc = " << pc_ << ")\n";
 
   while(true) {
-    IInsn* insn = decode();
+    addr_t insn_code = mem_.readWord(pc_); // insn fetch
+    std::unique_ptr<IInsn> insn = decode(insn_code);
     insn->execute(*this);
 
-    if (insn->getType() == RVInsnType::UNDEF_TYPE_INSN) {
-      delete insn;
-      break; // temporary
-    }
-    delete insn;
+    if (insn->getType() == RVInsnType::UNDEF_TYPE_INSN) break; // temporary measure
 
     setPC(pc_ + sizeof(word_t));
   }
@@ -292,6 +288,7 @@ void rvOR::execute(IRVModel& model) const {
   addr_t op1 = model.getReg(rs1);
   addr_t op2 = model.getReg(rs2);
   model.setReg(dst, op1 | op2);
+
   std::cerr << *this << " or <pc = " << model.getPC() << ">\n";
 }
 
@@ -303,14 +300,17 @@ void rvAND::execute(IRVModel& model) const {
   addr_t op1 = model.getReg(rs1);
   addr_t op2 = model.getReg(rs2);
   model.setReg(dst, op1 & op2);
+
   std::cerr << *this << " and <pc = " << model.getPC() << ">\n";
 }
 
 void rvUNDEF::execute(IRVModel& model) const {
+  // do nothing
   std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
 }
 
 void GeneralUndefInsn::execute(IRVModel& model) const {
+  // do nothing
   std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
 }
 
