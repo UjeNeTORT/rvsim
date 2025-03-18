@@ -19,7 +19,7 @@ class Operand {
     ENC = 3, //< part of encoding which is not actually an operand
   };
 
-  std::variant<Register, uint64_t, addr_t> op_;
+  std::variant<Register, addr_t> op_;
   std::string name_ = "???";
   OpType type_ = OpType::INVALID;
 
@@ -35,13 +35,13 @@ public:
     return std::get<Register>(op_);
   }
 
-  uint64_t getImm() const {
-    assert(std::holds_alternative<uint64_t>(op_) && "Variant holds another alternative");
+  addr_t getImm() const {
+    assert(std::holds_alternative<uint32_t>(op_) && "Variant holds another alternative");
     assert(isImm() && "Type mismatch");
-    return std::get<uint64_t>(op_);
+    return std::get<addr_t>(op_);
   }
 
-  uint64_t getEnc() const {
+  addr_t getEnc() const {
     assert(std::holds_alternative<addr_t>(op_) && "Variant holds another alternative");
     assert(isEnc() && "Type mismatch");
     return std::get<addr_t>(op_);
@@ -53,8 +53,8 @@ public:
     op_ = reg;
   }
 
-  void setImm(uint64_t imm) {
-    assert(std::holds_alternative<uint64_t>(op_) && "Variant holds another alternative");
+  void setImm(addr_t imm) {
+    assert(std::holds_alternative<uint32_t>(op_) && "Variant holds another alternative");
     assert(isImm() && "Type mismatch");
     op_ = imm;
   }
@@ -75,7 +75,7 @@ public:
     return op;
   }
 
-  static Operand createImm(std::string name, uint64_t imm) {
+  static Operand createImm(std::string name, uint32_t imm) {
     Operand op;
     op.type_ = OpType::IMM;
     op.op_ = imm;
@@ -93,7 +93,7 @@ public:
 
   std::ostream& print(std::ostream& out) const {
     if (isReg()) out << "<reg> " << name_ << std::get<Register>(op_);
-    else if (isImm()) out << "<imm> " << name_<< std::get<uint64_t>(op_);
+    else if (isImm()) out << "<imm> " << name_<< std::get<addr_t>(op_);
     else if (isEnc()) out << "<enc> " << name_ << std::get<addr_t>(op_);
     else if (!isValid()) out << "<invalid>" << name_;
     else out << "error_type";

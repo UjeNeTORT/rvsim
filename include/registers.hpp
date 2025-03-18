@@ -12,6 +12,7 @@ enum class Register : uint8_t {
   X20 = 20, X21 = 21, X22 = 22, X23 = 23,
   X24 = 24, X25 = 25, X26 = 26, X27 = 27,
   X28 = 28, X29 = 29, X30 = 30, X31 = 31,
+  INVALID = 0xFF,
 };
 
 constexpr std::size_t N_REGS = 32; // number of registers

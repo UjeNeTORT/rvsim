@@ -9,6 +9,10 @@
 namespace rv32i_sim {
 
 class RTypeInsn : public RVInsn {
+protected:
+  Register dst_ = Register::INVALID;
+  Register rs1_ = Register::INVALID;
+  Register rs2_ = Register::INVALID;
 
 public:
   RTypeInsn(addr_t code) : RVInsn{code, RVInsnType::R_TYPE_INSN} {
@@ -49,6 +53,10 @@ public:
     );
 
     opcode_ = RTypeInsn::getOpcode(code_);
+
+    dst_ = getOperand(1).getReg();
+    rs1_ = getOperand(3).getReg();
+    rs2_ = getOperand(4).getReg();
   }
 
   void print(std::ostream& out) const override {
@@ -143,9 +151,9 @@ public:
   void execute(IRVModel& model) const override;
 };
 
-class rvUNDEF final : public RTypeInsn {
+class rvUNDEF_R final : public RTypeInsn {
 public:
-  rvUNDEF(addr_t code) : RTypeInsn{code} {}
+  rvUNDEF_R(addr_t code) : RTypeInsn{code} {}
 
   void execute(IRVModel& model) const override;
 };
@@ -163,7 +171,210 @@ std::unique_ptr<RTypeInsn> RTypeInsn::decode(addr_t code) {
   case RV32i_ISA::SRA: return std::make_unique<rvSRA>(code);
   case RV32i_ISA::OR: return std::make_unique<rvOR>(code);
   case RV32i_ISA::AND: return std::make_unique<rvAND>(code);
-  default: return std::make_unique<rvUNDEF>(code);
+  default: return std::make_unique<rvUNDEF_R>(code);
+  }
+}
+
+class ITypeInsn : public RVInsn {
+protected:
+  Register dst_ = Register::INVALID;
+  Register rs1_ = Register::INVALID;
+  uint32_t imm_ = 0;
+
+public:
+  ITypeInsn(addr_t code) : RVInsn{code, RVInsnType::I_TYPE_INSN} {
+    addOperand(
+      Operand::createEnc("opcode",
+        static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
+      )
+    );
+
+    addOperand(
+      Operand::createReg("rd",
+        static_cast<Register>((code_ >> 7) & ((1 << 5) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createEnc("func3",
+        static_cast<addr_t>((code_ >> 12) & ((1 << 3) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createReg("rs1",
+        static_cast<Register>((code_ >> 15) & ((1 << 5) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createImm("imm[11:0]",
+        static_cast<addr_t>((code_ >> 20) & ((1 << 12) - 1))
+      )
+    );
+
+    opcode_ = ITypeInsn::getOpcode(code_);
+
+    dst_ = getOperand(1).getReg();
+    rs1_ = getOperand(3).getReg();
+    imm_ = getOperand(4).getImm();
+  }
+
+  void print(std::ostream& out) const override {
+    out << std::bitset<12>{static_cast<uint8_t>(getOperand(4).getImm())} << "'"
+        << std::bitset<5>{static_cast<uint8_t>(getOperand(3).getReg())} << "'"
+        << std::bitset<3>{static_cast<uint8_t>(getOperand(2).getEnc())} << "'"
+        << std::bitset<5>{static_cast<uint8_t>(getOperand(1).getReg())} << "'"
+        << std::bitset<7>{static_cast<uint8_t>(getOperand(0).getEnc())} << " (I)";
+ }
+
+  static addr_t getOpcode(addr_t code) {
+    addr_t opcode_7_0 = code & DEFAULT_OPCODE_MASK;
+    addr_t func_3 = code & DEFAULT_FUNC3_MASK;
+    addr_t srai_specific = code & MASK_31_20;
+
+    if (srai_specific | func_3 | opcode_7_0 == static_cast<addr_t>(RV32i_ISA::SRAI))
+      return static_cast<addr_t>(RV32i_ISA::SRAI);
+
+    return func_3 | opcode_7_0;
+  }
+
+  static std::unique_ptr<ITypeInsn> decode(addr_t code);
+
+  virtual ~ITypeInsn() = default;
+};
+
+class rvJALR final : public ITypeInsn {
+public:
+  rvJALR(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvLB final : public ITypeInsn {
+public:
+  rvLB(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvLH final : public ITypeInsn {
+public:
+  rvLH(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvLW final : public ITypeInsn {
+public:
+  rvLW(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvLBU final : public ITypeInsn {
+public:
+  rvLBU(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvLHU final : public ITypeInsn {
+public:
+  rvLHU(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvADDI final : public ITypeInsn {
+public:
+  rvADDI(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvSLTI final : public ITypeInsn {
+public:
+  rvSLTI(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvSLTIU final : public ITypeInsn {
+public:
+  rvSLTIU(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvXORI final : public ITypeInsn {
+public:
+  rvXORI(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvORI final : public ITypeInsn {
+public:
+  rvORI(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvANDI final : public ITypeInsn {
+public:
+  rvANDI(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvSLLI final : public ITypeInsn {
+public:
+  rvSLLI(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvSRLI final : public ITypeInsn {
+public:
+  rvSRLI(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvSRAI final : public ITypeInsn {
+public:
+  rvSRAI(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvUNDEF_I final : public ITypeInsn {
+public:
+  rvUNDEF_I(addr_t code) : ITypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+std::unique_ptr<ITypeInsn> ITypeInsn::decode(addr_t code) {
+  switch (static_cast<RV32i_ISA>(ITypeInsn::getOpcode(code)))
+  {
+  case RV32i_ISA::JALR: return std::make_unique<rvJALR>(code);
+  case RV32i_ISA::LB: return std::make_unique<rvLB>(code);
+  case RV32i_ISA::LH: return std::make_unique<rvLH>(code);
+  case RV32i_ISA::LW: return std::make_unique<rvLW>(code);
+  case RV32i_ISA::LBU: return std::make_unique<rvLBU>(code);
+  case RV32i_ISA::LHU: return std::make_unique<rvLHU>(code);
+  case RV32i_ISA::ADDI: return std::make_unique<rvADDI>(code);
+  case RV32i_ISA::SLTI: return std::make_unique<rvSLTI>(code);
+  case RV32i_ISA::SLTIU: return std::make_unique<rvSLTIU>(code);
+  case RV32i_ISA::XORI: return std::make_unique<rvXORI>(code);
+  case RV32i_ISA::ORI: return std::make_unique<rvORI>(code);
+  case RV32i_ISA::ANDI: return std::make_unique<rvANDI>(code);
+  case RV32i_ISA::SLLI: return std::make_unique<rvSLLI>(code);
+  case RV32i_ISA::SRLI: return std::make_unique<rvSRLI>(code);
+  case RV32i_ISA::SRAI: return std::make_unique<rvSRAI>(code);
+  default: return std::make_unique<rvUNDEF_I>(code);
   }
 }
 
@@ -173,10 +384,10 @@ std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
   {
   case RV_R_TYPE_OPCODE: return RTypeInsn::decode(code);
 
-  // case RV_I_TYPE_OPCODE:
-  // case RV_IJALR_TYPE_OPCODE:
-  // case RV_ILOAD_TYPE_OPCODE:
-    // return ITypeInsn::decode(code);
+  case RV_I_TYPE_OPCODE:
+  case RV_IJALR_TYPE_OPCODE:
+  case RV_ILOAD_TYPE_OPCODE:
+    return ITypeInsn::decode(code);
 
   // case RV_S_TYPE_OPCODE:
   // case RV_SB_TYPE_OPCODE:

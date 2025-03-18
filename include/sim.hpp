@@ -16,15 +16,15 @@
 #include "register_file.hpp"
 
 int32_t sign_extend_8_to_32(uint8_t val) {
-  return static_cast<int32_t>(uint32_t(val) << 24) >> 24;
+  return std::bit_cast<int32_t>(uint32_t(val) << 24) >> 24;
 }
 
 int32_t sign_extend_12_to_32(uint16_t val) {
-  return static_cast<int32_t>(uint32_t(val) << 20) >> 20;
+  return std::bit_cast<int32_t>(uint32_t(val) << 20) >> 20;
 }
 
 int32_t sign_extend_16_to_32(uint16_t val) {
-  return static_cast<int32_t>(uint32_t(val) << 16) >> 16;
+  return std::bit_cast<int32_t>(uint32_t(val) << 16) >> 16;
 }
 
 int32_t sign_extend_32_to_32(uint32_t val) {
@@ -97,7 +97,8 @@ void RVModel::init(std::ifstream& model_state_file) {
   model_state_file.read(signature.data(), RV32I_MODEL_STATE_SIGNATURE.size() + 1);
   if (signature != RV32I_MODEL_STATE_SIGNATURE) {
     std::cerr << "ERROR: model state file signature mismatch:\n"
-              << "      <" << signature << "> vs <" << RV32I_MODEL_STATE_SIGNATURE <<">\n";
+              << "      <" << signature << "> vs <"
+                                            << RV32I_MODEL_STATE_SIGNATURE <<">\n";
     return;
   }
 
@@ -186,125 +187,219 @@ void RVModel::setReg(Register reg, word_t val) {
 }
 
 void rvADD::execute(IRVModel& model) const {
-  Register dst = getOperand(1).getReg();
-  Register rs1 = getOperand(3).getReg();
-  Register rs2 = getOperand(4).getReg();
-
-  addr_t op1 = model.getReg(rs1);
-  addr_t op2 = model.getReg(rs2);
-  model.setReg(dst, op1 + op2);
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  model.setReg(dst_, op1 + op2);
 
   std::cerr << *this << " add <pc = " << model.getPC() << ">\n";
 }
 
 void rvSUB::execute(IRVModel& model) const {
-  Register dst = getOperand(1).getReg();
-  Register rs1 = getOperand(3).getReg();
-  Register rs2 = getOperand(4).getReg();
-
-  addr_t op1 = model.getReg(rs1);
-  addr_t op2 = model.getReg(rs2);
-  model.setReg(dst, op1 - op2);
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  model.setReg(dst_, op1 - op2);
 
   std::cerr << *this << " sub <pc = " << model.getPC() << ">\n";
 }
 
 void rvSLL::execute(IRVModel& model) const {
-  Register dst = getOperand(1).getReg();
-  Register rs1 = getOperand(3).getReg();
-  Register rs2 = getOperand(4).getReg();
-
-  addr_t op1 = model.getReg(rs1);
-  addr_t op2 = model.getReg(rs2);
-  model.setReg(dst, op1 << (op2 & MASK_4_0));
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  model.setReg(dst_, op1 << (op2 & MASK_4_0));
 
   std::cerr << *this << " sll <pc = " << model.getPC() << ">\n";
 }
 
 void rvSLT::execute(IRVModel& model) const {
-  Register dst = getOperand(1).getReg();
-  Register rs1 = getOperand(3).getReg();
-  Register rs2 = getOperand(4).getReg();
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  model.setReg(dst_, std::bit_cast<sword_t>(op1) < std::bit_cast<sword_t>(op2));
 
-  addr_t op1 = model.getReg(rs1);
-  addr_t op2 = model.getReg(rs2);
-  model.setReg(dst, std::bit_cast<sword_t>(op1) < std::bit_cast<sword_t>(op2));
   std::cerr << *this << " slt <pc = " << model.getPC() << ">\n";
 }
 
 void rvSLTU::execute(IRVModel& model) const {
-  Register dst = getOperand(1).getReg();
-  Register rs1 = getOperand(3).getReg();
-  Register rs2 = getOperand(4).getReg();
-
-  addr_t op1 = model.getReg(rs1);
-  addr_t op2 = model.getReg(rs2);
-  model.setReg(dst, op1 < op2);
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  model.setReg(dst_, op1 < op2);
 
   std::cerr << *this << " sltu <pc = " << model.getPC() << ">\n";
 }
 
 void rvXOR::execute(IRVModel& model) const {
-  Register dst = getOperand(1).getReg();
-  Register rs1 = getOperand(3).getReg();
-  Register rs2 = getOperand(4).getReg();
-
-  addr_t op1 = model.getReg(rs1);
-  addr_t op2 = model.getReg(rs2);
-  model.setReg(dst, op1 ^ op2);
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  model.setReg(dst_, op1 ^ op2);
 
   std::cerr << *this << " xor <pc = " << model.getPC() << ">\n";
 }
 
 void rvSRL::execute(IRVModel& model) const {
-  Register dst = getOperand(1).getReg();
-  Register rs1 = getOperand(3).getReg();
-  Register rs2 = getOperand(4).getReg();
-
-  addr_t op1 = model.getReg(rs1);
-  addr_t op2 = model.getReg(rs2);
-  model.setReg(dst, op1 >> (op2 & MASK_4_0));
-
-  std::cerr << *this << " srl <pc = " << model.getPC() << ">\n";
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  model.setReg(dst_, op1 >> (op2 & MASK_4_0));
 }
 
 void rvSRA::execute(IRVModel& model) const {
-  Register dst = getOperand(1).getReg();
-  Register rs1 = getOperand(3).getReg();
-  Register rs2 = getOperand(4).getReg();
-
-  addr_t op1 = model.getReg(rs1);
-  addr_t op2 = model.getReg(rs2);
-  model.setReg(dst, std::bit_cast<sword_t>(op1) >> (op2 & MASK_4_0));
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  model.setReg(dst_, std::bit_cast<sword_t>(op1) >> (op2 & MASK_4_0));
 
   std::cerr << *this << " sra <pc = " << model.getPC() << ">\n";
 }
 
 void rvOR::execute(IRVModel& model) const {
-  Register dst = getOperand(1).getReg();
-  Register rs1 = getOperand(3).getReg();
-  Register rs2 = getOperand(4).getReg();
-
-  addr_t op1 = model.getReg(rs1);
-  addr_t op2 = model.getReg(rs2);
-  model.setReg(dst, op1 | op2);
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  model.setReg(dst_, op1 | op2);
 
   std::cerr << *this << " or <pc = " << model.getPC() << ">\n";
 }
 
 void rvAND::execute(IRVModel& model) const {
-  Register dst = getOperand(1).getReg();
-  Register rs1 = getOperand(3).getReg();
-  Register rs2 = getOperand(4).getReg();
-
-  addr_t op1 = model.getReg(rs1);
-  addr_t op2 = model.getReg(rs2);
-  model.setReg(dst, op1 & op2);
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+  model.setReg(dst_, op1 & op2);
 
   std::cerr << *this << " and <pc = " << model.getPC() << ">\n";
 }
 
-void rvUNDEF::execute(IRVModel& model) const {
+void rvUNDEF_R::execute(IRVModel& model) const {
+  // do nothing
+  std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
+}
+
+void rvJALR::execute(IRVModel& model) const {
+  addr_t ret_addr = model.getPC() + sizeof(word_t);
+  model.setReg(dst_, ret_addr);
+
+  addr_t jmp_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  jmp_addr &= 0xFFFF'FFFE; // clear least significant bit
+  model.setPC(jmp_addr);
+
+  std::cerr << *this << " jalr <pc = " << model.getPC() << ">\n";
+}
+
+void rvLB::execute(IRVModel& model) const {
+  addr_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  byte_t mem_val = model.readByte(mem_addr);
+  model.setReg(dst_, sign_extend_8_to_32(mem_val));
+
+  std::cerr << *this << " lb <pc = " << model.getPC() << ">\n";
+}
+
+void rvLH::execute(IRVModel& model) const {
+  addr_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  half_t mem_val = model.readHalf(mem_addr);
+  model.setReg(dst_, sign_extend_16_to_32(mem_val));
+
+  std::cerr << *this << " lh <pc = " << model.getPC() << ">\n";
+}
+
+void rvLW::execute(IRVModel& model) const {
+  addr_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  word_t mem_val = model.readWord(mem_addr);
+  model.setReg(dst_, sign_extend_16_to_32(mem_val));
+
+  std::cerr << *this << " lw <pc = " << model.getPC() << ">\n";
+}
+
+void rvLBU::execute(IRVModel& model) const {
+  addr_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  byte_t mem_val = model.readByte(mem_addr);
+  model.setReg(dst_, static_cast<addr_t>(mem_val));
+
+  std::cerr << *this << " lbu <pc = " << model.getPC() << ">\n";
+}
+
+void rvLHU::execute(IRVModel& model) const {
+  addr_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  half_t mem_val = model.readHalf(mem_addr);
+  model.setReg(dst_, static_cast<addr_t>(mem_val));
+
+  std::cerr << *this << " lhu <pc = " << model.getPC() << ">\n";
+}
+
+void rvADDI::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  model.setReg(dst_, op1 + sign_extend_12_to_32(imm_));
+
+  std::cerr << *this << " addi <pc = " << model.getPC() << ">\n";
+}
+
+void rvSLTI::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  model.setReg(dst_, std::bit_cast<sword_t>(op1) < sign_extend_12_to_32(imm_));
+
+  std::cerr << *this << " slti <pc = " << model.getPC() << ">\n";
+}
+
+void rvSLTIU::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  model.setReg(dst_, op1 < std::bit_cast<addr_t>(sign_extend_12_to_32(imm_)));
+
+  std::cerr << *this << " sltiu <pc = " << model.getPC() << ">\n";
+}
+
+void rvXORI::execute(IRVModel& model) const {
+  sword_t signed_imm = sign_extend_12_to_32(imm_);
+  addr_t op1 = model.getReg(rs1_);
+
+  // Note, “XORI rd, rs1, -1” performs a bitwise logical
+  // inversion of register rs1
+  // (assembler pseudo-instruction NOT rd, rs)
+  //
+  // source: https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#lb
+  if (signed_imm == -1)
+    model.setReg(dst_, ~op1);
+  else
+    model.setReg(dst_, op1 ^ signed_imm);
+
+  std::cerr << *this << " xori <pc = " << model.getPC() << ">\n";
+}
+
+void rvORI::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  model.setReg(dst_, op1 | sign_extend_12_to_32(imm_));
+
+  std::cerr << *this << " ori <pc = " << model.getPC() << ">\n";
+}
+
+void rvANDI::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  model.setReg(dst_, op1 & sign_extend_12_to_32(imm_));
+
+  std::cerr << *this << " andi <pc = " << model.getPC() << ">\n";
+}
+
+void rvSLLI::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  addr_t shamt = imm_ & MASK_4_0;
+
+  model.setReg(dst_, op1 << shamt);
+
+  std::cerr << *this << " slli <pc = " << model.getPC() << ">\n";
+}
+
+void rvSRLI::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  addr_t shamt = imm_ & MASK_4_0;
+
+  model.setReg(dst_, op1 >> shamt);
+
+  std::cerr << *this << " srli <pc = " << model.getPC() << ">\n";
+}
+
+void rvSRAI::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  addr_t shamt = imm_ & MASK_4_0;
+
+  model.setReg(dst_, std::bit_cast<sword_t>(op1) >> shamt);
+
+  std::cerr << *this << " srai <pc = " << model.getPC() << ">\n";
+}
+
+void rvUNDEF_I::execute(IRVModel& model) const {
   // do nothing
   std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
 }
