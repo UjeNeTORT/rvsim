@@ -169,7 +169,7 @@ public:
   void execute(IRVModel& model) const override;
 
   void print(std::ostream& out) const override {
-    out << std::bitset<sizeof(addr_t) * BITS_BYTE>{getCode()} << " (U)";
+    out << std::bitset<sizeof(addr_t) * BITS_BYTE>{getCode()} << " (?)";
   }
 };
 

@@ -34,8 +34,8 @@ enum class RVInsnType : uint8_t {
   R_TYPE_INSN = 1,
   I_TYPE_INSN = 2,
   S_TYPE_INSN = 3,
-  U_TYPE_INSN = 4,
-  B_TYPE_INSN = 5,
+  B_TYPE_INSN = 4,
+  U_TYPE_INSN = 5,
   J_TYPE_INSN = 6,
 };
 
@@ -58,6 +58,7 @@ constexpr uint32_t DEFAULT_RS2_MASK = MASK_24_20;
 constexpr uint32_t DEFAULT_FUNC7_MASK = MASK_31_25;
 
 enum class RV32i_ISA : addr_t {
+
   // R-Type
   ADD = 0x00000033,
   SUB = 0x40000033,
@@ -101,6 +102,11 @@ enum class RV32i_ISA : addr_t {
   BGEU = 0x00007063,
 
   // U-Type
+  LUI = 0x00000037,
+  AUIPC = 0x00000017,
+
+  // J-Type
+  JAL = 0x0000006f,
 };
 
 constexpr uint8_t RV_R_TYPE_OPCODE = 0b011'0011;
@@ -113,8 +119,10 @@ constexpr uint8_t RV_S_TYPE_OPCODE  = 0b010'0011;
 
 constexpr uint8_t RV_B_TYPE_OPCODE = 0b110'0011;
 
-constexpr uint8_t RV_U1_TYPE_OPCODE = 0b011'0111; // todo
-constexpr uint8_t RV_U2_TYPE_OPCODE = 0b001'0111; // todo
+constexpr uint8_t RV_U1_TYPE_OPCODE = 0b011'0111;
+constexpr uint8_t RV_U2_TYPE_OPCODE = 0b001'0111;
+
+constexpr uint8_t RV_JAL_OPCODE = 0b110'1111;
 
 } // rv32i_sim
 

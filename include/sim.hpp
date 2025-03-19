@@ -31,6 +31,10 @@ int32_t sign_extend_16_to_32(uint16_t val) {
   return std::bit_cast<int32_t>(uint32_t(val) << 16) >> 16;
 }
 
+int32_t sign_extend_21_to_32(uint32_t val) {
+  return std::bit_cast<int32_t>(uint32_t(val) << 21) >> 21;
+}
+
 int32_t sign_extend_32_to_32(uint32_t val) {
   return std::bit_cast<int32_t>(val);
 }
@@ -527,6 +531,32 @@ void rvBGEU::execute(IRVModel& model) const {
 void rvUNDEF_B::execute(IRVModel& model) const {
   // do nothing
   std::cerr << *this << " ??? <pc =" << model.getPC() << ">\n";
+}
+
+void rvLUI::execute(IRVModel& model) const {
+  model.setReg(rd_, imm_);
+
+  std::cerr << *this << " lui <pc =" << model.getPC() << ">\n";
+}
+
+void rvAUIPC::execute(IRVModel& model) const {
+  addr_t curr_pc = model.getPC();
+  model.setReg(rd_, curr_pc + imm_);
+
+  std::cerr << *this << " auipc <pc =" << model.getPC() << ">\n";
+}
+
+void rvUNDEF_U::execute(IRVModel& model) const {
+  // do nothing
+  std::cerr << *this << " ??? <pc =" << model.getPC() << ">\n";
+}
+
+void rvJAL::execute(IRVModel& model) const {
+  addr_t curr_pc = model.getPC();
+  model.setReg(rd_, curr_pc + sizeof(addr_t));
+  model.setPC(curr_pc + sign_extend_21_to_32(imm_));
+
+  std::cerr << *this << " jal <pc =" << model.getPC() << ">\n";
 }
 
 void GeneralUndefInsn::execute(IRVModel& model) const {

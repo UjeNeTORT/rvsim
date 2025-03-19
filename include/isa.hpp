@@ -500,7 +500,7 @@ protected:
   uint32_t imm_ = 0;
 
 public:
-  BTypeInsn(addr_t code) : RVInsn{code, RVInsnType::S_TYPE_INSN} {
+  BTypeInsn(addr_t code) : RVInsn{code, RVInsnType::B_TYPE_INSN} {
     addOperand(
       Operand::createEnc("opcode",
         static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
@@ -646,11 +646,146 @@ std::unique_ptr<BTypeInsn> BTypeInsn::decode(addr_t code) {
   }
 }
 
+class UTypeInsn : public RVInsn {
+protected:
+  Register rd_ = Register::INVALID;
+  uint32_t imm_ = 0;
+
+public:
+  UTypeInsn(addr_t code) : RVInsn{code, RVInsnType::U_TYPE_INSN} {
+    addOperand(
+      Operand::createEnc("opcode",
+        static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
+      )
+    );
+
+    addOperand(
+      Operand::createReg("rd",
+        static_cast<Register>((code_ >> 7) & ((1 << 5) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createImm("imm[31:12]",
+        static_cast<addr_t>(sword_t(code_) >> 12) // arithmetic shift right
+      )
+    );
+
+    opcode_ = BTypeInsn::getOpcode(code_);
+
+    rd_ = getOperand(1).getReg();
+    imm_ = getOperand(2).getImm() << 12;
+  }
+
+  void print(std::ostream& out) const override {
+    out << std::bitset<20>{static_cast<uint32_t>(getOperand(2).getImm())} << "'"
+        << std::bitset<5>{static_cast<uint8_t>(getOperand(1).getReg())} << "'"
+        << std::bitset<7>{static_cast<uint8_t>(getOperand(0).getEnc())} << " (U)";
+ }
+
+  static addr_t getOpcode(addr_t code) {
+    addr_t opcode_7_0 = code & DEFAULT_OPCODE_MASK;
+    addr_t func_3 = code & DEFAULT_FUNC3_MASK;
+
+    return func_3 | opcode_7_0;
+  }
+
+  static std::unique_ptr<UTypeInsn> decode(addr_t code);
+
+  virtual ~UTypeInsn() = default;
+};
+
+class rvLUI : public UTypeInsn {
+public:
+  rvLUI(addr_t code) : UTypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvAUIPC : public UTypeInsn {
+public:
+  rvAUIPC(addr_t code) : UTypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvUNDEF_U : public UTypeInsn {
+public:
+  rvUNDEF_U(addr_t code) : UTypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+std::unique_ptr<UTypeInsn> UTypeInsn::decode(addr_t code) {
+  switch (static_cast<RV32i_ISA>(BTypeInsn::getOpcode(code)))
+  {
+  case RV32i_ISA::LUI: return std::make_unique<rvLUI>(code);
+  case RV32i_ISA::AUIPC: return std::make_unique<rvAUIPC>(code);
+  default: return std::make_unique<rvUNDEF_U>(code);
+  }
+}
+
+class rvJAL : public RVInsn {
+  Register rd_ = Register::INVALID;
+  addr_t imm_ = 0;
+
+public:
+  rvJAL(addr_t code) : RVInsn(code, RVInsnType::J_TYPE_INSN) {
+    addOperand(
+      Operand::createEnc("opcode",
+        static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
+      )
+    );
+
+    addOperand(
+      Operand::createReg("rd",
+        static_cast<Register>((code_ >> 7) & ((1 << 5) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createImm("imm[19:12]",
+        static_cast<addr_t>((code_ >> 12) & ((1 << 8) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createImm("imm[11]",
+        static_cast<addr_t>((code_ >> 20) & 1) // single bit
+      )
+    );
+
+    addOperand(
+      Operand::createImm("imm[10:1]",
+        static_cast<addr_t>((code_ >> 21) & ((1 << 10) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createImm("imm[20]",
+        static_cast<addr_t>((code_ >> 31) & 1) // single bit
+      )
+    );
+
+    rd_ = getOperand(1).getReg();
+
+    addr_t bit_20     = getOperand(6).getImm() << 20;
+    addr_t bits_19_12 = getOperand(2).getImm() << 12;
+    addr_t bit_11     = getOperand(3).getImm() << 11;
+    addr_t bits_10_1  = getOperand(4).getImm() << 1;
+
+    imm_ = bit_20 | bits_19_12 | bit_11 | bits_10_1 | 0;
+  }
+
+  void execute(IRVModel& model) const override;
+};
+
 std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
   addr_t opcode = code & DEFAULT_OPCODE_MASK;
   switch (opcode)
   {
-  case RV_R_TYPE_OPCODE: return RTypeInsn::decode(code);
+  case RV_R_TYPE_OPCODE:
+    return RTypeInsn::decode(code);
 
   case RV_I_TYPE_OPCODE:
   case RV_IJALR_TYPE_OPCODE:
@@ -663,10 +798,11 @@ std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
   case RV_B_TYPE_OPCODE:
     return BTypeInsn::decode(code);
 
-  // case RV_U1_TYPE_OPCODE:
-  // case RV_U2_TYPE_OPCODE:
-    // return UTypeInsn::decode(code);
-
+  case RV_U1_TYPE_OPCODE:
+  case RV_U2_TYPE_OPCODE:
+    return UTypeInsn::decode(code);
+  case RV_JAL_OPCODE:
+    return std::make_unique<rvJAL>(code);
   // default:
     // return UndefTypeInsn::decode(code);
   default:
