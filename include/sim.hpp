@@ -23,6 +23,10 @@ int32_t sign_extend_12_to_32(uint16_t val) {
   return std::bit_cast<int32_t>(uint32_t(val) << 20) >> 20;
 }
 
+int32_t sign_extend_13_to_32(uint16_t val) {
+  return std::bit_cast<int32_t>(uint32_t(val) << 19) >> 19;
+}
+
 int32_t sign_extend_16_to_32(uint16_t val) {
   return std::bit_cast<int32_t>(uint32_t(val) << 16) >> 16;
 }
@@ -105,14 +109,18 @@ void RVModel::init(std::ifstream& model_state_file) {
   model_state_file.read(reinterpret_cast<char *>(&pc_), sizeof(addr_t));
   regs_ = RegisterFile{model_state_file};
   mem_ = MemoryModel{model_state_file};
+
+  assert(pc_ % IALIGN == 0 && "PC at unaligned position");
 }
 
 void RVModel::init(const MemoryModel& mem_init, const RegisterFile& regs_init, addr_t pc_init) {
   mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
+  assert(pc_ % IALIGN == 0 && "PC at unaligned position");
 }
 
 void RVModel::init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init) {
   mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
+  assert(pc_ % IALIGN == 0 && "PC at unaligned position");
 }
 
 addr_t RVModel::getPC() const {
@@ -120,6 +128,7 @@ addr_t RVModel::getPC() const {
 }
 
 void RVModel::setPC(addr_t pc_new) {
+  assert(pc_new % IALIGN == 0 && "PC set to unaligned position");
   pc_ = pc_new;
 }
 
@@ -155,6 +164,7 @@ void RVModel::execute() {
 
     setPC(pc_ + sizeof(word_t));
   }
+
   std::cerr << "DBG: end execution (pc = " << pc_ << ")\n";
 }
 
@@ -440,6 +450,83 @@ void rvSW::execute(IRVModel& model) const {
 void rvUNDEF_S::execute(IRVModel& model) const {
   // do nothing
   std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
+}
+
+void rvBEQ::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+
+  if (op1 == op2) {
+    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    model.setPC(branch_addr);
+  }
+
+  std::cerr << *this << " beq <pc =" << model.getPC() << ">\n";
+}
+
+void rvBNE::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+
+  if (op1 != op2) {
+    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    model.setPC(branch_addr);
+  }
+
+  std::cerr << *this << " bne <pc =" << model.getPC() << ">\n";
+}
+
+void rvBLT::execute(IRVModel& model) const {
+  sword_t op1 = std::bit_cast<sword_t>(model.getReg(rs1_));
+  sword_t op2 = std::bit_cast<sword_t>(model.getReg(rs2_));
+
+  if (op1 < op2) {
+    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    model.setPC(branch_addr);
+  }
+
+  std::cerr << *this << " blt <pc =" << model.getPC() << ">\n";
+}
+
+void rvBLTU::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+
+  if (op1 < op2) {
+    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    model.setPC(branch_addr);
+  }
+
+  std::cerr << *this << " bltu <pc =" << model.getPC() << ">\n";
+}
+
+void rvBGE::execute(IRVModel& model) const {
+  sword_t op1 = std::bit_cast<sword_t>(model.getReg(rs1_));
+  sword_t op2 = std::bit_cast<sword_t>(model.getReg(rs2_));
+
+  if (op1 >= op2) {
+    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    model.setPC(branch_addr);
+  }
+
+  std::cerr << *this << " bge <pc =" << model.getPC() << ">\n";
+}
+
+void rvBGEU::execute(IRVModel& model) const {
+  addr_t op1 = model.getReg(rs1_);
+  addr_t op2 = model.getReg(rs2_);
+
+  if (op1 >= op2) {
+    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    model.setPC(branch_addr);
+  }
+
+  std::cerr << *this << " bgeu <pc =" << model.getPC() << ">\n";
+}
+
+void rvUNDEF_B::execute(IRVModel& model) const {
+  // do nothing
+  std::cerr << *this << " ??? <pc =" << model.getPC() << ">\n";
 }
 
 void GeneralUndefInsn::execute(IRVModel& model) const {

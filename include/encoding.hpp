@@ -27,6 +27,7 @@ using sdword_t = int64_t;
 #endif // RVBITS64
 
 constexpr unsigned BITS_BYTE = 8; // n bits in byte
+constexpr unsigned IALIGN = 4; // bytes, insn address alignment
 
 enum class RVInsnType : uint8_t {
   UNDEF_TYPE_INSN = 0,
@@ -91,6 +92,14 @@ enum class RV32i_ISA : addr_t {
   SH = 0x00001023,
   SW = 0x00002023,
 
+  // B-Type
+  BEQ = 0x00000063,
+  BNE = 0x00001063,
+  BLT = 0x00004063,
+  BLTU = 0x00006063,
+  BGE = 0x00005063,
+  BGEU = 0x00007063,
+
   // U-Type
 };
 
@@ -101,7 +110,8 @@ constexpr uint8_t RV_ILOAD_TYPE_OPCODE = 0b000'0011;
 constexpr uint8_t RV_IJALR_TYPE_OPCODE = 0b110'0111;
 
 constexpr uint8_t RV_S_TYPE_OPCODE  = 0b010'0011;
-constexpr uint8_t RV_SB_TYPE_OPCODE = 0b110'0011;
+
+constexpr uint8_t RV_B_TYPE_OPCODE = 0b110'0011;
 
 constexpr uint8_t RV_U1_TYPE_OPCODE = 0b011'0111; // todo
 constexpr uint8_t RV_U2_TYPE_OPCODE = 0b001'0111; // todo

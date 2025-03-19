@@ -6,6 +6,11 @@
 
 #include "instruction.hpp"
 
+/**
+ * RISCV ISA MANUAL:
+ * https://drive.google.com/file/d/1uviu1nH-tScFfgrovvFCrj7Omv8tFtkp/view
+*/
+
 namespace rv32i_sim {
 
 class RTypeInsn : public RVInsn {
@@ -221,7 +226,7 @@ public:
   }
 
   void print(std::ostream& out) const override {
-    out << std::bitset<12>{static_cast<uint8_t>(getOperand(4).getImm())} << "'"
+    out << std::bitset<12>{static_cast<uint16_t>(getOperand(4).getImm())} << "'"
         << std::bitset<5>{static_cast<uint8_t>(getOperand(3).getReg())} << "'"
         << std::bitset<3>{static_cast<uint8_t>(getOperand(2).getEnc())} << "'"
         << std::bitset<5>{static_cast<uint8_t>(getOperand(1).getReg())} << "'"
@@ -488,6 +493,159 @@ std::unique_ptr<STypeInsn> STypeInsn::decode(addr_t code) {
   }
 }
 
+class BTypeInsn : public RVInsn {
+protected:
+  Register rs1_ = Register::INVALID;
+  Register rs2_ = Register::INVALID;
+  uint32_t imm_ = 0;
+
+public:
+  BTypeInsn(addr_t code) : RVInsn{code, RVInsnType::S_TYPE_INSN} {
+    addOperand(
+      Operand::createEnc("opcode",
+        static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
+      )
+    );
+
+    addOperand(
+      Operand::createImm("imm[11]",
+        static_cast<addr_t>((code_ >> 7) & 1) // single bit
+      )
+    );
+
+    addOperand(
+      Operand::createImm("imm[4:1]",
+        static_cast<addr_t>((code_ >> 7) & ((1 << 4) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createEnc("func3",
+        static_cast<addr_t>((code_ >> 12) & ((1 << 3) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createReg("rs1",
+        static_cast<Register>((code_ >> 15) & ((1 << 5) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createReg("rs2",
+        static_cast<Register>((code_ >> 20) & ((1 << 5) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createImm("imm[10:5]",
+        static_cast<addr_t>((code_ >> 25) & ((1 << 7) - 1))
+      )
+    );
+
+    addOperand(
+      Operand::createImm("imm[12]",
+        static_cast<addr_t>((code_ >> 31) & 1) // single bit
+      )
+    );
+
+    opcode_ = BTypeInsn::getOpcode(code_);
+
+    rs1_ = getOperand(3).getReg();
+    rs2_ = getOperand(4).getReg();
+    addr_t bit_4_1 = getOperand(2).getImm() << 1;
+    addr_t bit_10_5 = getOperand(6).getImm() << 5;
+    addr_t bit_11 = getOperand(1).getImm() << 11;
+    addr_t bit_12 = getOperand(7).getImm() << 12;
+
+    imm_ = bit_12 | bit_11 | bit_10_5 | bit_4_1 | 0; // todo sing extend? (everywhere?)
+  }
+
+  void print(std::ostream& out) const override {
+    out << std::bitset<1>{static_cast<uint8_t>(getOperand(7).getImm())} << "'"
+        << std::bitset<6>{static_cast<uint8_t>(getOperand(6).getImm())} << "'"
+        << std::bitset<5>{static_cast<uint8_t>(getOperand(5).getReg())} << "'"
+        << std::bitset<5>{static_cast<uint8_t>(getOperand(4).getReg())} << "'"
+        << std::bitset<3>{static_cast<uint8_t>(getOperand(3).getEnc())} << "'"
+        << std::bitset<4>{static_cast<uint8_t>(getOperand(2).getImm())} << "'"
+        << std::bitset<1>{static_cast<uint8_t>(getOperand(1).getImm())} << "'"
+        << std::bitset<7>{static_cast<uint8_t>(getOperand(0).getEnc())} << " (B)";
+ }
+
+  static addr_t getOpcode(addr_t code) {
+    addr_t opcode_7_0 = code & DEFAULT_OPCODE_MASK;
+    addr_t func_3 = code & DEFAULT_FUNC3_MASK;
+
+    return func_3 | opcode_7_0;
+  }
+
+  static std::unique_ptr<BTypeInsn> decode(addr_t code);
+
+  virtual ~BTypeInsn() = default;
+};
+
+class rvBEQ : public BTypeInsn {
+public:
+  rvBEQ(addr_t code) : BTypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvBNE : public BTypeInsn {
+public:
+  rvBNE(addr_t code) : BTypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvBLT : public BTypeInsn {
+public:
+  rvBLT(addr_t code) : BTypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvBLTU : public BTypeInsn {
+public:
+  rvBLTU(addr_t code) : BTypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvBGE : public BTypeInsn {
+public:
+  rvBGE(addr_t code) : BTypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvBGEU : public BTypeInsn {
+public:
+  rvBGEU(addr_t code) : BTypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvUNDEF_B : public BTypeInsn {
+public:
+  rvUNDEF_B(addr_t code) : BTypeInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+std::unique_ptr<BTypeInsn> BTypeInsn::decode(addr_t code) {
+  switch (static_cast<RV32i_ISA>(BTypeInsn::getOpcode(code)))
+  {
+  case RV32i_ISA::BEQ: return std::make_unique<rvBEQ>(code);
+  case RV32i_ISA::BNE: return std::make_unique<rvBNE>(code);
+  case RV32i_ISA::BLT: return std::make_unique<rvBLT>(code);
+  case RV32i_ISA::BLTU: return std::make_unique<rvBLTU>(code);
+  case RV32i_ISA::BGE: return std::make_unique<rvBGE>(code);
+  case RV32i_ISA::BGEU: return std::make_unique<rvBGEU>(code);
+  default: return std::make_unique<rvUNDEF_B>(code);
+  }
+}
+
 std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
   addr_t opcode = code & DEFAULT_OPCODE_MASK;
   switch (opcode)
@@ -500,8 +658,10 @@ std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
     return ITypeInsn::decode(code);
 
   case RV_S_TYPE_OPCODE:
-  case RV_SB_TYPE_OPCODE:
     return STypeInsn::decode(code);
+
+  case RV_B_TYPE_OPCODE:
+    return BTypeInsn::decode(code);
 
   // case RV_U1_TYPE_OPCODE:
   // case RV_U2_TYPE_OPCODE:
