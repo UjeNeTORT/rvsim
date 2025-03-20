@@ -236,9 +236,9 @@ public:
   static addr_t getOpcode(addr_t code) {
     addr_t opcode_7_0 = code & DEFAULT_OPCODE_MASK;
     addr_t func_3 = code & DEFAULT_FUNC3_MASK;
-    addr_t srai_specific = code & MASK_31_20;
+    addr_t srai_specific = code & MASK_31_25;
 
-    if (srai_specific | func_3 | opcode_7_0 == static_cast<addr_t>(RV32i_ISA::SRAI))
+    if ((srai_specific | func_3 | opcode_7_0) == static_cast<addr_t>(RV32i_ISA::SRAI))
       return static_cast<addr_t>(RV32i_ISA::SRAI);
 
     return func_3 | opcode_7_0;
@@ -551,8 +551,8 @@ public:
 
     opcode_ = BTypeInsn::getOpcode(code_);
 
-    rs1_ = getOperand(3).getReg();
-    rs2_ = getOperand(4).getReg();
+    rs1_ = getOperand(4).getReg();
+    rs2_ = getOperand(5).getReg();
     addr_t bit_4_1 = getOperand(2).getImm() << 1;
     addr_t bit_10_5 = getOperand(6).getImm() << 5;
     addr_t bit_11 = getOperand(1).getImm() << 11;
@@ -685,9 +685,7 @@ public:
 
   static addr_t getOpcode(addr_t code) {
     addr_t opcode_7_0 = code & DEFAULT_OPCODE_MASK;
-    addr_t func_3 = code & DEFAULT_FUNC3_MASK;
-
-    return func_3 | opcode_7_0;
+    return opcode_7_0;
   }
 
   static std::unique_ptr<UTypeInsn> decode(addr_t code);
@@ -717,7 +715,7 @@ public:
 };
 
 std::unique_ptr<UTypeInsn> UTypeInsn::decode(addr_t code) {
-  switch (static_cast<RV32i_ISA>(BTypeInsn::getOpcode(code)))
+  switch (static_cast<RV32i_ISA>(UTypeInsn::getOpcode(code)))
   {
   case RV32i_ISA::LUI: return std::make_unique<rvLUI>(code);
   case RV32i_ISA::AUIPC: return std::make_unique<rvAUIPC>(code);
@@ -769,7 +767,7 @@ public:
 
     rd_ = getOperand(1).getReg();
 
-    addr_t bit_20     = getOperand(6).getImm() << 20;
+    addr_t bit_20     = getOperand(5).getImm() << 20;
     addr_t bits_19_12 = getOperand(2).getImm() << 12;
     addr_t bit_11     = getOperand(3).getImm() << 11;
     addr_t bits_10_1  = getOperand(4).getImm() << 1;
@@ -778,6 +776,15 @@ public:
   }
 
   void execute(IRVModel& model) const override;
+
+  void print(std::ostream& out) const override {
+    out << std::bitset<1>{static_cast<uint8_t>(getOperand(5).getImm())} << "'"
+        << std::bitset<10>{static_cast<uint16_t>(getOperand(4).getImm())} << "'"
+        << std::bitset<1>{static_cast<uint8_t>(getOperand(3).getImm())} << "'"
+        << std::bitset<8>{static_cast<uint8_t>(getOperand(2).getImm())} << "'"
+        << std::bitset<5>{static_cast<uint8_t>(getOperand(1).getReg())} << "'"
+        << std::bitset<7>{static_cast<uint8_t>(getOperand(0).getEnc())} << " (J)";
+ }
 };
 
 std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
