@@ -1,0 +1,40 @@
+name: TestRVModel
+
+on:
+  push:
+    branches:
+    - main
+    - dev
+  pull_request:
+    branches:
+    - main
+    - dev
+
+jobs:
+  test_caches:
+    runs-on: ubuntu-22.04
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+    
+    - name: build
+      run: |
+        ./build.sh build_sh Release
+        cd build_sh
+      shell: bash
+    
+    - name: test_add
+      run: ./test --gtest_filter=TestRVModel.ADD
+      working-directory: build_sh
+      shell: bash
+
+    - name: test_sub
+      run: ./test --gtest_filter=TestRVModel.SUB
+      working-directory: build_sh
+      shell: bash
+
+    - name: test_stress
+      run: ./test --gtest_filter=TestRVModel.stress
+      working-directory: build_sh
+      shell: bash
+
