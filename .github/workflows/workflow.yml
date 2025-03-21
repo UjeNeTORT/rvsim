@@ -17,7 +17,7 @@ jobs:
     - name: install prerequisites
       run: | 
         sudo apt update
-        sudo apt install cmake ninja-build build-essential libgtest-dev boost boost-libs
+        sudo apt install cmake ninja-build build-essential libgtest-dev libboost-all-dev
       shell: bash
     
     - name: checkout
