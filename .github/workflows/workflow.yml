@@ -14,9 +14,15 @@ jobs:
   test_caches:
     runs-on: ubuntu-22.04
     steps:
+    - name: install prerequisites
+      run: | 
+        sudo apt update
+        sudo apt install cmake ninja-build build-essential libgtest-dev boost boost-libs
+      shell: bash
+    
     - name: checkout
       uses: actions/checkout@v4
-    
+
     - name: build
       run: |
         ./build.sh build_sh Release
