@@ -38,15 +38,16 @@ You will see something like this:
 
 ![first run image](img/first_run.png)
 
+
 It basically says that it started executing at some PC,
-prints a trace of all decoded instructions it executed and upon encountering an unknown one it stops the execution printing its PC.
+prints a trace of all decoded instructions it executed and upon encountering an unknown one it stops the execution and prints its PC.
 
 (I will rework the exiting logic soon)
 
-### '.bstate' ???
-> Let me clarify what '.bstate' is:
+### `.bstate` ???
+> Let me clarify what `.bstate` is:
 
-'.bstate' is a special file format which stores a simulator state in binary format
+`.bstate` is a file format which stores a simulator state in binary format
 
 It can be examined with `xxd` utility, or `hexdump`, or any other hex viewer.
 
@@ -64,7 +65,7 @@ It also contains some signatures to make it easier to read (each one is 16 bytes
 First signature is a general one,
 after it there are 4 bytes for PC value, after PC there is a registers section with its own signature and the last section is a full memory dump.
 
-#### Generating '.bstate' from assembly sourse
+#### Generating `.bstate` from assembly sourse
 
 Nobody wants to write such a file manually. Luckily, we have a script at `test/scripts/` which is designed to address this issue.
 
