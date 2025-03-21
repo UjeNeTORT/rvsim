@@ -67,12 +67,12 @@ after it there are 4 bytes for PC value, after PC there is a registers section w
 
 #### Generating `.bstate` from assembly sourse
 
-Nobody wants to write such a file manually. Luckily, we have a script at `test/scripts/` which is designed to address this issue.
+Nobody wants to write such a file manually. Luckily, we have a script at `test/script/` which is designed to address this issue.
 
 *Lets use it!*
 
 ```bash
-cd test/scripts/
+cd test/script/
 ./testgen.sh ../insn/add/src/001.s > ../../deleteme.bstate
 ```
 The above example compilers `001.s` into
