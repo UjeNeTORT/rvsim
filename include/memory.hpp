@@ -45,6 +45,10 @@ public:
     mem_file.read(std::bit_cast<char *>(mem_.data()), ADDR_SPACE_CAPACITY);
   }
 
+  bool operator==(const MemoryModel& other) const {
+    return endian_ == other.endian_ && mem_ == other.mem_;
+  }
+
   byte_t readByte(addr_t addr) {
     return mem_[addr];
   }

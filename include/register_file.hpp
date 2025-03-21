@@ -38,11 +38,20 @@ public:
     }
   }
 
+  bool operator== (const RegisterFile& other) const {
+    return regs_ == other.regs_;
+  }
+
   void set(Register reg, sword_t val) {
-    regs_[static_cast<uint8_t>(reg)] = val;
+    if (reg != Register::X0)
+      regs_[static_cast<uint8_t>(reg)] = val;
+
+    assert(get(Register::X0) == 0);
   }
 
   addr_t get(Register reg) const {
+    assert(static_cast<addr_t>(regs_[0]) == 0 && "Register X0 not zero");
+
     return regs_[static_cast<uint8_t>(reg)];
   }
 

@@ -63,6 +63,8 @@ public:
 
   RVModel(std::ifstream& model_state_file) { init(model_state_file); }
 
+  bool operator== (const RVModel& other) const;
+
   addr_t getPC() const override;
   void setPC(addr_t pc_new) override;
 
@@ -125,6 +127,10 @@ void RVModel::init(const MemoryModel& mem_init, const RegisterFile& regs_init, a
 void RVModel::init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init) {
   mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
   assert(pc_ % IALIGN == 0 && "PC at unaligned position");
+}
+
+bool RVModel::operator== (const RVModel& other) const {
+  return pc_ == other.pc_ && regs_ == other.regs_ && mem_ == other.mem_;
 }
 
 addr_t RVModel::getPC() const {
@@ -556,7 +562,7 @@ void rvJAL::execute(IRVModel& model) const {
   model.setReg(rd_, curr_pc + sizeof(addr_t));
   model.setPC(curr_pc + sign_extend_21_to_32(imm_));
 
-  std::cerr << *this << " jal <pc =" << model.getPC() << ">\n";
+  std::cerr << *this << " jal <pc = " << model.getPC() << ">\n";
 }
 
 void GeneralUndefInsn::execute(IRVModel& model) const {
