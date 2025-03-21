@@ -67,7 +67,19 @@ TEST_F(TestRVModel, ADD) {
 }
 
 TEST_F(TestRVModel, SUB) {
-  std::filesystem::path test_dir = "../test/insn/add";
+  std::filesystem::path test_dir = "../test/insn/sub";
+  for (auto const &dir_entry :
+                      std::filesystem::directory_iterator(test_dir)) {
+    if (!dir_entry.is_regular_file()) continue;
+    if (dir_entry.path().extension() != ".bstate") continue;
+    auto fpath = dir_entry.path();
+
+    EXPECT_EQ(TestAns(fpath), true);
+  }
+}
+
+TEST_F(TestRVModel, SLL) {
+  std::filesystem::path test_dir = "../test/insn/sll";
   for (auto const &dir_entry :
                       std::filesystem::directory_iterator(test_dir)) {
     if (!dir_entry.is_regular_file()) continue;

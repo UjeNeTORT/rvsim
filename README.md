@@ -80,7 +80,7 @@ an object file, mixes it up with registers
 (*`test/scripts/regs_zero.bin` - all
 registers = 0 by default*) and adds
 signatures. The result is `deleteme.bstate` file
-which can be run after that on simulator. Nasty workaround while ELFs are not supported.
+which can be executed on simulator after that. Nasty workaround while ELFs are not supported.
 
 I want to support ELF soon in order not to mess up with such files, but i will not delete them as they are still very usefull for testing and for recording checkpoints of execution.
 
