@@ -90,6 +90,78 @@ TEST_F(TestRVModel, SLL) {
   }
 }
 
+TEST_F(TestRVModel, SLT) {
+  std::filesystem::path test_dir = "../test/insn/slt";
+  for (auto const &dir_entry :
+                      std::filesystem::directory_iterator(test_dir)) {
+    if (!dir_entry.is_regular_file()) continue;
+    if (dir_entry.path().extension() != ".bstate") continue;
+    auto fpath = dir_entry.path();
+
+    EXPECT_EQ(TestAns(fpath), true);
+  }
+}
+
+TEST_F(TestRVModel, SLTU) {
+  std::filesystem::path test_dir = "../test/insn/sltu";
+  for (auto const &dir_entry :
+                      std::filesystem::directory_iterator(test_dir)) {
+    if (!dir_entry.is_regular_file()) continue;
+    if (dir_entry.path().extension() != ".bstate") continue;
+    auto fpath = dir_entry.path();
+
+    EXPECT_EQ(TestAns(fpath), true);
+  }
+}
+
+TEST_F(TestRVModel, XOR) {
+  std::filesystem::path test_dir = "../test/insn/xor";
+  for (auto const &dir_entry :
+                      std::filesystem::directory_iterator(test_dir)) {
+    if (!dir_entry.is_regular_file()) continue;
+    if (dir_entry.path().extension() != ".bstate") continue;
+    auto fpath = dir_entry.path();
+
+    EXPECT_EQ(TestAns(fpath), true);
+  }
+}
+
+TEST_F(TestRVModel, SRA) {
+  std::filesystem::path test_dir = "../test/insn/sra";
+  for (auto const &dir_entry :
+                      std::filesystem::directory_iterator(test_dir)) {
+    if (!dir_entry.is_regular_file()) continue;
+    if (dir_entry.path().extension() != ".bstate") continue;
+    auto fpath = dir_entry.path();
+
+    EXPECT_EQ(TestAns(fpath), true);
+  }
+}
+
+TEST_F(TestRVModel, OR) {
+  std::filesystem::path test_dir = "../test/insn/or";
+  for (auto const &dir_entry :
+                      std::filesystem::directory_iterator(test_dir)) {
+    if (!dir_entry.is_regular_file()) continue;
+    if (dir_entry.path().extension() != ".bstate") continue;
+    auto fpath = dir_entry.path();
+
+    EXPECT_EQ(TestAns(fpath), true);
+  }
+}
+
+TEST_F(TestRVModel, AND) {
+  std::filesystem::path test_dir = "../test/insn/or";
+  for (auto const &dir_entry :
+                      std::filesystem::directory_iterator(test_dir)) {
+    if (!dir_entry.is_regular_file()) continue;
+    if (dir_entry.path().extension() != ".bstate") continue;
+    auto fpath = dir_entry.path();
+
+    EXPECT_EQ(TestAns(fpath), true);
+  }
+}
+
 TEST_F(TestRVModel, stress) {
   std::filesystem::path test_dir = "../test/stress";
   for (auto const &dir_entry :
@@ -97,6 +169,7 @@ TEST_F(TestRVModel, stress) {
     if (!dir_entry.is_regular_file()) continue;
     if (dir_entry.path().extension() != ".bstate") continue;
     auto fpath = dir_entry.path();
+    std::cerr << fpath << '\n';
     RunTest(fpath);
   }
 }

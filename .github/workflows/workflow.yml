@@ -15,11 +15,11 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
     - name: install prerequisites
-      run: | 
+      run: |
         sudo apt update
         sudo apt install cmake ninja-build build-essential libgtest-dev libboost-all-dev
       shell: bash
-    
+
     - name: checkout
       uses: actions/checkout@v4
 
@@ -28,7 +28,7 @@ jobs:
         ./build.sh build_sh Release
         cd build_sh
       shell: bash
-    
+
     - name: test_add
       run: ./test --gtest_filter=TestRVModel.ADD
       working-directory: build_sh
@@ -36,6 +36,41 @@ jobs:
 
     - name: test_sub
       run: ./test --gtest_filter=TestRVModel.SUB
+      working-directory: build_sh
+      shell: bash
+
+    - name: test_sll
+      run: ./test --gtest_filter=TestRVModel.SLL
+      working-directory: build_sh
+      shell: bash
+
+    - name: test_slt
+      run: ./test --gtest_filter=TestRVModel.SLT
+      working-directory: build_sh
+      shell: bash
+
+    - name: test_sltu
+      run: ./test --gtest_filter=TestRVModel.SLTU
+      working-directory: build_sh
+      shell: bash
+
+    - name: test_xor
+      run: ./test --gtest_filter=TestRVModel.XOR
+      working-directory: build_sh
+      shell: bash
+
+    - name: test_sra
+      run: ./test --gtest_filter=TestRVModel.SRA
+      working-directory: build_sh
+      shell: bash
+
+    - name: test_or
+      run: ./test --gtest_filter=TestRVModel.OR
+      working-directory: build_sh
+      shell: bash
+
+    - name: test_and
+      run: ./test --gtest_filter=TestRVModel.AND
       working-directory: build_sh
       shell: bash
 
