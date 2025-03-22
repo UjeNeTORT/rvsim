@@ -11,7 +11,7 @@ on:
     - dev
 
 jobs:
-  test_caches:
+  test_model:
     runs-on: ubuntu-22.04
     steps:
     - name: install prerequisites
