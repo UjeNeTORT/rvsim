@@ -18,6 +18,7 @@ int main(int argc, char *argv[]) {
   std::filesystem::path omem;
   std::filesystem::path iregs;
   std::filesystem::path oregs;
+  std::filesystem::path elf_path;
 
   po::options_description optns_desc{"Possible options"};
   optns_desc.add_options()
@@ -45,8 +46,8 @@ int main(int argc, char *argv[]) {
 
     ("pc", po::value<rv32i_sim::addr_t>(&pc_init), "initial pc")
 
-    ("elf", po::value<std::filesystem::path>(),
-        "run simulator on an elf file")
+    ("elf", po::value<std::filesystem::path>(&elf_path),
+        "run simulator on an ELF file. Discards all the other input sources qualifiers")
 
     ("logs", po::value<int>(&logs)->default_value(0),
              "set logs verbosity level (0 - logs disabled, \n"
@@ -69,7 +70,11 @@ int main(int argc, char *argv[]) {
 
   rv32i_sim::RVModel model{};
 
-  if (vm.count("istate")) {
+  if (vm.count("elf")) {
+
+    model = rv32i_sim::RVModel(elf_path);
+
+  } else if (vm.count("istate")) {
     std::ifstream model_state_file{istate};
     if (!model_state_file) {
       std::cerr << "ERROR: wrong initial state file\n";
@@ -92,9 +97,16 @@ int main(int argc, char *argv[]) {
       return 1;
     }
 
-    rv32i_sim::MemoryModel memory{imem_file};
-    rv32i_sim::RegisterFile regs{iregs_file};
+    rv32i_sim::MemoryModel memory = rv32i_sim::MemoryModel::fromBstate(imem_file);
+    rv32i_sim::RegisterFile regs;
+    regs.fromBstate(iregs_file);
+
     model.init(std::move(memory), std::move(regs), pc_init);
+  }
+
+  if (!model.isValid()) {
+    std::cerr << "Error: model invalid, cannot execute\n";
+    return 1;
   }
 
   model.execute();

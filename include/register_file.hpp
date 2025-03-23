@@ -11,16 +11,37 @@ namespace rv32i_sim {
 const std::string RV32I_REGS_STATE_SIGNATURE = "RV32I_REG_STATE";
 
 class RegisterFile {
-  std::array<word_t, N_REGS> regs_ = {};
+  std::vector<word_t> regs_ = std::vector<word_t>(N_REGS);
+  bool is_valid_ = false;
+
 
 public:
-  RegisterFile() {}
+  RegisterFile(bool valid = false) : is_valid_(valid) {}
 
-  RegisterFile(std::array<word_t, N_REGS> init_regs_state) : regs_(init_regs_state) {}
+  RegisterFile(std::vector<word_t> init_regs_state) : regs_(init_regs_state) {
+    if (init_regs_state.size() != N_REGS) {
+      std::cerr << "WARNING: initial regs state has " << init_regs_state.size()
+                << " vs " << N_REGS <<" needed, others will be set to zero\n";
 
-  RegisterFile(std::ifstream& regs_file) {
+      regs_.resize(N_REGS);
+    }
+  }
+
+  void fromBstate(std::filesystem::path& regs_file_path) {
+    std::ifstream regs_file(regs_file_path);
     if (!regs_file) {
       std::cerr << "ERROR: wrong registers file\n";
+      is_valid_ = false;
+      return;
+    }
+
+    fromBstate(regs_file);
+  }
+
+  void fromBstate(std::ifstream& regs_file) {
+    if (!regs_file) {
+      std::cerr << "ERROR: wrong registers file\n";
+      is_valid_ = false;
       return;
     }
 
@@ -29,14 +50,18 @@ public:
 
     if (signature != RV32I_REGS_STATE_SIGNATURE) {
       std::cerr << "ERROR: regs state file signature mismatch:\n"
-                << "      <" << signature << "> vs <" << RV32I_REGS_STATE_SIGNATURE <<">\n";
+                << "<" << signature << "> vs <" << RV32I_REGS_STATE_SIGNATURE <<">\n";
+      is_valid_ = false;
       return;
     }
 
-    for (int i = 0; i != N_REGS; ++i) {
-      regs_file.read(reinterpret_cast<char *>(&regs_[i]), sizeof(word_t));
-    }
+    regs_file.read(reinterpret_cast<char *>(regs_.data()), sizeof(word_t) * N_REGS);
+
+    assert(regs_[0] == 0 && "X0 must be zero");
+    if (regs_[0] == 0) is_valid_ = true;
   }
+
+  bool isValid() const { return is_valid_; }
 
   bool operator== (const RegisterFile& other) const {
     return regs_ == other.regs_;

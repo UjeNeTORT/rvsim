@@ -8,12 +8,16 @@
 #include <string>
 #include <vector>
 
+#include <elfio/elfio.hpp>
+
 #include "isim.hpp"
 #include "instruction.hpp"
 #include "isa.hpp"
 #include "encoding.hpp"
 #include "memory.hpp"
 #include "register_file.hpp"
+
+namespace elf = ELFIO;
 
 int32_t sign_extend_8_to_32(uint8_t val) {
   return std::bit_cast<int32_t>(uint32_t(val) << 24) >> 24;
@@ -44,9 +48,10 @@ namespace rv32i_sim {
 const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 
 class RVModel final : IRVModel {
-  MemoryModel mem_;
+  MemoryModel mem_; // todo use interface for memory model
   RegisterFile regs_;
   addr_t pc_;
+  bool is_valid_ = false;
 
 public:
   RVModel(addr_t pc_init = 0) : pc_(pc_init) {}
@@ -56,12 +61,38 @@ public:
   RVModel(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
+  RVModel(std::filesystem::path& elf_path) {
+    elf::elfio elf_reader;
+    if (!elf_reader.load(elf_path)) {
+      std::cerr << "ERROR: failed to load ELF " << elf_path << "\n";
+      is_valid_ = false;
+      return;
+    }
+
+    pc_ = elf_reader.get_entry();
+    regs_ = RegisterFile();
+    mem_ = MemoryModel::fromELF(elf_path);
+
+    is_valid_ = mem_.isValid();
+
+    return;
+  }
+
   void init(std::ifstream& model_state_file) override;
+  void init(std::filesystem::path& model_state_path) {
+    std::ifstream bstate_file(model_state_path);
+    if (!bstate_file) {
+      std::cerr << "ERROR: failed to open bstate file " << model_state_path << "\n";
+      is_valid_ = false;
+      return;
+    }
+
+    init(bstate_file);
+  }
+
   void init(const MemoryModel& mem_init, const RegisterFile& regs_init,
                                                               addr_t pc_init) override;
   void init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init) override;
-
-  RVModel(std::ifstream& model_state_file) { init(model_state_file); }
 
   bool operator== (const RVModel& other) const;
 
@@ -72,21 +103,15 @@ private:
   std::unique_ptr<IInsn> decode(addr_t insn_code);
 
 public:
-  byte_t readByte(addr_t addr) override;
-  half_t readHalf(addr_t addr) override;
-  word_t readWord(addr_t addr) override;
+  bool isValid() const override;
 
-#ifdef RVBITS64
-  dword_t readDWord(addr_t addr) override;
-#endif // RVBITS64
+  byte_t readByte(addr_t addr) const override;
+  half_t readHalf(addr_t addr) const override;
+  word_t readWord(addr_t addr) const override;
 
   void writeByte(addr_t addr, byte_t val) override;
   void writeHalf(addr_t addr, half_t val) override;
   void writeWord(addr_t addr, word_t val) override;
-
-#ifdef RVBITS64
-  void writeDWord(addr_t addr, dword_t val) override;
-#endif // RVBITS64
 
   addr_t getReg(Register reg) const override;
   void setReg(Register reg, word_t val) override;
@@ -100,6 +125,7 @@ public:
 void RVModel::init(std::ifstream& model_state_file) {
   if (!model_state_file) {
     std::cerr << "ERROR: wrong model state file\n";
+    is_valid_ = false;
     return;
   }
 
@@ -109,27 +135,40 @@ void RVModel::init(std::ifstream& model_state_file) {
     std::cerr << "ERROR: model state file signature mismatch:\n"
               << "      <" << signature << "> vs <"
                                             << RV32I_MODEL_STATE_SIGNATURE <<">\n";
+
+    is_valid_ = false;
     return;
   }
 
+  // read pc
   model_state_file.read(reinterpret_cast<char *>(&pc_), sizeof(addr_t));
-  regs_ = RegisterFile{model_state_file};
-  mem_ = MemoryModel{model_state_file};
-
   assert(pc_ % IALIGN == 0 && "PC at unaligned position");
+
+  regs_ = RegisterFile();
+  mem_ = MemoryModel();
+
+  regs_.fromBstate(model_state_file);
+  mem_ = MemoryModel::fromBstate(model_state_file);
+
+  is_valid_ = regs_.isValid() && mem_.isValid() && pc_ % IALIGN == 0;
 }
 
 void RVModel::init(const MemoryModel& mem_init, const RegisterFile& regs_init, addr_t pc_init) {
   mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
   assert(pc_ % IALIGN == 0 && "PC at unaligned position");
+  if (pc_ % IALIGN == 0) is_valid_ = true;
 }
 
 void RVModel::init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init) {
   mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
   assert(pc_ % IALIGN == 0 && "PC at unaligned position");
+  if (pc_ % IALIGN == 0) is_valid_ = true;
 }
 
 bool RVModel::operator== (const RVModel& other) const {
+  std::cerr << "compare pc = " << (pc_ == other.pc_) << '\n';
+  std::cerr << "compare regs = " << (pc_ == other.regs_) << '\n';
+  std::cerr << "compare mem = " << (pc_ == other.mem_) << '\n';
   return pc_ == other.pc_ && regs_ == other.regs_ && mem_ == other.mem_;
 }
 
@@ -139,12 +178,16 @@ addr_t RVModel::getPC() const {
 
 void RVModel::setPC(addr_t pc_new) {
   assert(pc_new % IALIGN == 0 && "PC set to unaligned position");
+  if (pc_new % IALIGN != 0) is_valid_ = false;
+
   pc_ = pc_new;
 }
 
-byte_t RVModel::readByte(addr_t addr) { return mem_.readByte(addr); }
-half_t RVModel::readHalf(addr_t addr) { return mem_.readHalf(addr); }
-word_t RVModel::readWord(addr_t addr) { return mem_.readWord(addr); }
+bool RVModel::isValid() const { return is_valid_; }
+
+byte_t RVModel::readByte(addr_t addr) const { return mem_.readByte(addr); }
+half_t RVModel::readHalf(addr_t addr) const { return mem_.readHalf(addr); }
+word_t RVModel::readWord(addr_t addr) const { return mem_.readWord(addr); }
 
 #ifdef RVBITS64
 dword_t RVModel::readDWord(addr_t addr) { return mem_.readDword(addr); }

@@ -16,31 +16,24 @@ public:
                                                                       addr_t pc_init) = 0;
   virtual void init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init) = 0;
 
+  virtual bool isValid() const = 0;
   virtual addr_t getPC() const = 0;
   virtual void setPC(addr_t pc_new) = 0;
   virtual ~IRVModel() = default;
 
-  virtual byte_t readByte(addr_t addr) = 0;
-  virtual half_t readHalf(addr_t addr) = 0;
-  virtual word_t readWord(addr_t addr) = 0;
-
-#ifdef RVBITS64
-  virtual dword_t readDWord(addr_t addr) = 0;
-#endif // RVBITS64
+  virtual byte_t readByte(addr_t addr) const = 0;
+  virtual half_t readHalf(addr_t addr) const = 0;
+  virtual word_t readWord(addr_t addr) const = 0;
 
   virtual void writeByte(addr_t addr, byte_t val) = 0;
   virtual void writeHalf(addr_t addr, half_t val) = 0;
   virtual void writeWord(addr_t addr, word_t val) = 0;
 
-#ifdef RVBITS64
-  virtual void writeDWord(addr_t addr, dword_t val) = 0;
-#endif // RVBITS64
-
   virtual addr_t getReg(Register reg) const = 0;
   virtual void setReg(Register reg, word_t val) = 0;
 
-public:
   virtual void execute() = 0;
+
   virtual std::ostream& print(std::ostream& out) = 0;
   virtual void binaryDump(std::ofstream& fout) = 0;
 };

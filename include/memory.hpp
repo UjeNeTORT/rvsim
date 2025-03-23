@@ -3,16 +3,70 @@
 
 #include <fstream>
 #include <filesystem>
+#include <iostream>
 #include <string>
+#include <vector>
+
+#include <elfio/elfio.hpp>
 
 #include "encoding.hpp"
 
+namespace elf = ELFIO;
+
+static uint32_t fileBytesLeft(std::ifstream& file) {
+  if (!file) { return 0; }
+  uint32_t curr_pos = file.tellg();
+  file.seekg(0, std::ios::end);
+  uint32_t end_pos = file.tellg();
+  file.seekg(curr_pos, std::ios::beg);
+
+  return end_pos - curr_pos;
+}
+
 namespace rv32i_sim {
 
-constexpr std::size_t ADDR_SPACE_CAPACITY = 1 << 16; // 64K - addr space
-enum class Endianness { LITTLE, BIG, }; // todo support big endian
-
+constexpr std::size_t DEFAULT_ADDR_SPACE = 1 << 16;
 const std::string RV32I_MEMORY_STATE_SIGNATURE = "RV32I_MEM_STATE";
+
+enum class Endianness { LITTLE, BIG, }; // todo support big endian
+enum class ELFError : uint8_t {
+  OK = 0, //< everything is ok
+  CLASS = 1, //< wrong class
+  ENC = 2, //< wrong encoding (endianness)
+  FILE = 3, //< cannot open file
+};
+
+ELFError checkELF(elf::elfio& elf_reader) {
+  addr_t elf_class = elf_reader.get_class();
+  addr_t elf_encoding = elf_reader.get_encoding();
+
+  if (elf_class != elf::ELFCLASS32) {
+    std::cerr << "ERROR: wrong ELF class: " << elf_class
+              << "(" << elf::ELFCLASS32 << " expected)\n";
+
+    return ELFError::CLASS;
+  }
+
+  if (elf_encoding != elf::ELFDATA2LSB) {
+    std::cerr << "ERROR: wrong encoding, sorry, only Little Endian is supported now\n";
+
+    return ELFError::ENC;
+  }
+
+  return ELFError::OK;
+}
+
+ELFError checkELF(std::filesystem::path& elf_path) {
+  elf::elfio elf_reader;
+  if (!elf_reader.load(elf_path)) {
+    std::cerr << "ERROR: failed to load ELF " << elf_path << "\n";
+
+    return ELFError::FILE;
+  }
+
+  return checkELF(elf_reader);
+}
+
 
 /** provides memory model for the simulator
  * model is abstract and represents continuous virtual memory
@@ -20,17 +74,74 @@ const std::string RV32I_MEMORY_STATE_SIGNATURE = "RV32I_MEM_STATE";
  * endianness: little (default)
 */
 class MemoryModel {
-  std::array<byte_t, ADDR_SPACE_CAPACITY> mem_ = {};
+  std::vector<byte_t> mem_ = std::vector<byte_t>(DEFAULT_ADDR_SPACE);
   Endianness endian_ = Endianness::LITTLE;
+  bool is_valid_ = false;
 
 public:
+  MemoryModel(bool valid) : is_valid_(valid) {}
   MemoryModel(Endianness endian = Endianness::LITTLE) : endian_(endian) {}
+  MemoryModel(std::vector<byte_t> mem, bool valid = true) : mem_(mem), is_valid_(valid) {}
 
-  MemoryModel(std::array<byte_t, ADDR_SPACE_CAPACITY> mem) : mem_(mem) {}
+  static MemoryModel fromELF(elf::elfio& elf_reader) {
+    if(checkELF(elf_reader) != ELFError::OK) { return MemoryModel(false); }
 
-  MemoryModel(std::ifstream& mem_file) {
+    uint32_t seg_vaddr = 0;
+    uint32_t seg_memsz = 0;
+    uint32_t seg_filesz = 0;
+
+    std::vector<byte_t> memory (DEFAULT_ADDR_SPACE);
+
+    for (auto seg = elf_reader.segments.begin(), seg_end = elf_reader.segments.end();
+         seg != seg_end; ++seg) {
+
+      seg_vaddr = seg->get()->get_virtual_address();
+      seg_memsz = seg->get()->get_memory_size();
+      seg_filesz = seg->get()->get_file_size();
+
+      // resize if required
+      if (memory.size() < seg_vaddr + seg_memsz)
+        memory.resize(seg_vaddr + seg_memsz);
+
+      // handle .bss section
+      if (seg_memsz > seg_filesz) {
+        std::memcpy(memory.data() + seg_vaddr, seg->get()->get_data(), seg_filesz);
+        std::memset(memory.data() + seg_vaddr + seg_filesz, 0, seg_memsz - seg_filesz);
+      } else {
+        std::memcpy(memory.data() + seg_vaddr, seg->get()->get_data(), seg_memsz);
+      }
+    }
+
+    return MemoryModel(memory, true);
+  }
+
+  static MemoryModel fromELF(std::filesystem::path& elf_path) {
+    elf::elfio elf_reader;
+    if (!elf_reader.load(elf_path)) {
+      std::cerr << "ERROR: failed to load ELF " << elf_path << "\n";
+
+      return MemoryModel(false);
+    }
+
+    if(checkELF(elf_reader) != ELFError::OK) { return MemoryModel(false); }
+
+    return MemoryModel::fromELF(elf_reader);
+  }
+
+  static MemoryModel fromBstate(std::filesystem::path& mem_path) {
+    std::ifstream mem_file(mem_path);
+    if (!mem_file) {
+      std::cerr << "ERROR: failed to open " << mem_path << "\n";
+      return MemoryModel(false);
+    }
+
+    return MemoryModel::fromBstate(mem_file);
+  }
+
+  static MemoryModel fromBstate(std::ifstream& mem_file) {
     if (!mem_file) {
       std::cerr << "ERROR: wrong memory file\n";
+      return MemoryModel(false);
     }
 
     std::string signature(RV32I_MEMORY_STATE_SIGNATURE.size(), ' ');
@@ -38,22 +149,31 @@ public:
 
     if (signature != RV32I_MEMORY_STATE_SIGNATURE) {
       std::cerr << "ERROR: mem state file signature mismatch:\n"
-                << "      <" << signature << "> vs <" << RV32I_MEMORY_STATE_SIGNATURE <<">\n";
-      return;
+                << "<" << signature << "> vs <" << RV32I_MEMORY_STATE_SIGNATURE <<">\n";
+      return MemoryModel(false);
     }
 
-    mem_file.read(std::bit_cast<char *>(mem_.data()), ADDR_SPACE_CAPACITY);
+    std::streamsize bytes_left = fileBytesLeft(mem_file);
+    uint32_t memory_size = bytes_left > DEFAULT_ADDR_SPACE ? bytes_left :
+                                                                DEFAULT_ADDR_SPACE;
+    std::vector<byte_t> memory(memory_size);
+    mem_file.read(std::bit_cast<char *>(memory.data()), bytes_left);
+
+    return MemoryModel(memory, true);
   }
 
+  bool isValid() const { return is_valid_; }
+
   bool operator==(const MemoryModel& other) const {
+    std::cerr << mem_.size() << ' ' << other.mem_.size() << '\n';
     return endian_ == other.endian_ && mem_ == other.mem_;
   }
 
-  byte_t readByte(addr_t addr) {
+  byte_t readByte(addr_t addr) const {
     return mem_[addr];
   }
 
-  half_t readHalf(addr_t addr) {
+  half_t readHalf(addr_t addr) const {
     half_t res = 0;
     for (int i = sizeof(half_t) - 1; i >= 0; --i) {
       res <<= sizeof(byte_t) * BITS_BYTE;
@@ -63,7 +183,7 @@ public:
     return res;
   }
 
-  word_t readWord(addr_t addr) {
+  word_t readWord(addr_t addr) const {
     word_t res = 0;
     for (int i = sizeof(word_t) - 1; i >= 0; --i) {
       res <<= sizeof(byte_t) * BITS_BYTE;
@@ -73,25 +193,11 @@ public:
     return res;
   }
 
-#ifdef RVBITS64
-  dword_t readDWord(addr_t addr) {
-    dword_t res = 0;
-    for (int i = sizeof(dword_t) - 1; i >= 0; --i) {
-      res << sizeof(byte_t) * BITS_BYTE;
-      res |= dword_t(mem_[addr + i]);
-    }
-
-    return res;
-  }
-
-#endif // RVBITS64
-
-  // todo check permissions
-  inline void writeByte(addr_t addr, byte_t val) {
+  void writeByte(addr_t addr, byte_t val) {
     mem_[addr] = val;
   }
 
-  inline void writeHalf(addr_t addr, half_t val) {
+  void writeHalf(addr_t addr, half_t val) {
     for (int i = 0; i != sizeof(half_t); ++i) {
       byte_t curr = val & 0xFF;
       mem_[addr++] = curr;
@@ -99,7 +205,7 @@ public:
     }
   }
 
-  inline void writeWord(addr_t addr, word_t val) {
+  void writeWord(addr_t addr, word_t val) {
     for (int i = 0; i != sizeof(word_t); ++i) {
       byte_t curr = val & 0xFF;
       mem_[addr++] = curr;
@@ -107,49 +213,28 @@ public:
     }
   }
 
-#ifdef RVBITS64
-  inline void writeDWord(addr_t addr, dword_t val) {
-    for (int i = 0; i != sizeof(word_t); ++i) {
-      byte_t curr = val & 0xFF;
-      mem_[addr++] = curr;
-      val >>= BITS_BYTE; // next byte
-    }
-  }
-#endif // RVBITS64
-
-  std::ostream& dump(std::ostream& out, addr_t start_addr, addr_t end_addr) {
-    if (start_addr > end_addr) {
-      out << "| <err-start-greater-than-end> \n";
-      return out;
-    }
-
-    // todo i know this is bad, dont want to generalize this at the moment
-    for (addr_t i = start_addr; i != end_addr; i += 4 * sizeof(word_t)) {
-      out << "| " << std::hex << std::uppercase
-                  << +readByte(i+0) << ' ' << +readByte(i+1) << ' '
-                  << +readByte(i+2) << ' ' << +readByte(i+3) << " | "
-                  << +readByte(i+4) << ' ' << +readByte(i+5) << ' '
-                  << +readByte(i+6) << ' ' << +readByte(i+7) << " | "
-                  << +readByte(i+8) << ' ' << +readByte(i+9) << ' '
-                  << +readByte(i+10) << ' ' << +readByte(i+11) << " | "
-                  << +readByte(i+12) << ' ' << +readByte(i+13) << ' '
-                  << +readByte(i+14) << ' ' << +readByte(i+15) << " |\n"
-                  << std::nouppercase;
-    }
-
-    return out;
-  }
-
-  std::ostream& print(std::ostream& out) {
-    dump(out, 0, ADDR_SPACE_CAPACITY);
-    return out;
-  }
-
-  void binaryDump(std::ofstream& fout) {
+  void binaryDump(std::ofstream& fout) const {
     fout.write(RV32I_MEMORY_STATE_SIGNATURE.c_str(),
                RV32I_MEMORY_STATE_SIGNATURE.size() + 1);
+    // reinterpret:  byte_t * -> char *, and add const
+    fout.write(reinterpret_cast<const char *>(mem_.data()), mem_.size());
 
-    fout.write(reinterpret_cast<char *>(mem_.data()), ADDR_SPACE_CAPACITY);
+    // as bstate files must be at least DEFAULT_ADDR_SPACE large
+    // fill all the rest with zeros
+    if (mem_.size() >= DEFAULT_ADDR_SPACE)
+      return;
+
+    uint32_t bytes_left = DEFAULT_ADDR_SPACE - mem_.size();
+    std::vector<byte_t> null_vec(bytes_left);
+
+    // reinterpret:  byte_t * -> char *, and add const
+    fout.write(reinterpret_cast<const char *>(null_vec.data()), null_vec.size());
+  }
+
+  std::ostream& print(std::ostream& out) const {
+    out << "Memory[" << mem_.size() << "] (examine with binaryDump)\n";
+    // todo more verbose
+    return out;
   }
 };
 

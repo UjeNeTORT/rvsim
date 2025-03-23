@@ -10,6 +10,7 @@ class TestRVModel : public ::testing::Test {
 protected:
   std::filesystem::path testf_path_;
   rv32i_sim::RVModel model;
+  rv32i_sim::RVModel ref_model;
 
   virtual void SetUp() {
     model = rv32i_sim::RVModel{};
@@ -17,39 +18,56 @@ protected:
 
   virtual void TearDown() {}
 
-  void RunTest(std::filesystem::path testf_path) {
-    testf_path_ = testf_path;
-    std::ifstream testf{testf_path_};
+  bool RunTest(std::filesystem::path testf_path) {
+    std::ifstream testf{testf_path};
     if (!testf) {
-      std::cerr << "ERROR: could not open test file <" << testf_path_ << ">\n";
-      return;
+      std::cerr << "ERROR: could not open test file <" << testf_path << ">\n";
+      return false;
     }
 
     model.init(testf);
+    if (!model.isValid()) {
+      std::cerr << "ERROR: failed to initialize model correctly\n";
+      std::cerr << testf_path << '\n';
+      return false;
+    }
+
     model.execute();
+    if (!model.isValid()) {
+      std::cerr << "ERROR: model invalid after execution \n";
+      std::cerr << testf_path << '\n';
+      return false;
+    }
+
+    return true;
   }
 
   bool TestAns(std::filesystem::path testf_path) {
-    testf_path_ = testf_path;
-    std::ifstream testf{testf_path_};
-    if (!testf) {
-      std::cerr << "ERROR: could not open test file <" << testf_path_ << ">\n";
-      return false;
-    }
-
     std::filesystem::path ansf_path = testf_path;
     ansf_path.replace_extension(".ans");
 
-    std::ifstream ansf{ansf_path};
-    if (!ansf) {
-      std::cerr << "ERROR: could not open answer file <" << ansf_path << ">\n";
+    model.init(testf_path);
+    if (!model.isValid()) {
+      std::cerr << "ERROR: failed to initialize model correctly\n";
+      std::cerr << testf_path << '\n';
       return false;
     }
 
-    model.init(testf);
     model.execute();
-    rv32i_sim::RVModel ref_model(ansf);
+    if (!model.isValid()) {
+      std::cerr << "ERROR: model invalid after execution\n";
+      std::cerr << testf_path << '\n';
+      return false;
+    }
 
+    ref_model.init(ansf_path);
+    if (!model.isValid()) {
+      std::cerr << "ERROR: failed to initialize ref model correctly\n";
+      std::cerr << ansf_path << '\n';
+
+      return false;
+    }
+   
     return ref_model == model;
   }
 };
@@ -169,8 +187,8 @@ TEST_F(TestRVModel, stress) {
     if (!dir_entry.is_regular_file()) continue;
     if (dir_entry.path().extension() != ".bstate") continue;
     auto fpath = dir_entry.path();
-    std::cerr << fpath << '\n';
-    RunTest(fpath);
+
+    EXPECT_EQ(RunTest(fpath), true);
   }
 }
 
