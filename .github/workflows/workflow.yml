@@ -17,7 +17,8 @@ jobs:
     - name: install prerequisites
       run: |
         sudo apt update
-        sudo apt install cmake ninja-build build-essential libgtest-dev libboost-all-dev elfio
+        sudo apt install cmake ninja-build build-essential libgtest-dev libboost-all-dev
+        git clone https://github.com/serge1/ELFIO.git /usr/include/
       shell: bash
 
     - name: checkout
