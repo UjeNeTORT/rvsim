@@ -1,6 +1,7 @@
 #ifndef REGISTER_FILE_HPP
 #define REGISTER_FILE_HPP
 
+#include <cassert>
 #include <iostream>
 
 #include "encoding.hpp"
@@ -11,42 +12,32 @@ namespace rv32i_sim {
 const std::string RV32I_REGS_STATE_SIGNATURE = "RV32I_REG_STATE";
 
 class RegisterFile {
-  std::vector<word_t> regs_ = std::vector<word_t>(N_REGS);
+  std::vector<addr_t> regs_ = std::vector<addr_t>(N_REGS);
   bool is_valid_ = false;
 
 
 public:
   RegisterFile(bool valid = false) : is_valid_(valid) {}
-
-  RegisterFile(std::vector<word_t> init_regs_state) : regs_(init_regs_state) {
-    if (init_regs_state.size() != N_REGS) {
-      std::cerr << "WARNING: initial regs state has " << init_regs_state.size()
+  RegisterFile(std::vector<addr_t> regs, bool valid = true) :
+                                                regs_(regs), is_valid_(valid) {
+    if (regs.size() != N_REGS) {
+      std::cerr << "WARNING: initial regs state has " << regs.size()
                 << " vs " << N_REGS <<" needed, others will be set to zero\n";
 
       regs_.resize(N_REGS);
     }
   }
 
-  void fromBstate(std::filesystem::path& regs_file_path) {
-    std::ifstream regs_file(regs_file_path);
-    if (!regs_file) {
-      std::cerr << "ERROR: wrong registers file\n";
-      is_valid_ = false;
-      return;
-    }
-
-    fromBstate(regs_file);
-  }
-
-  void fromBstate(std::ifstream& regs_file) {
-    if (!regs_file) {
+  // construct from bstate file format
+  RegisterFile(std::ifstream& regs_bstate) {
+    if (!regs_bstate) {
       std::cerr << "ERROR: wrong registers file\n";
       is_valid_ = false;
       return;
     }
 
     std::string signature(RV32I_REGS_STATE_SIGNATURE.size(), ' ');
-    regs_file.read(signature.data(), RV32I_REGS_STATE_SIGNATURE.size() + 1);
+    regs_bstate.read(signature.data(), RV32I_REGS_STATE_SIGNATURE.size() + 1);
 
     if (signature != RV32I_REGS_STATE_SIGNATURE) {
       std::cerr << "ERROR: regs state file signature mismatch:\n"
@@ -55,15 +46,25 @@ public:
       return;
     }
 
-    regs_file.read(reinterpret_cast<char *>(regs_.data()), sizeof(word_t) * N_REGS);
+    regs_bstate.read(reinterpret_cast<char *>(regs_.data()), sizeof(word_t) * N_REGS);
 
     assert(regs_[0] == 0 && "X0 must be zero");
-    if (regs_[0] == 0) is_valid_ = true;
+    if (regs_[0] != 0) is_valid_ = false;
+    else is_valid_ = true;
+  }
+
+  static RegisterFile fromBstate(std::ifstream& regs_file) {
+    return RegisterFile(regs_file);
+  }
+
+  static RegisterFile fromBstate(std::filesystem::path& regs_file_path) {
+    std::ifstream regs_bstate(regs_file_path);
+    return RegisterFile(regs_bstate);
   }
 
   bool isValid() const { return is_valid_; }
 
-  bool operator== (const RegisterFile& other) const {
+  bool operator==(const RegisterFile& other) const {
     return regs_ == other.regs_;
   }
 

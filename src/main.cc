@@ -68,6 +68,22 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
+  if (vm.count("oregs")) {
+    std::cerr << "Sorry, option --oregs is not yet implemented\n";
+  }
+
+  if (vm.count("omem")) {
+    std::cerr << "Sorry, option --omem is not yet implemented\n";
+  }
+
+  if (vm.count("logs")) {
+    std::cerr << "Sorry, option --logs is not yet implemented\n";
+  }
+
+  if (vm.count("checkpoints")) {
+    std::cerr << "Sorry, option --checkpoints is not yet implemented\n";
+  }
+
   rv32i_sim::RVModel model{};
 
   if (vm.count("elf")) {
@@ -98,8 +114,7 @@ int main(int argc, char *argv[]) {
     }
 
     rv32i_sim::MemoryModel memory = rv32i_sim::MemoryModel::fromBstate(imem_file);
-    rv32i_sim::RegisterFile regs;
-    regs.fromBstate(iregs_file);
+    rv32i_sim::RegisterFile regs = rv32i_sim::RegisterFile::fromBstate(iregs_file);
 
     model.init(std::move(memory), std::move(regs), pc_init);
   }

@@ -47,6 +47,7 @@ namespace rv32i_sim {
 
 const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 
+// todo refactor mess
 class RVModel final : IRVModel {
   MemoryModel mem_; // todo use interface for memory model
   RegisterFile regs_;
@@ -135,7 +136,6 @@ void RVModel::init(std::ifstream& model_state_file) {
     std::cerr << "ERROR: model state file signature mismatch:\n"
               << "      <" << signature << "> vs <"
                                             << RV32I_MODEL_STATE_SIGNATURE <<">\n";
-
     is_valid_ = false;
     return;
   }
@@ -144,10 +144,8 @@ void RVModel::init(std::ifstream& model_state_file) {
   model_state_file.read(reinterpret_cast<char *>(&pc_), sizeof(addr_t));
   assert(pc_ % IALIGN == 0 && "PC at unaligned position");
 
-  regs_ = RegisterFile();
-  mem_ = MemoryModel();
-
-  regs_.fromBstate(model_state_file);
+  // the order of initialization is important (see bstate format)
+  regs_ = RegisterFile::fromBstate(model_state_file);
   mem_ = MemoryModel::fromBstate(model_state_file);
 
   is_valid_ = regs_.isValid() && mem_.isValid() && pc_ % IALIGN == 0;
@@ -166,9 +164,6 @@ void RVModel::init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_i
 }
 
 bool RVModel::operator== (const RVModel& other) const {
-  std::cerr << "compare pc = " << (pc_ == other.pc_) << '\n';
-  std::cerr << "compare regs = " << (pc_ == other.regs_) << '\n';
-  std::cerr << "compare mem = " << (pc_ == other.mem_) << '\n';
   return pc_ == other.pc_ && regs_ == other.regs_ && mem_ == other.mem_;
 }
 
@@ -514,7 +509,7 @@ void rvBEQ::execute(IRVModel& model) const {
     model.setPC(branch_addr);
   }
 
-  std::cerr << *this << " beq <pc =" << model.getPC() << ">\n";
+  std::cerr << *this << " beq <pc = " << model.getPC() << ">\n";
 }
 
 void rvBNE::execute(IRVModel& model) const {
@@ -526,7 +521,7 @@ void rvBNE::execute(IRVModel& model) const {
     model.setPC(branch_addr);
   }
 
-  std::cerr << *this << " bne <pc =" << model.getPC() << ">\n";
+  std::cerr << *this << " bne <pc = " << model.getPC() << ">\n";
 }
 
 void rvBLT::execute(IRVModel& model) const {
@@ -538,7 +533,7 @@ void rvBLT::execute(IRVModel& model) const {
     model.setPC(branch_addr);
   }
 
-  std::cerr << *this << " blt <pc =" << model.getPC() << ">\n";
+  std::cerr << *this << " blt <pc = " << model.getPC() << ">\n";
 }
 
 void rvBLTU::execute(IRVModel& model) const {
@@ -550,7 +545,7 @@ void rvBLTU::execute(IRVModel& model) const {
     model.setPC(branch_addr);
   }
 
-  std::cerr << *this << " bltu <pc =" << model.getPC() << ">\n";
+  std::cerr << *this << " bltu <pc = " << model.getPC() << ">\n";
 }
 
 void rvBGE::execute(IRVModel& model) const {
@@ -562,7 +557,7 @@ void rvBGE::execute(IRVModel& model) const {
     model.setPC(branch_addr);
   }
 
-  std::cerr << *this << " bge <pc =" << model.getPC() << ">\n";
+  std::cerr << *this << " bge <pc = " << model.getPC() << ">\n";
 }
 
 void rvBGEU::execute(IRVModel& model) const {
@@ -574,30 +569,30 @@ void rvBGEU::execute(IRVModel& model) const {
     model.setPC(branch_addr);
   }
 
-  std::cerr << *this << " bgeu <pc =" << model.getPC() << ">\n";
+  std::cerr << *this << " bgeu <pc = " << model.getPC() << ">\n";
 }
 
 void rvUNDEF_B::execute(IRVModel& model) const {
   // do nothing
-  std::cerr << *this << " ??? <pc =" << model.getPC() << ">\n";
+  std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
 }
 
 void rvLUI::execute(IRVModel& model) const {
   model.setReg(rd_, imm_);
 
-  std::cerr << *this << " lui <pc =" << model.getPC() << ">\n";
+  std::cerr << *this << " lui <pc = " << model.getPC() << ">\n";
 }
 
 void rvAUIPC::execute(IRVModel& model) const {
   addr_t curr_pc = model.getPC();
   model.setReg(rd_, curr_pc + imm_);
 
-  std::cerr << *this << " auipc <pc =" << model.getPC() << ">\n";
+  std::cerr << *this << " auipc <pc = " << model.getPC() << ">\n";
 }
 
 void rvUNDEF_U::execute(IRVModel& model) const {
   // do nothing
-  std::cerr << *this << " ??? <pc =" << model.getPC() << ">\n";
+  std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
 }
 
 void rvJAL::execute(IRVModel& model) const {

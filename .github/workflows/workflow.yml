@@ -74,6 +74,11 @@ jobs:
       working-directory: build_sh
       shell: bash
 
+    - name: test_elf
+      run: ./test --gtest_filter=TestRVModel.ELF_FILE
+      working-directory: build_sh
+      shell: bash
+
     - name: test_stress
       run: ./test --gtest_filter=TestRVModel.stress
       working-directory: build_sh

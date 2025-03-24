@@ -42,21 +42,21 @@ protected:
     return true;
   }
 
-  bool TestAns(std::filesystem::path testf_path) {
-    std::filesystem::path ansf_path = testf_path;
+  bool TestAnsBstate(std::filesystem::path bstate_path) {
+    std::filesystem::path ansf_path = bstate_path;
     ansf_path.replace_extension(".ans");
 
-    model.init(testf_path);
+    model.init(bstate_path);
     if (!model.isValid()) {
       std::cerr << "ERROR: failed to initialize model correctly\n";
-      std::cerr << testf_path << '\n';
+      std::cerr << bstate_path << '\n';
       return false;
     }
 
     model.execute();
     if (!model.isValid()) {
       std::cerr << "ERROR: model invalid after execution\n";
-      std::cerr << testf_path << '\n';
+      std::cerr << bstate_path << '\n';
       return false;
     }
 
@@ -67,7 +67,36 @@ protected:
 
       return false;
     }
-   
+
+    return ref_model == model;
+  }
+
+  bool TestAnsELF(std::filesystem::path elf_path) {
+    std::filesystem::path ansf_path = elf_path;
+    ansf_path.replace_extension(".ans");
+
+    model = rv32i_sim::RVModel(elf_path);
+    if (!model.isValid()) {
+      std::cerr << "ERROR: failed to initialize model correctly\n";
+      std::cerr << elf_path << '\n';
+      return false;
+    }
+
+    model.execute();
+    if (!model.isValid()) {
+      std::cerr << "ERROR: model invalid after execution\n";
+      std::cerr << elf_path << '\n';
+      return false;
+    }
+
+    ref_model.init(ansf_path);
+    if (!model.isValid()) {
+      std::cerr << "ERROR: failed to initialize ref model correctly\n";
+      std::cerr << ansf_path << '\n';
+
+      return false;
+    }
+
     return ref_model == model;
   }
 };
@@ -80,7 +109,7 @@ TEST_F(TestRVModel, ADD) {
     if (dir_entry.path().extension() != ".bstate") continue;
     auto fpath = dir_entry.path();
 
-    EXPECT_EQ(TestAns(fpath), true);
+    EXPECT_EQ(TestAnsBstate(fpath), true);
   }
 }
 
@@ -92,7 +121,7 @@ TEST_F(TestRVModel, SUB) {
     if (dir_entry.path().extension() != ".bstate") continue;
     auto fpath = dir_entry.path();
 
-    EXPECT_EQ(TestAns(fpath), true);
+    EXPECT_EQ(TestAnsBstate(fpath), true);
   }
 }
 
@@ -104,7 +133,7 @@ TEST_F(TestRVModel, SLL) {
     if (dir_entry.path().extension() != ".bstate") continue;
     auto fpath = dir_entry.path();
 
-    EXPECT_EQ(TestAns(fpath), true);
+    EXPECT_EQ(TestAnsBstate(fpath), true);
   }
 }
 
@@ -116,7 +145,7 @@ TEST_F(TestRVModel, SLT) {
     if (dir_entry.path().extension() != ".bstate") continue;
     auto fpath = dir_entry.path();
 
-    EXPECT_EQ(TestAns(fpath), true);
+    EXPECT_EQ(TestAnsBstate(fpath), true);
   }
 }
 
@@ -128,7 +157,7 @@ TEST_F(TestRVModel, SLTU) {
     if (dir_entry.path().extension() != ".bstate") continue;
     auto fpath = dir_entry.path();
 
-    EXPECT_EQ(TestAns(fpath), true);
+    EXPECT_EQ(TestAnsBstate(fpath), true);
   }
 }
 
@@ -140,7 +169,7 @@ TEST_F(TestRVModel, XOR) {
     if (dir_entry.path().extension() != ".bstate") continue;
     auto fpath = dir_entry.path();
 
-    EXPECT_EQ(TestAns(fpath), true);
+    EXPECT_EQ(TestAnsBstate(fpath), true);
   }
 }
 
@@ -152,7 +181,7 @@ TEST_F(TestRVModel, SRA) {
     if (dir_entry.path().extension() != ".bstate") continue;
     auto fpath = dir_entry.path();
 
-    EXPECT_EQ(TestAns(fpath), true);
+    EXPECT_EQ(TestAnsBstate(fpath), true);
   }
 }
 
@@ -164,7 +193,7 @@ TEST_F(TestRVModel, OR) {
     if (dir_entry.path().extension() != ".bstate") continue;
     auto fpath = dir_entry.path();
 
-    EXPECT_EQ(TestAns(fpath), true);
+    EXPECT_EQ(TestAnsBstate(fpath), true);
   }
 }
 
@@ -176,7 +205,19 @@ TEST_F(TestRVModel, AND) {
     if (dir_entry.path().extension() != ".bstate") continue;
     auto fpath = dir_entry.path();
 
-    EXPECT_EQ(TestAns(fpath), true);
+    EXPECT_EQ(TestAnsBstate(fpath), true);
+  }
+}
+
+TEST_F(TestRVModel, ELF_FILE) {
+  std::filesystem::path test_dir = "../test/elf";
+  for (auto const &dir_entry :
+                      std::filesystem::directory_iterator(test_dir)) {
+    if (!dir_entry.is_regular_file()) continue;
+    if (dir_entry.path().extension() != ".elf") continue;
+    auto fpath = dir_entry.path();
+
+    EXPECT_EQ(TestAnsELF(fpath), true);
   }
 }
 

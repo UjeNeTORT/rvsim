@@ -67,7 +67,6 @@ ELFError checkELF(std::filesystem::path& elf_path) {
   return checkELF(elf_reader);
 }
 
-
 /** provides memory model for the simulator
  * model is abstract and represents continuous virtual memory
  *
@@ -153,7 +152,7 @@ public:
       return MemoryModel(false);
     }
 
-    std::streamsize bytes_left = fileBytesLeft(mem_file);
+    uint32_t bytes_left = static_cast<uint32_t>(fileBytesLeft(mem_file));
     uint32_t memory_size = bytes_left > DEFAULT_ADDR_SPACE ? bytes_left :
                                                                 DEFAULT_ADDR_SPACE;
     std::vector<byte_t> memory(memory_size);
