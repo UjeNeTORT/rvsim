@@ -18,11 +18,15 @@ jobs:
       run: |
         sudo apt update
         sudo apt install cmake ninja-build build-essential libgtest-dev libboost-all-dev
-        git clone https://github.com/serge1/ELFIO.git /usr/include/
       shell: bash
 
     - name: checkout
       uses: actions/checkout@v4
+
+    - name: update submodule
+      run: |
+        git submodule update --init --recursive
+      shell: bash
 
     - name: build
       run: |
