@@ -30,4 +30,5 @@ riscv32-elf-objdump --version
 
 ```bash
 ./mkelf.sh ../elf/src/plus.s ../elf/plus.elf
+./mkelf.sh path_to.s path_to.elf
 ```
