@@ -4,6 +4,11 @@
 
 Follow these steps to install the project
 
+### 0. Prerequisites
+
+See [`.github/workflows/workflow.yml`](https://github.com/UjeNeTORT/rvsim/blob/main/.github/workflows/workflow.yml)
+for the list of prereqs. Sorry for inconvenience!
+
 ### 1. Clone the repository
 
 ```bash
@@ -44,7 +49,7 @@ prints a trace of all decoded instructions it executed and upon encountering an 
 
 (I will rework the exiting logic soon)
 
-### `.bstate` ???
+## `.bstate` ???
 > Let me clarify what `.bstate` is:
 
 `.bstate` is a file format which stores a simulator state in binary format
@@ -67,7 +72,8 @@ after it there are 4 bytes for PC value, after PC there is a registers section w
 
 #### Generating `.bstate` from assembly sourse
 
-Nobody wants to write such a file manually. Luckily, we have a script at `test/script/` which is designed to address this issue.
+Nobody wants to write such a file manually. Luckily, we have a script at [`test/script/testgen.sh`](https://github.com/UjeNeTORT/rvsim/blob/main/test/script/testgen.sh)
+which is designed to address this issue.
 
 *Lets use it!*
 
@@ -80,8 +86,21 @@ an object file, mixes it up with registers
 (*`test/scripts/regs_zero.bin` - all
 registers = 0 by default*) and adds
 signatures. The result is `deleteme.bstate` file
-which can be executed on simulator after that. Nasty workaround while ELFs are not supported.
+which can be executed on simulator after that. Nasty workaround it was while ELFs were not supported.
 
-I want to support ELF soon in order not to mess up with such files, but i will not delete them as they are still very usefull for testing and for recording checkpoints of execution.
+## ELF files - now they are
 
+To run simulator on an ELF file do:
 
+```bash
+./rvsim --elf=../test/elf/plus.elf
+```
+
+Simulator reads ELF using [ELFIO library](https://github.com/serge1/ELFIO).
+
+However, **it is not as clever as i want it to be** to this point. For example, it requires linking with
+`--no-relax` option because i have not supported proper `gp` register initialization based on ELF file yet (but i am going to).
+
+That is the reason why i strongly recommend using my script
+[`test/script/mkelf.sh`](https://github.com/UjeNeTORT/rvsim/blob/main/test/script/mkelf.sh)
+which enables all the necessary options for you. For usage example see [`test/script/README.md`](https://github.com/UjeNeTORT/rvsim/blob/main/test/script/README.md)
