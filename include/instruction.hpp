@@ -152,7 +152,7 @@ public:
   static std::unique_ptr<RVInsn> decode(addr_t code);
 };
 
-std::ostream& operator<< (std::ostream& out, const RVInsn& insn) {
+std::ostream& operator<< (std::ostream& out, const IInsn& insn) {
   insn.print(out);
   return out;
 }

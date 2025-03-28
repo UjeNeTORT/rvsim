@@ -455,28 +455,28 @@ public:
   virtual ~STypeInsn() = default;
 };
 
-class rvSB : public STypeInsn {
+class rvSB final : public STypeInsn {
 public:
   rvSB(addr_t code) : STypeInsn(code) {}
 
   void execute(IRVModel& model) const override;
 };
 
-class rvSH : public STypeInsn {
+class rvSH final : public STypeInsn {
 public:
   rvSH(addr_t code) : STypeInsn(code) {}
 
   void execute(IRVModel& model) const override;
 };
 
-class rvSW : public STypeInsn {
+class rvSW final : public STypeInsn {
 public:
   rvSW(addr_t code) : STypeInsn(code) {}
 
   void execute(IRVModel& model) const override;
 };
 
-class rvUNDEF_S : public STypeInsn {
+class rvUNDEF_S final : public STypeInsn {
 public:
   rvUNDEF_S(addr_t code) : STypeInsn(code) {}
 
@@ -584,49 +584,49 @@ public:
   virtual ~BTypeInsn() = default;
 };
 
-class rvBEQ : public BTypeInsn {
+class rvBEQ final : public BTypeInsn {
 public:
   rvBEQ(addr_t code) : BTypeInsn(code) {}
 
   void execute(IRVModel& model) const override;
 };
 
-class rvBNE : public BTypeInsn {
+class rvBNE final : public BTypeInsn {
 public:
   rvBNE(addr_t code) : BTypeInsn(code) {}
 
   void execute(IRVModel& model) const override;
 };
 
-class rvBLT : public BTypeInsn {
+class rvBLT final : public BTypeInsn {
 public:
   rvBLT(addr_t code) : BTypeInsn(code) {}
 
   void execute(IRVModel& model) const override;
 };
 
-class rvBLTU : public BTypeInsn {
+class rvBLTU final : public BTypeInsn {
 public:
   rvBLTU(addr_t code) : BTypeInsn(code) {}
 
   void execute(IRVModel& model) const override;
 };
 
-class rvBGE : public BTypeInsn {
+class rvBGE final : public BTypeInsn {
 public:
   rvBGE(addr_t code) : BTypeInsn(code) {}
 
   void execute(IRVModel& model) const override;
 };
 
-class rvBGEU : public BTypeInsn {
+class rvBGEU final  : public BTypeInsn {
 public:
   rvBGEU(addr_t code) : BTypeInsn(code) {}
 
   void execute(IRVModel& model) const override;
 };
 
-class rvUNDEF_B : public BTypeInsn {
+class rvUNDEF_B final : public BTypeInsn {
 public:
   rvUNDEF_B(addr_t code) : BTypeInsn(code) {}
 
@@ -775,6 +775,10 @@ public:
     imm_ = bit_20 | bits_19_12 | bit_11 | bits_10_1 | 0;
   }
 
+  static addr_t getOpcode(addr_t code) {
+    return code & DEFAULT_OPCODE_MASK;
+  }
+
   void execute(IRVModel& model) const override;
 
   void print(std::ostream& out) const override {
@@ -784,8 +788,58 @@ public:
         << std::bitset<8>{static_cast<uint8_t>(getOperand(2).getImm())} << "'"
         << std::bitset<5>{static_cast<uint8_t>(getOperand(1).getReg())} << "'"
         << std::bitset<7>{static_cast<uint8_t>(getOperand(0).getEnc())} << " (J)";
- }
+  }
 };
+
+class SystemInsn : public RVInsn {
+public:
+  SystemInsn(addr_t code) : RVInsn(code, RVInsnType::SYS_TYPE_INSN) {
+    addOperand(
+      Operand::createEnc("opcode",
+        static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
+      )
+    );
+
+    addOperand(
+      Operand::createEnc("other",
+        static_cast<addr_t>((code >> 7) & ((1 << 25) - 1))
+      )
+    );
+  }
+
+  static addr_t getOpcode(addr_t code) { return code; }
+
+  static std::unique_ptr<SystemInsn> decode(addr_t code);
+
+  void print(std::ostream& out) const override {
+    out << std::bitset<25>{static_cast<uint32_t>(getOperand(1).getEnc())} << "'"
+        << std::bitset<7>{static_cast<uint8_t>(getOperand(0).getEnc())} << " (system)";
+  }
+
+  virtual ~SystemInsn() = default;
+};
+
+class rvEBREAK final : public SystemInsn {
+public:
+  rvEBREAK(addr_t code) : SystemInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvUNDEF_SYS final : public SystemInsn {
+public:
+  rvUNDEF_SYS(addr_t code) : SystemInsn(code) {}
+
+  void execute(IRVModel& model) const override;
+};
+
+std::unique_ptr<SystemInsn> SystemInsn::decode(addr_t code) {
+  switch (static_cast<RV32i_ISA>(SystemInsn::getOpcode(code)))
+  {
+  case RV32i_ISA::EBREAK: return std::make_unique<rvEBREAK>(code);
+  default: return std::make_unique<rvUNDEF_SYS>(code);
+  }
+}
 
 std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
   addr_t opcode = code & DEFAULT_OPCODE_MASK;
@@ -808,13 +862,16 @@ std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
   case RV_U1_TYPE_OPCODE:
   case RV_U2_TYPE_OPCODE:
     return UTypeInsn::decode(code);
+
+  case RV_SYSTEM_OPCODE:
+    return SystemInsn::decode(code);
+
   case RV_JAL_OPCODE:
     return std::make_unique<rvJAL>(code);
-  // default:
-    // return UndefTypeInsn::decode(code);
+
+
   default:
     return std::make_unique<GeneralUndefInsn>(code);
-    break;
   }
 }
 

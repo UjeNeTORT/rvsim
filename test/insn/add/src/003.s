@@ -7,3 +7,4 @@ _start:
   addi x11, x0, 10 # x11 = 10
   addi x12, x0, 16 # x12 = 16
   add x10, x11, x12 # 
+  ebreak

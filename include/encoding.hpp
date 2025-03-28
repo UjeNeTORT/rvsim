@@ -21,11 +21,6 @@ using sbyte_t = int8_t;
 using shalf_t = int16_t;
 using sword_t = int32_t;
 
-#ifdef RVBITS64
-using dword_t = uint64_t;
-using sdword_t = int64_t;
-#endif // RVBITS64
-
 constexpr unsigned BITS_BYTE = 8; // n bits in byte
 constexpr unsigned IALIGN = 4; // bytes, insn address alignment
 
@@ -37,6 +32,8 @@ enum class RVInsnType : uint8_t {
   B_TYPE_INSN = 4,
   U_TYPE_INSN = 5,
   J_TYPE_INSN = 6,
+  SYS_TYPE_INSN = 7,
+  NO_TYPE_INSN = 8, //< self sufficient instruction
 };
 
 constexpr uint32_t MASK_31_25 = 0xFE000000;
@@ -107,6 +104,9 @@ enum class RV32i_ISA : addr_t {
 
   // J-Type
   JAL = 0x0000006f,
+
+  // System Type
+  EBREAK = 0x00100073,
 };
 
 constexpr uint8_t RV_R_TYPE_OPCODE = 0b011'0011;
@@ -123,6 +123,8 @@ constexpr uint8_t RV_U1_TYPE_OPCODE = 0b011'0111;
 constexpr uint8_t RV_U2_TYPE_OPCODE = 0b001'0111;
 
 constexpr uint8_t RV_JAL_OPCODE = 0b110'1111;
+
+constexpr uint8_t RV_SYSTEM_OPCODE = 0b111'0011;
 
 } // rv32i_sim
 

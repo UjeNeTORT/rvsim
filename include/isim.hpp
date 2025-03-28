@@ -19,7 +19,6 @@ public:
   virtual bool isValid() const = 0;
   virtual addr_t getPC() const = 0;
   virtual void setPC(addr_t pc_new) = 0;
-  virtual ~IRVModel() = default;
 
   virtual byte_t readByte(addr_t addr) const = 0;
   virtual half_t readHalf(addr_t addr) const = 0;
@@ -33,9 +32,12 @@ public:
   virtual void setReg(Register reg, word_t val) = 0;
 
   virtual void execute() = 0;
+  virtual void exit() = 0;
 
   virtual std::ostream& print(std::ostream& out) = 0;
   virtual void binaryDump(std::ofstream& fout) = 0;
+
+  virtual ~IRVModel() = default;
 };
 
 std::ostream& operator<<(std::ostream& out, IRVModel& model) {
