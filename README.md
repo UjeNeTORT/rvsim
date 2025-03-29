@@ -45,9 +45,9 @@ You will see something like this:
 
 
 It basically says that it started executing at some PC,
-prints a trace of all decoded instructions it executed and upon encountering an unknown one it stops the execution and prints its PC.
+prints a trace of all decoded instructions it executed and upon encountering `ebreak` it stops the execution and prints its PC.
 
-(I will rework the exiting logic soon)
+(if instruction is unknown execution also stops)
 
 ## `.bstate` ???
 > Let me clarify what `.bstate` is:

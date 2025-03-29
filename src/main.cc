@@ -76,11 +76,11 @@ int main(int argc, char *argv[]) {
     std::cerr << "Sorry, option --omem is not yet implemented\n";
   }
 
-  if (vm.count("logs")) {
+  if (logs) {
     std::cerr << "Sorry, option --logs is not yet implemented\n";
   }
 
-  if (vm.count("checkpoints")) {
+  if (checkpoints) {
     std::cerr << "Sorry, option --checkpoints is not yet implemented\n";
   }
 
