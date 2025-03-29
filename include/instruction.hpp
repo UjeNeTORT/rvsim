@@ -108,6 +108,9 @@ public:
   virtual void addOperand(Operand op) = 0;
   virtual unsigned nOperands() const = 0;
 
+  virtual std::string getName() const = 0;
+  virtual void setName(const std::string& name) = 0;
+
   virtual addr_t getCode() const = 0;
   virtual void setCode(addr_t code) = 0;
 
@@ -123,19 +126,24 @@ public:
 
 class RVInsn : public IInsn {
 protected:
+  std::string name_ = "???"; //< instruction name (undef by default)
   std::vector<Operand> operands_; //< parts of insn encoding (not just operands)
   addr_t code_; //< full encoded insn
   addr_t opcode_; //< unique code used to determine operation
   RVInsnType type_ = RVInsnType::UNDEF_TYPE_INSN; //< instruction type
 
 public:
-  RVInsn(addr_t code, RVInsnType type = RVInsnType::UNDEF_TYPE_INSN) :
-    code_(code), opcode_(code_ & DEFAULT_OPCODE_MASK), type_(type) {}
+  RVInsn(addr_t code, RVInsnType type = RVInsnType::UNDEF_TYPE_INSN,
+                                                    std::string name = "???") :
+    code_(code), opcode_(code_ & DEFAULT_OPCODE_MASK), type_(type), name_(name) {}
 
   // todo error checks
   const Operand& getOperand(uint8_t i) const override { return operands_[i]; }
   void addOperand(Operand op) override { operands_.push_back(op); }
   unsigned nOperands() const override { return operands_.size(); }
+
+  std::string getName() const override { return name_; }
+  void setName(const std::string& name) override { name_ = name; }
 
   addr_t getCode() const override { return code_; };
   void setCode(addr_t code) override { code_ = code; }
@@ -164,7 +172,7 @@ std::ostream& operator<< (std::ostream& out, const Operand& op) {
 
 class GeneralUndefInsn final : public RVInsn {
 public:
-  GeneralUndefInsn(addr_t code) : RVInsn{code, RVInsnType::UNDEF_TYPE_INSN} {}
+  GeneralUndefInsn(addr_t code) : RVInsn{code} {}
 
   void execute(IRVModel& model) const override;
 

@@ -20,7 +20,8 @@ protected:
   Register rs2_ = Register::INVALID;
 
 public:
-  RTypeInsn(addr_t code) : RVInsn{code, RVInsnType::R_TYPE_INSN} {
+  RTypeInsn(addr_t code, std::string name = "???") :
+                                    RVInsn{code, RVInsnType::R_TYPE_INSN, name} {
     addOperand(
       Operand::createEnc("opcode",
         static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
@@ -88,70 +89,70 @@ public:
 
 class rvADD final : public RTypeInsn {
 public:
-  rvADD(addr_t code) : RTypeInsn(code) {}
+  rvADD(addr_t code) : RTypeInsn(code, "add") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSUB final : public RTypeInsn {
 public:
-  rvSUB(addr_t code) : RTypeInsn(code) {}
+  rvSUB(addr_t code) : RTypeInsn(code, "sub") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSLL final : public RTypeInsn {
 public:
-  rvSLL(addr_t code) : RTypeInsn(code) {}
+  rvSLL(addr_t code) : RTypeInsn(code, "sll") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSLT final : public RTypeInsn {
 public:
-  rvSLT(addr_t code) : RTypeInsn(code) {}
+  rvSLT(addr_t code) : RTypeInsn(code, "slt") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSLTU final : public RTypeInsn {
 public:
-  rvSLTU(addr_t code) : RTypeInsn(code) {}
+  rvSLTU(addr_t code) : RTypeInsn(code, "sltu") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvXOR final : public RTypeInsn {
 public:
-  rvXOR(addr_t code) : RTypeInsn(code) {}
+  rvXOR(addr_t code) : RTypeInsn(code, "xor") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSRL final : public RTypeInsn {
 public:
-  rvSRL(addr_t code) : RTypeInsn(code) {}
+  rvSRL(addr_t code) : RTypeInsn(code, "srl") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSRA final : public RTypeInsn {
 public:
-  rvSRA(addr_t code) : RTypeInsn(code) {}
+  rvSRA(addr_t code) : RTypeInsn(code, "sra") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvOR final : public RTypeInsn {
 public:
-  rvOR(addr_t code) : RTypeInsn(code) {}
+  rvOR(addr_t code) : RTypeInsn(code, "or") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvAND final : public RTypeInsn {
 public:
-  rvAND(addr_t code) : RTypeInsn(code) {}
+  rvAND(addr_t code) : RTypeInsn(code, "and") {}
 
   void execute(IRVModel& model) const override;
 };
@@ -187,7 +188,8 @@ protected:
   uint32_t imm_ = 0;
 
 public:
-  ITypeInsn(addr_t code) : RVInsn{code, RVInsnType::I_TYPE_INSN} {
+  ITypeInsn(addr_t code, std::string name = "???") :
+                                    RVInsn{code, RVInsnType::I_TYPE_INSN, name} {
     addOperand(
       Operand::createEnc("opcode",
         static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
@@ -251,105 +253,105 @@ public:
 
 class rvJALR final : public ITypeInsn {
 public:
-  rvJALR(addr_t code) : ITypeInsn(code) {}
+  rvJALR(addr_t code) : ITypeInsn(code, "jalr") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvLB final : public ITypeInsn {
 public:
-  rvLB(addr_t code) : ITypeInsn(code) {}
+  rvLB(addr_t code) : ITypeInsn(code, "lb") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvLH final : public ITypeInsn {
 public:
-  rvLH(addr_t code) : ITypeInsn(code) {}
+  rvLH(addr_t code) : ITypeInsn(code, "lh") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvLW final : public ITypeInsn {
 public:
-  rvLW(addr_t code) : ITypeInsn(code) {}
+  rvLW(addr_t code) : ITypeInsn(code, "lw") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvLBU final : public ITypeInsn {
 public:
-  rvLBU(addr_t code) : ITypeInsn(code) {}
+  rvLBU(addr_t code) : ITypeInsn(code, "lbu") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvLHU final : public ITypeInsn {
 public:
-  rvLHU(addr_t code) : ITypeInsn(code) {}
+  rvLHU(addr_t code) : ITypeInsn(code, "lhu") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvADDI final : public ITypeInsn {
 public:
-  rvADDI(addr_t code) : ITypeInsn(code) {}
+  rvADDI(addr_t code) : ITypeInsn(code, "addi") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSLTI final : public ITypeInsn {
 public:
-  rvSLTI(addr_t code) : ITypeInsn(code) {}
+  rvSLTI(addr_t code) : ITypeInsn(code, "slti") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSLTIU final : public ITypeInsn {
 public:
-  rvSLTIU(addr_t code) : ITypeInsn(code) {}
+  rvSLTIU(addr_t code) : ITypeInsn(code, "sltiu") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvXORI final : public ITypeInsn {
 public:
-  rvXORI(addr_t code) : ITypeInsn(code) {}
+  rvXORI(addr_t code) : ITypeInsn(code, "xori") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvORI final : public ITypeInsn {
 public:
-  rvORI(addr_t code) : ITypeInsn(code) {}
+  rvORI(addr_t code) : ITypeInsn(code, "ori") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvANDI final : public ITypeInsn {
 public:
-  rvANDI(addr_t code) : ITypeInsn(code) {}
+  rvANDI(addr_t code) : ITypeInsn(code, "andi") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSLLI final : public ITypeInsn {
 public:
-  rvSLLI(addr_t code) : ITypeInsn(code) {}
+  rvSLLI(addr_t code) : ITypeInsn(code, "slli") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSRLI final : public ITypeInsn {
 public:
-  rvSRLI(addr_t code) : ITypeInsn(code) {}
+  rvSRLI(addr_t code) : ITypeInsn(code, "srli") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSRAI final : public ITypeInsn {
 public:
-  rvSRAI(addr_t code) : ITypeInsn(code) {}
+  rvSRAI(addr_t code) : ITypeInsn(code, "srai") {}
 
   void execute(IRVModel& model) const override;
 };
@@ -390,7 +392,8 @@ protected:
   uint32_t imm_ = 0;
 
 public:
-  STypeInsn(addr_t code) : RVInsn{code, RVInsnType::S_TYPE_INSN} {
+  STypeInsn(addr_t code, std::string name = "???") :
+                        RVInsn{code, RVInsnType::S_TYPE_INSN, name} {
     addOperand(
       Operand::createEnc("opcode",
         static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
@@ -457,21 +460,21 @@ public:
 
 class rvSB final : public STypeInsn {
 public:
-  rvSB(addr_t code) : STypeInsn(code) {}
+  rvSB(addr_t code) : STypeInsn(code, "sb") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSH final : public STypeInsn {
 public:
-  rvSH(addr_t code) : STypeInsn(code) {}
+  rvSH(addr_t code) : STypeInsn(code, "sh") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvSW final : public STypeInsn {
 public:
-  rvSW(addr_t code) : STypeInsn(code) {}
+  rvSW(addr_t code) : STypeInsn(code, "sw") {}
 
   void execute(IRVModel& model) const override;
 };
@@ -500,7 +503,8 @@ protected:
   uint32_t imm_ = 0;
 
 public:
-  BTypeInsn(addr_t code) : RVInsn{code, RVInsnType::B_TYPE_INSN} {
+  BTypeInsn(addr_t code, std::string name = "???") :
+                        RVInsn{code, RVInsnType::B_TYPE_INSN, name} {
     addOperand(
       Operand::createEnc("opcode",
         static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
@@ -586,42 +590,42 @@ public:
 
 class rvBEQ final : public BTypeInsn {
 public:
-  rvBEQ(addr_t code) : BTypeInsn(code) {}
+  rvBEQ(addr_t code) : BTypeInsn(code, "beq") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvBNE final : public BTypeInsn {
 public:
-  rvBNE(addr_t code) : BTypeInsn(code) {}
+  rvBNE(addr_t code) : BTypeInsn(code, "bne") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvBLT final : public BTypeInsn {
 public:
-  rvBLT(addr_t code) : BTypeInsn(code) {}
+  rvBLT(addr_t code) : BTypeInsn(code, "blt") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvBLTU final : public BTypeInsn {
 public:
-  rvBLTU(addr_t code) : BTypeInsn(code) {}
+  rvBLTU(addr_t code) : BTypeInsn(code, "bltu") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvBGE final : public BTypeInsn {
 public:
-  rvBGE(addr_t code) : BTypeInsn(code) {}
+  rvBGE(addr_t code) : BTypeInsn(code, "bge") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvBGEU final  : public BTypeInsn {
 public:
-  rvBGEU(addr_t code) : BTypeInsn(code) {}
+  rvBGEU(addr_t code) : BTypeInsn(code, "bgeu") {}
 
   void execute(IRVModel& model) const override;
 };
@@ -652,7 +656,8 @@ protected:
   uint32_t imm_ = 0;
 
 public:
-  UTypeInsn(addr_t code) : RVInsn{code, RVInsnType::U_TYPE_INSN} {
+  UTypeInsn(addr_t code, std::string name = "???") :
+                            RVInsn{code, RVInsnType::U_TYPE_INSN, name} {
     addOperand(
       Operand::createEnc("opcode",
         static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
@@ -695,14 +700,14 @@ public:
 
 class rvLUI : public UTypeInsn {
 public:
-  rvLUI(addr_t code) : UTypeInsn(code) {}
+  rvLUI(addr_t code) : UTypeInsn(code, "lui") {}
 
   void execute(IRVModel& model) const override;
 };
 
 class rvAUIPC : public UTypeInsn {
 public:
-  rvAUIPC(addr_t code) : UTypeInsn(code) {}
+  rvAUIPC(addr_t code) : UTypeInsn(code, "auipc") {}
 
   void execute(IRVModel& model) const override;
 };
@@ -728,7 +733,7 @@ class rvJAL : public RVInsn {
   addr_t imm_ = 0;
 
 public:
-  rvJAL(addr_t code) : RVInsn(code, RVInsnType::J_TYPE_INSN) {
+  rvJAL(addr_t code) : RVInsn(code, RVInsnType::J_TYPE_INSN, "jal") {
     addOperand(
       Operand::createEnc("opcode",
         static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
@@ -793,7 +798,8 @@ public:
 
 class SystemInsn : public RVInsn {
 public:
-  SystemInsn(addr_t code) : RVInsn(code, RVInsnType::SYS_TYPE_INSN) {
+  SystemInsn(addr_t code, std::string name = "???") :
+                                RVInsn{code, RVInsnType::SYS_TYPE_INSN, name} {
     addOperand(
       Operand::createEnc("opcode",
         static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
@@ -821,7 +827,7 @@ public:
 
 class rvEBREAK final : public SystemInsn {
 public:
-  rvEBREAK(addr_t code) : SystemInsn(code) {}
+  rvEBREAK(addr_t code) : SystemInsn(code, "ebreak") {}
 
   void execute(IRVModel& model) const override;
 };
