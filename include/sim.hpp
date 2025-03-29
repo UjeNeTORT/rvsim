@@ -542,10 +542,6 @@ void rvEBREAK::execute(IRVModel& model) const {
   model.exit();
 }
 
-void rvUNDEF_SYS::execute(IRVModel& model) const {
-  // do nothing
-}
-
 void GeneralUndefInsn::execute(IRVModel& model) const {
   // do nothing
 }

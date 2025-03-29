@@ -243,6 +243,11 @@ public:
     if ((srai_specific | func_3 | opcode_7_0) == static_cast<addr_t>(RV32i_ISA::SRAI))
       return static_cast<addr_t>(RV32i_ISA::SRAI);
 
+    addr_t func_12 = code & MASK_31_20; // system insns specific
+
+    if ((func_12 | func_3 | opcode_7_0) == static_cast<addr_t>(RV32i_ISA::EBREAK))
+      return static_cast<addr_t>(RV32i_ISA::EBREAK);
+
     return func_3 | opcode_7_0;
   }
 
@@ -356,6 +361,13 @@ public:
   void execute(IRVModel& model) const override;
 };
 
+class rvEBREAK final : public ITypeInsn {
+public:
+  rvEBREAK(addr_t code) : ITypeInsn(code, "ebreak") {}
+
+  void execute(IRVModel& model) const override;
+};
+
 class rvUNDEF_I final : public ITypeInsn {
 public:
   rvUNDEF_I(addr_t code) : ITypeInsn(code) {}
@@ -381,6 +393,7 @@ std::unique_ptr<ITypeInsn> ITypeInsn::decode(addr_t code) {
   case RV32i_ISA::SLLI: return std::make_unique<rvSLLI>(code);
   case RV32i_ISA::SRLI: return std::make_unique<rvSRLI>(code);
   case RV32i_ISA::SRAI: return std::make_unique<rvSRAI>(code);
+  case RV32i_ISA::EBREAK: return std::make_unique<rvEBREAK>(code);
   default: return std::make_unique<rvUNDEF_I>(code);
   }
 }
@@ -796,57 +809,6 @@ public:
   }
 };
 
-class SystemInsn : public RVInsn {
-public:
-  SystemInsn(addr_t code, std::string name = "???") :
-                                RVInsn{code, RVInsnType::SYS_TYPE_INSN, name} {
-    addOperand(
-      Operand::createEnc("opcode",
-        static_cast<addr_t>(code & DEFAULT_OPCODE_MASK)
-      )
-    );
-
-    addOperand(
-      Operand::createEnc("other",
-        static_cast<addr_t>((code >> 7) & ((1 << 25) - 1))
-      )
-    );
-  }
-
-  static addr_t getOpcode(addr_t code) { return code; }
-
-  static std::unique_ptr<SystemInsn> decode(addr_t code);
-
-  void print(std::ostream& out) const override {
-    out << std::bitset<25>{static_cast<uint32_t>(getOperand(1).getEnc())} << "'"
-        << std::bitset<7>{static_cast<uint8_t>(getOperand(0).getEnc())} << " (system)";
-  }
-
-  virtual ~SystemInsn() = default;
-};
-
-class rvEBREAK final : public SystemInsn {
-public:
-  rvEBREAK(addr_t code) : SystemInsn(code, "ebreak") {}
-
-  void execute(IRVModel& model) const override;
-};
-
-class rvUNDEF_SYS final : public SystemInsn {
-public:
-  rvUNDEF_SYS(addr_t code) : SystemInsn(code) {}
-
-  void execute(IRVModel& model) const override;
-};
-
-std::unique_ptr<SystemInsn> SystemInsn::decode(addr_t code) {
-  switch (static_cast<RV32i_ISA>(SystemInsn::getOpcode(code)))
-  {
-  case RV32i_ISA::EBREAK: return std::make_unique<rvEBREAK>(code);
-  default: return std::make_unique<rvUNDEF_SYS>(code);
-  }
-}
-
 std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
   addr_t opcode = code & DEFAULT_OPCODE_MASK;
   switch (opcode)
@@ -857,6 +819,7 @@ std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
   case RV_I_TYPE_OPCODE:
   case RV_IJALR_TYPE_OPCODE:
   case RV_ILOAD_TYPE_OPCODE:
+  case RV_SYSTEM_I_OPCODE:
     return ITypeInsn::decode(code);
 
   case RV_S_TYPE_OPCODE:
@@ -869,12 +832,8 @@ std::unique_ptr<RVInsn> RVInsn::decode(addr_t code) {
   case RV_U2_TYPE_OPCODE:
     return UTypeInsn::decode(code);
 
-  case RV_SYSTEM_OPCODE:
-    return SystemInsn::decode(code);
-
   case RV_JAL_OPCODE:
     return std::make_unique<rvJAL>(code);
-
 
   default:
     return std::make_unique<GeneralUndefInsn>(code);

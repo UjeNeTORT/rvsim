@@ -32,8 +32,7 @@ enum class RVInsnType : uint8_t {
   B_TYPE_INSN = 4,
   U_TYPE_INSN = 5,
   J_TYPE_INSN = 6,
-  SYS_TYPE_INSN = 7,
-  NO_TYPE_INSN = 8, //< self sufficient instruction
+  NO_TYPE_INSN = 7, //< self sufficient instruction
 };
 
 constexpr uint32_t MASK_31_25 = 0xFE000000;
@@ -105,7 +104,7 @@ enum class RV32i_ISA : addr_t {
   // J-Type
   JAL = 0x0000006f,
 
-  // System Type
+  // System I Type
   EBREAK = 0x00100073,
 };
 
@@ -114,8 +113,9 @@ constexpr uint8_t RV_R_TYPE_OPCODE = 0b011'0011;
 constexpr uint8_t RV_I_TYPE_OPCODE     = 0b001'0011;
 constexpr uint8_t RV_ILOAD_TYPE_OPCODE = 0b000'0011;
 constexpr uint8_t RV_IJALR_TYPE_OPCODE = 0b110'0111;
+constexpr uint8_t RV_SYSTEM_I_OPCODE   = 0b111'0011;
 
-constexpr uint8_t RV_S_TYPE_OPCODE  = 0b010'0011;
+constexpr uint8_t RV_S_TYPE_OPCODE = 0b010'0011;
 
 constexpr uint8_t RV_B_TYPE_OPCODE = 0b110'0011;
 
@@ -123,8 +123,6 @@ constexpr uint8_t RV_U1_TYPE_OPCODE = 0b011'0111;
 constexpr uint8_t RV_U2_TYPE_OPCODE = 0b001'0111;
 
 constexpr uint8_t RV_JAL_OPCODE = 0b110'1111;
-
-constexpr uint8_t RV_SYSTEM_OPCODE = 0b111'0011;
 
 } // rv32i_sim
 
