@@ -183,12 +183,12 @@ std::unique_ptr<RTypeInsn> RTypeInsn::decode(addr_t code) {
 
 class ITypeInsn : public RVInsn {
 protected:
-  Register dst_ = Register::INVALID;
+  Register rd_ = Register::INVALID;
   Register rs1_ = Register::INVALID;
   uint32_t imm_ = 0;
 
 public:
-  ITypeInsn(addr_t code, std::string name = "???") :
+  ITypeInsn(addr_t code = 0, std::string name = "???") :
                                     RVInsn{code, RVInsnType::I_TYPE_INSN, name} {
     addOperand(
       Operand::createEnc("opcode",
@@ -222,7 +222,7 @@ public:
 
     opcode_ = ITypeInsn::getOpcode(code_);
 
-    dst_ = getOperand(1).getReg();
+    rd_ = getOperand(1).getReg();
     rs1_ = getOperand(3).getReg();
     imm_ = getOperand(4).getImm();
   }
@@ -363,7 +363,38 @@ public:
 
 class rvEBREAK final : public ITypeInsn {
 public:
+  rvEBREAK() {
+    code_ = static_cast<addr_t>(RV32i_ISA::EBREAK);
+    opcode_ = code_ & DEFAULT_OPCODE_MASK;
+    name_ = "ebreak";
+
+    addOperand(
+      Operand::createEnc("opcode",
+        static_cast<addr_t>(opcode_)
+      )
+    );
+  }
+
   rvEBREAK(addr_t code) : ITypeInsn(code, "ebreak") {}
+
+  void execute(IRVModel& model) const override;
+};
+
+class rvECALL final : public ITypeInsn {
+public:
+  rvECALL() {
+    code_ = static_cast<addr_t>(RV32i_ISA::ECALL);
+    opcode_ = code_ & DEFAULT_OPCODE_MASK;
+    name_ = "ecall";
+
+    addOperand(
+      Operand::createEnc("opcode",
+        static_cast<addr_t>(opcode_)
+      )
+    );
+  }
+
+  rvECALL(addr_t code) : ITypeInsn(code, "ecall") {}
 
   void execute(IRVModel& model) const override;
 };
@@ -394,6 +425,7 @@ std::unique_ptr<ITypeInsn> ITypeInsn::decode(addr_t code) {
   case RV32i_ISA::SRLI: return std::make_unique<rvSRLI>(code);
   case RV32i_ISA::SRAI: return std::make_unique<rvSRAI>(code);
   case RV32i_ISA::EBREAK: return std::make_unique<rvEBREAK>(code);
+  case RV32i_ISA::ECALL: return std::make_unique<rvECALL>(code);
   default: return std::make_unique<rvUNDEF_I>(code);
   }
 }
@@ -746,6 +778,19 @@ class rvJAL : public RVInsn {
   addr_t imm_ = 0;
 
 public:
+  rvJAL() {
+    code_ = static_cast<addr_t>(RV32i_ISA::JAL);
+    opcode_ = code_ & DEFAULT_OPCODE_MASK;
+    type_ = RVInsnType::J_TYPE_INSN;
+    name_ = "jal";
+
+    addOperand(
+      Operand::createEnc("opcode",
+        static_cast<addr_t>(opcode_)
+      )
+    );
+  }
+
   rvJAL(addr_t code) : RVInsn(code, RVInsnType::J_TYPE_INSN, "jal") {
     addOperand(
       Operand::createEnc("opcode",
@@ -795,6 +840,46 @@ public:
 
   static addr_t getOpcode(addr_t code) {
     return code & DEFAULT_OPCODE_MASK;
+  }
+
+  // todo refactor + implement for other classes
+  addr_t encode(Register reg, sword_t imm) {
+    rd_ = reg;
+    imm_ = std::bit_cast<addr_t>(imm);
+
+    addr_t bit_20     = (imm_ & (1 << 20))  >> 20;
+    addr_t bits_19_12 = (imm_ & MASK_19_12) >> 12;
+    addr_t bit_11     = (imm_ & (1 << 11))  >> 11;
+    addr_t bits_10_1  = (imm_ & MASK_10_1)  >> 1;
+
+    code_ = opcode_
+      | (static_cast<addr_t>(reg) << 7)
+      | (bits_19_12 << 12)
+      | (bit_11 << 20)
+      | (bits_10_1 << 21)
+      | (bit_20 << 31);
+
+    addOperand(
+      Operand::createReg("rd", reg)
+    );
+
+    addOperand(
+      Operand::createImm("imm[19:12]", bits_19_12)
+    );
+
+    addOperand(
+      Operand::createImm("imm[11]", bit_11)
+    );
+
+    addOperand(
+      Operand::createImm("imm[10:1]", bits_10_1)
+    );
+
+    addOperand(
+      Operand::createImm("imm[20]", bit_20)
+    );
+
+    return code_;
   }
 
   void execute(IRVModel& model) const override;

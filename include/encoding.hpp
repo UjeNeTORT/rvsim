@@ -4,15 +4,9 @@
 #include <cstdint>
 #include <bitset>
 
-#include "registers.hpp"
-
 namespace rv32i_sim {
 
-#ifdef RVBITS64
-using addr_t = uint64_t;
-#else // RVBITS64
 using addr_t = uint32_t;
-#endif // RVBITS64
 
 using byte_t = uint8_t;
 using half_t = uint16_t;
@@ -38,8 +32,10 @@ enum class RVInsnType : uint8_t {
 constexpr uint32_t MASK_31_25 = 0xFE000000;
 constexpr uint32_t MASK_24_20 = 0x01F00000;
 constexpr uint32_t MASK_19_15 = 0x000F8000;
+constexpr uint32_t MASK_19_12 = 0x000FF000;
 constexpr uint32_t MASK_14_12 = 0x00007000;
 constexpr uint32_t MASK_11_7  = 0x00000F80;
+constexpr uint32_t MASK_10_1  = 0x000007FE;
 constexpr uint32_t MASK_6_0   = 0x0000007F;
 constexpr uint32_t MASK_4_0   = 0x0000001F;
 
@@ -106,6 +102,7 @@ enum class RV32i_ISA : addr_t {
 
   // System I Type
   EBREAK = 0x00100073,
+  ECALL = 0x00000073,
 };
 
 constexpr uint8_t RV_R_TYPE_OPCODE = 0b011'0011;

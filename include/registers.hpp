@@ -17,15 +17,6 @@ enum class Register : uint8_t {
 
 constexpr std::size_t N_REGS = 32; // number of registers
 
-bool isRegValid(Register reg) {
-  return (Register::X0 <= reg) && (reg <= Register::X31);
-}
-
-std::ostream& operator<< (std::ostream& out, Register reg) {
-  out << static_cast<uint8_t>(reg);
-  return out;
-}
-
 } // rv32i_sim
 
 #endif // REGISTERS_HPP

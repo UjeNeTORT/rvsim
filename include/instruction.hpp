@@ -126,13 +126,16 @@ public:
 
 class RVInsn : public IInsn {
 protected:
-  std::string name_ = "???"; //< instruction name (undef by default)
   std::vector<Operand> operands_; //< parts of insn encoding (not just operands)
   addr_t code_; //< full encoded insn
   addr_t opcode_; //< unique code used to determine operation
   RVInsnType type_ = RVInsnType::UNDEF_TYPE_INSN; //< instruction type
+  std::string name_ = "???"; //< instruction name (undef by default)
 
 public:
+  RVInsn(RVInsnType type = RVInsnType::UNDEF_TYPE_INSN, std::string name = "???") :
+    type_(type), name_(name) {}
+
   RVInsn(addr_t code, RVInsnType type = RVInsnType::UNDEF_TYPE_INSN,
                                                     std::string name = "???") :
     code_(code), opcode_(code_ & DEFAULT_OPCODE_MASK), type_(type), name_(name) {}
