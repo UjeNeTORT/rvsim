@@ -22,7 +22,18 @@ set (CMAKE_CURRENT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/ELFIO)
 
+add_library(segment STATIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/segment.cc)
+
+add_library(memory STATIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/memory.cc)
+target_link_libraries(memory segment)
+
+add_library(registers STATIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/register_file.cc)
+
 add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/main.cc)
+target_link_libraries(${PROJECT_NAME} segment memory registers)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_link_libraries(${PROJECT_NAME} Boost::program_options)
@@ -30,4 +41,4 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(test ${CMAKE_CURRENT_SOURCE_DIR}/test.cc)
-target_link_libraries(test gtest)
+target_link_libraries(test gtest segment memory registers)
