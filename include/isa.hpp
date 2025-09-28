@@ -1,6 +1,7 @@
 #ifndef ISA_HPP
 #define ISA_HPP
 
+#include <bit>
 #include <iostream>
 #include <memory>
 

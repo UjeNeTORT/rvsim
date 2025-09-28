@@ -5,14 +5,14 @@ int main() {
   unsigned ret_val = -1;
 
   asm volatile (
-    "lw a0, (%0)\n"   
+    "lw a0, (%0)\n"
+    "add a1, %1, zero\n"
     "li a7, 63\n"
     "ecall\n"
     : "=r" (ret_val)
-    : "r" (buf) 
-    : "a0", "a7"    
+    : "r" (buf), "r" (count)
+    : "a0", "a1", "a7"
   );
-  
+
   return 0;
 }
-

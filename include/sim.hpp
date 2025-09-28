@@ -74,17 +74,17 @@ public:
     }
 
     pc_ = elf_reader.get_entry();
-    std::cerr << "Found user entry at: " << pc_ << '\n';
+    std::cerr << "Found user entry point at: " << pc_ << '\n';
 
     regs_ = RegisterFile();
-    mem_ = MemoryModel::fromELF(elf_path);
+    mem_ = MemoryModel::fromELF(elf_reader);
 
     // setting up stack and initial stack frame
     addr_t sp = mem_.setUpStack();
     regs_.set(Register::X2, sp); // SP = sp
     regs_.set(Register::X8, sp); // FP = sp
 
-    // preparing execution environment
+    // preparing execution environment i.e.
     // code which calls main and does ebreak in the end
     pc_ = setUpEnvironment(pc_);
 
@@ -213,7 +213,7 @@ void RVModel::execute() {
 
   execution = true;
 
-  while(execution && is_valid_) {
+  while (execution && is_valid_) {
     addr_t insn_code = mem_.readWord(pc_); // fetch
     std::unique_ptr<IInsn> insn = decode(insn_code);
 
@@ -592,18 +592,23 @@ void rvECALL::execute(IRVModel& model) const {
   // riscv	    a0	  a1	  a2	  a3	  a4	  a5	      a7
 
   EESyscall syscall = static_cast<EESyscall>(model.getReg(Register::X17));
+
   switch (syscall)
   {
   case EESyscall::READ:
-    std::cerr << "READ SYSCALL!!!" << "\n";
+  {
+    std::cerr << "READ SYSCALL" << "\n";
+    std::string input (static_cast<uint8_t>(model.getReg(Register::X11)), '\0');
+    std::cin >> input;
+    std::cerr << input << '\n';
     break;
-
+  }
   case EESyscall::WRITE:
-    std::cerr << "WRITE SYSCALL!!!" << "\n";
+    std::cerr << "WRITE SYSCALL" << "\n";
     break;
 
   case EESyscall::EXIT:
-    std::cerr << "EXIT SYSCALL!!!" << "\n";
+    std::cerr << "EXIT SYSCALL" << "\n";
     model.exit();
     break;
 
