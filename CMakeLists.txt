@@ -1,5 +1,5 @@
-CMAKE_MINIMUM_REQUIRED(VERSION 3.11)
-project(rvsim)
+CMAKE_MINIMUM_REQUIRED(VERSION 3.13)
+project(rvsim LANGUAGES CXX C)
 
 if(POLICY CMP0167)
   cmake_policy(SET CMP0167 NEW)
@@ -14,6 +14,7 @@ set (CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -O0 -fsanitize=address")
 set (CMAKE_CXX_FLAGS_RELEASE "-O2")
 set (CMAKE_CXX_FLAGS "-fdiagnostics-color=always")
 
+find_package(LLVM REQUIRED CONFIG)
 find_package(Boost COMPONENTS program_options REQUIRED)
 find_library(GTEST_LIBRARY NAMES gtest gtest_main)
 include_directories( ${Boost_INCLUDE_DIR} )
@@ -21,6 +22,9 @@ include_directories( ${Boost_INCLUDE_DIR} )
 set (CMAKE_CURRENT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_SOURCE_DIR}/ELFIO)
+
+include_directories(${LLVM_INCLUDE_DIRS})
+add_definitions(${LLVM_DEFINITIONS})
 
 add_library(segment STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/segment.cc)
@@ -31,6 +35,9 @@ target_link_libraries(memory segment)
 
 add_library(registers STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/register_file.cc)
+
+add_executable(gendecode ${CMAKE_CURRENT_SOURCE_DIR}/decoder_emitter.cc)
+target_link_libraries(gendecode PRIVATE LLVMTableGen)
 
 add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/main.cc)
 target_link_libraries(${PROJECT_NAME} segment memory registers)
