@@ -49,3 +49,19 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(test ${CMAKE_CURRENT_SOURCE_DIR}/test.cc)
 target_link_libraries(test gtest segment memory registers)
+
+add_custom_command(
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/decoder.inc
+  COMMAND gendecode
+          -I ${LLVM_INCLUDE_DIRS} -I ${CMAKE_CURRENT_SOURCE_DIR}
+          -gen-decoder
+          ${CMAKE_CURRENT_SOURCE_DIR}/RV.td
+          -o ${CMAKE_CURRENT_BINARY_DIR}/decoder.inc
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/RV.td 
+          ${CMAKE_CURRENT_SOURCE_DIR}/RVEncoding.td
+          ${CMAKE_CURRENT_SOURCE_DIR}/RVOpcodes.td
+  COMMENT "Generating decoder.inc from RV.td"
+)
+
+add_custom_target(gendecoder DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/decoder.inc)
+add_dependencies(${PROJECT_NAME} gendecoder)
