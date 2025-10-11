@@ -20,6 +20,7 @@
 
 namespace elf = ELFIO;
 
+namespace {
 int32_t sign_extend_8_to_32(uint8_t val) {
   return std::bit_cast<int32_t>(uint32_t(val) << 24) >> 24;
 }
@@ -43,6 +44,7 @@ int32_t sign_extend_21_to_32(uint32_t val) {
 int32_t sign_extend_32_to_32(uint32_t val) {
   return std::bit_cast<int32_t>(val);
 }
+} // namespace
 
 namespace rv32i_sim {
 

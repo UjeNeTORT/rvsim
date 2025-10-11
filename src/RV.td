@@ -17,11 +17,12 @@ class RVInsn<list<RVEncodingField> encfields, string name> : Insn {
 
 class RVInsnRBase<string name>
   : RVInsn<[ENC_FUNCT7, ENC_RS2, ENC_RS1, ENC_FUNCT3, ENC_RD, ENC_OPC], name> {
+  let Encoding{31...25} = EncValues[0];
   let Type = "R";
 }
 
 class RVInsnR<list<int> encvalues, string name> : RVInsnRBase<name> {
-    let EncValues = encvalues;
+  let EncValues = encvalues;
 }
 
  //                               FUNCT7 RS2 RS1           FUNCT3  RD      OPCODE | asmstr
@@ -35,3 +36,21 @@ def SRL  : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b101), ?, OPC_OP.Va
 def SRA  : RVInsnR<[!cast<int>(0b0100000), ?, ?, !cast<int>(0b101), ?, OPC_OP.Val], "sra">;
 def OR   : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b110), ?, OPC_OP.Val], "or">;
 def AND  : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b111), ?, OPC_OP.Val], "and">;
+
+class RVInsnIBase<string name>
+  : RVInsn<[ENC_IMM_11_0, ENC_RS1, ENC_FUNCT3, ENC_RD, ENC_OPC], name> {
+
+  let Type = "I";
+}
+
+class RVInsnI<list<int> encvalues, string name> : RVInsnIBase<name> {
+  let EncValues = encvalues;
+}
+
+ //                                  FUNCT3             OPCODE
+def ADDI : RVInsnI<[?, ?, !cast<int>(0b000), ?, OPC_OP_IMM.Val], "addi">;
+def SLTI : RVInsnI<[?, ?, !cast<int>(0b010), ?, OPC_OP_IMM.Val], "slti">;
+def SLTIU : RVInsnI<[?, ?, !cast<int>(0b011), ?, OPC_OP_IMM.Val], "sltiu">;
+def ANDI : RVInsnI<[?, ?, !cast<int>(0b111), ?, OPC_OP_IMM.Val], "andi">;
+def ORI  : RVInsnI<[?, ?, !cast<int>(0b110), ?, OPC_OP_IMM.Val], "ori">;
+def XORI : RVInsnI<[?, ?, !cast<int>(0b100), ?, OPC_OP_IMM.Val], "xori">;

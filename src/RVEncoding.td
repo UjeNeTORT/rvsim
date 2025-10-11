@@ -37,10 +37,11 @@ multiclass RVOpcodes {
 
 defm OPC_ : RVOpcodes;
 
- // argument encoding fields
-def ENC_OPC    : RVEncF< 0,  6, "opcode">;
-def ENC_RD     : RVEncF< 7, 11, "rd">;
-def ENC_FUNCT3 : RVEncF<12, 14, "funct3">;
-def ENC_RS1    : RVEncF<15, 19, "rs1">;
-def ENC_RS2    : RVEncF<20, 24, "rs2">;
-def ENC_FUNCT7 : RVEncF<25, 31, "funct7">;
+ // instruction encoding fields
+def ENC_OPC      : RVEncF< 0,  6, "opcode">;
+def ENC_RD       : RVEncF< 7, 11, "rd">;
+def ENC_FUNCT3   : RVEncF<12, 14, "funct3">;
+def ENC_RS1      : RVEncF<15, 19, "rs1">;
+def ENC_RS2      : RVEncF<20, 24, "rs2">;
+def ENC_FUNCT7   : RVEncF<25, 31, "funct7">;
+def ENC_IMM_11_0 : RVEncF<20, 31, "imm[11:0]">;
