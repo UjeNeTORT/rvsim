@@ -57,7 +57,10 @@ add_custom_command(
           -gen-decoder
           ${CMAKE_CURRENT_SOURCE_DIR}/RV.td
           -o ${CMAKE_CURRENT_BINARY_DIR}/decoder.inc
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/RV.td
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/decoder_emitter.cc
+          ${CMAKE_CURRENT_SOURCE_DIR}/RV.td
+          ${CMAKE_CURRENT_SOURCE_DIR}/RVInsn.td
+          ${CMAKE_CURRENT_SOURCE_DIR}/RVInsnTypes.td
           ${CMAKE_CURRENT_SOURCE_DIR}/RVEncoding.td
           ${CMAKE_CURRENT_SOURCE_DIR}/RVOpcodes.td
   COMMENT "Generating decoder.inc from RV.td"
