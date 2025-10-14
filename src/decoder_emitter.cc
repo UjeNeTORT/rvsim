@@ -6,6 +6,7 @@
 #include "llvm/TableGen/Error.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include <bit>
 #include <bitset>
 #include <set>
 #include <ranges>
@@ -56,6 +57,13 @@ public:
 
   uint32_t getSize() const { return Size_; }
   std::optional<uint32_t> getValue() const { return Value_; }
+
+  // is a necessary part of encoding, which determines the instruction
+  bool isEncoded() const { return IsEncoded_; }
+  bool isOperand() const { return !IsEncoded_; }
+
+  uint32_t getLSBPos() const { return First_; }
+  uint32_t getMSBPos() const { return Last_; }
 };
 }
 
@@ -66,25 +74,53 @@ class InstructionInfo final {
 
   std::vector<EncodingField> EncodingFields_;
 
-  std::string Name_; // todo add to ctor
-  std::string AsmStr_; // todo add to ctor
+  using OpndMaskTy = std::pair<uint32_t, uint32_t>;
+  // operand masks for each operand from LSB to MSB
+  std::vector<OpndMaskTy> OpndMasks_;
+
+  std::string Name_;
+  std::string AsmStr_;
   std::string ExecuteCode_; // todo add to ctor
 
 public:
   InstructionInfo(uint32_t RawEncoding, uint32_t TypeMask,
-                  std::vector<EncodingField> EncodingFields, std::string Name)
+                  std::vector<EncodingField> EncodingFields,
+                  std::string Name, std::string AsmStr)
     : RawEncoding_(RawEncoding), TypeMask_(TypeMask), EncodingFields_(EncodingFields),
-      Name_(Name) {}
+      Name_(Name), AsmStr_(AsmStr) {}
 
   uint32_t getTypeMask() const { return TypeMask_; }
+  uint32_t getRawEncoding() const { return RawEncoding_; }
+  std::string getName() const { return Name_; }
+
+  /**
+   * @returns index of the added operand
+   */
+  uint32_t addOperandMask(uint32_t OpMskLSB, uint32_t OpMskMSB) noexcept {
+    OpndMasks_.push_back(OpndMaskTy(OpMskLSB, OpMskMSB));
+    return OpndMasks_.size() - 1;
+  }
+
+  uint32_t getOperandMaskLSB(uint32_t OpIdx) const noexcept {
+    return OpndMasks_[OpIdx].first;
+  }
+
+  uint32_t getOperandMask(uint32_t OpIdx) const noexcept {
+    uint32_t LSB = OpndMasks_[OpIdx].first;
+    uint32_t MSB = OpndMasks_[OpIdx].second;
+    uint32_t Mask = (1 << (MSB - LSB + 1)) - 1;
+    return Mask << LSB;
+  }
+
+  uint32_t nOperands() const noexcept { return OpndMasks_.size(); }
 
   void emitClass(raw_ostream &Out) const {
-    Out << "class " << Name_ << " {\n";
-    Out << "\t" << "uint32_t RawEncoding_ = " << RawEncoding_ << "; // "
+    Out << "class " << Name_ << " final : public IInsn {\n";
+    Out << "\t" << "const uint32_t RawEncoding_ = " << RawEncoding_ << "; // "
                 << "0b" << std::bitset<32>(RawEncoding_).to_string() << "\n";
-    Out << "\t" << "uint32_t TypeMask_ = " << TypeMask_ << "; // "
+    Out << "\t" << "const uint32_t TypeMask_ = " << TypeMask_ << "; // "
                 << "0b" << std::bitset<32>(TypeMask_).to_string() << "\n";
-    Out << "\t" << "std::string AsmStr_   = " << AsmStr_ << ";\n";
+    Out << "\t" << "const std::string AsmStr_  = \"" << AsmStr_ << "\";\n";
     Out << "public:\n";
 
     Out << "\t" << "void execute(IRVModel &Model) const override {\n"
@@ -92,6 +128,8 @@ public:
         << "\t}\n";
 
     Out << "};\n";
+
+    return;
   }
 };
 }
@@ -103,7 +141,12 @@ class DecoderEmitter final {
 
   ListInit *getEncodingFields(const Record *InsnDef) const;
   ListInit *getEncodingValues(const Record *InsnDef) const;
+  uint32_t  formEncodingFields(const Record * const Def,
+                               std::vector<EncodingField> &EncFields,
+                               uint32_t &RawEncoding) const;
 
+  static void emitDecoderFunc(raw_ostream &OS,
+                              const std::vector<InstructionInfo> &InsnInfos);
 public:
   DecoderEmitter(const RecordKeeper &RK) : RK_(RK) {}
 
@@ -174,11 +217,109 @@ ListInit *DecoderEmitter::getEncodingValues(const Record *InsnDef) const {
   Init *EncVInit = EncV->getValue();
 
   return dyn_cast<ListInit>(EncVInit);
+}
 
+uint32_t DecoderEmitter::formEncodingFields(const Record * const Def,
+                                            std::vector<EncodingField> &EncFields,
+                                            uint32_t &RawEncoding) const {
+  assert(EncFields.empty());
+
+  ListInit *TGEncodingFields = getEncodingFields(Def);
+  ListInit *TGEncodingValues = getEncodingValues(Def);
+  if (!TGEncodingFields) {
+    PrintError(Def->getLoc(), "EncFields is not a ListInit!");
+    return 0;
+  }
+
+  if (!TGEncodingValues) {
+    PrintError(Def->getLoc(), "EncValues is not a ListInit!");
+    return 0;
+  }
+
+  auto TGEncodingFieldInit = TGEncodingFields->begin();
+  auto TGEncodingValueInit = TGEncodingValues->begin();
+
+  uint32_t EncodingMask = 0;
+
+  while (TGEncodingFieldInit != TGEncodingFields->end() &&
+          TGEncodingValueInit != TGEncodingValues->end()) {
+
+    std::optional<StringRef> EncName;
+
+    //? is it ok? can it be simplified? do we need catch block at all?
+    try {
+      EncName = Def->getValueAsOptionalString("Name");
+    } catch (...) {
+      PrintFatalError(Def->getLoc(), "Name field does not exist in RVEncodingField");
+      return 0;
+    }
+
+    if (EncName == std::nullopt) {
+      PrintError(Def->getLoc(), "Name field is uninitialized in RVEncodingField");
+      continue;
+    }
+
+    DefInit *TGEncodingField = dyn_cast<DefInit>(*TGEncodingFieldInit);
+    if (!TGEncodingField || !TGEncodingField->getDef()->isSubClassOf("RVEncodingField")) {
+      PrintError(Def->getLoc(), "Encoding must be of type RVEncodingField");
+      return 0;
+    }
+
+    // todo unsafe
+    uint32_t MSBPos = dyn_cast<IntInit>(
+      TGEncodingField->getDef()->getValue("Last")->getValue()
+    )->getValue();
+
+    uint32_t LSBPos = dyn_cast<IntInit>(
+      TGEncodingField->getDef()->getValue("First")->getValue()
+    )->getValue();
+
+    // todo add more rules to skip encoding part
+    if (!(*TGEncodingValueInit)->isComplete()) {
+      EncFields.push_back(EncodingField(LSBPos, MSBPos, EncName.value()));
+      TGEncodingFieldInit++;
+      TGEncodingValueInit++;
+      continue;
+    }
+
+    IntInit *TGEncodingValue = dyn_cast<IntInit>(*TGEncodingValueInit);
+    uint32_t EncValCode = TGEncodingValue->getValue();
+
+    RawEncoding |= EncValCode << LSBPos;
+
+    EncodingMask |= ((1 << (MSBPos - LSBPos + 1)) - 1) << LSBPos;
+    EncFields.push_back(EncodingField(LSBPos, MSBPos, EncValCode, EncName.value()));
+
+    TGEncodingFieldInit++;
+    TGEncodingValueInit++;
+  }
+
+  return EncodingMask;
+}
+
+void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
+                                     const std::vector<InstructionInfo> &InsnInfos) {
+  OS << "std::unique_ptr<IInsn> decode(uint32_t Opcode) {\n";
+  for (auto &II : InsnInfos) {
+    OS << "\t""if (uint32_t RawOpcode = "
+                        "Opcode & 0b" << std::bitset<32>(II.getTypeMask()).to_string() << ") {\n"
+       << "\t\t""if (RawOpcode == 0b" << std::bitset<32>(II.getRawEncoding()).to_string() << ") {\n"
+       << "\t\t\t""std::unique_ptr<IInsn>Insn(new " << II.getName() << "());\n";
+      for (uint32_t OpIdx = 0; OpIdx != II.nOperands(); ++OpIdx)
+        OS << "\t\t\t""Insn.addOperand(Opcode & " << II.getOperandMask(OpIdx)
+                                        << " >> " << II.getOperandMaskLSB(OpIdx)
+           << ");\n";
+    OS << "\t\t\t""return Insn;\n"
+      << "\t\t""}\n"
+      << "\t""}\n";
+  }
+  // во время парсинга таблеген описания доставать инфу об операндах и пушить в вектор в II
+  OS << "\t""std::cerr << \"Fatal - failed to decode [\" << Opcode << \"]\";\n";
+  OS << "\t""return std::nullptr;\n";
+  OS << "} // decode()\n";
 }
 
 void DecoderEmitter::run(raw_ostream &OS) {
-
   dump();
 
   emitSourceFileHeader("RV Decoder structures", OS);
@@ -195,25 +336,18 @@ void DecoderEmitter::run(raw_ostream &OS) {
   // its mask is stored here for its further use in decoder function
   std::set<std::pair<uint32_t, StringRef>> EncodingMasks;
 
-  for (auto &D : RK_.getAllDerivedDefinitions("RVInsn")) {
-    ListInit *TGEncodingFields = getEncodingFields(D);
-    ListInit *TGEncodingValues = getEncodingValues(D);
-    if (!TGEncodingFields) {
-      PrintError(D->getLoc(), "EncFields is not a ListInit!");
-      return;
-    }
-
-    if (!TGEncodingValues) {
-      PrintError(D->getLoc(), "EncValues is not a ListInit!");
-      return;
-    }
-
+  for (auto D : RK_.getAllDerivedDefinitions("RVInsn")) {
     std::vector<EncodingField> EncodingFields;
 
     uint32_t RawEncoding = 0;
     uint32_t EncodingMask = 0;
 
     std::string InsnName = D->getNameInitAsString();
+    std::optional<StringRef> AsmStr = D->getValueAsOptionalString("Name");
+    if (AsmStr == std::nullopt) {
+      PrintFatalError(D->getLoc(), "Name field uninitialized in RVInsn");
+      return;
+    }
 
     std::optional<StringRef> TyName;
     try {
@@ -223,81 +357,30 @@ void DecoderEmitter::run(raw_ostream &OS) {
       return;
     }
 
-    auto TGEncodingFieldInit = TGEncodingFields->begin();
-    auto TGEncodingValueInit = TGEncodingValues->begin();
-
-    while (TGEncodingFieldInit != TGEncodingFields->end() &&
-           TGEncodingValueInit != TGEncodingValues->end()) {
-
-      std::optional<StringRef> EncName;
-
-      //? is it ok? can it be simplified? do we need catch block at all?
-      try {
-        EncName = D->getValueAsOptionalString("Name");
-      } catch (...) {
-        PrintFatalError(D->getLoc(), "Name field does not exist in RVEncodingField");
-        return;
-      }
-
-      if (EncName == std::nullopt) {
-        PrintError(D->getLoc(), "Name field is uninitialized in RVEncodingField");
-        continue;
-      }
-
-      DefInit *TGEncodingField = dyn_cast<DefInit>(*TGEncodingFieldInit);
-      if (!TGEncodingField || !TGEncodingField->getDef()->isSubClassOf("RVEncodingField")) {
-        PrintError(D->getLoc(), "Encoding must be of type RVEncodingField");
-        return;
-      }
-
-      // todo unsafe
-      uint32_t MSBPos = dyn_cast<IntInit>(
-        TGEncodingField->getDef()->getValue("Last")->getValue()
-      )->getValue();
-
-      uint32_t LSBPos = dyn_cast<IntInit>(
-        TGEncodingField->getDef()->getValue("First")->getValue()
-      )->getValue();
-
-      // todo add more rules to skip encoding part
-      if (!(*TGEncodingValueInit)->isComplete()) {
-        EncodingFields.push_back(EncodingField(LSBPos, MSBPos, EncName.value()));
-        TGEncodingFieldInit++;
-        TGEncodingValueInit++;
-        continue;
-      }
-
-      IntInit *TGEncodingValue = dyn_cast<IntInit>(*TGEncodingValueInit);
-      uint32_t EncValCode = TGEncodingValue->getValue();
-
-      RawEncoding |= EncValCode << LSBPos;
-
-      EncodingMask |= ((1 << (MSBPos - LSBPos + 1)) - 1) << LSBPos;
-      EncodingFields.push_back(EncodingField(LSBPos, MSBPos, EncValCode, EncName.value()));
-
-      TGEncodingFieldInit++;
-      TGEncodingValueInit++;
-    }
+    EncodingMask = formEncodingFields(D, EncodingFields, RawEncoding);
+    assert(EncodingMask && "EncMask can't be zero");
 
     EncodingMasks.insert(std::pair<uint32_t, StringRef>(EncodingMask, TyName.value()));
-    InsnInfos.push_back(InstructionInfo(RawEncoding, EncodingMask, EncodingFields, InsnName));
+    InstructionInfo II(RawEncoding, EncodingMask, EncodingFields,
+                       InsnName, AsmStr.value().str());
+    for (auto &EF : EncodingFields) {
+      if (EF.isOperand())
+        II.addOperandMask(EF.getLSBPos(), EF.getMSBPos());
+    }
+    InsnInfos.push_back(II);
   }
 
-  for (const auto &EM : EncodingMasks)
-    OS << "const uint32_t ENC_MASK_TYPE_" << EM.second << " = " << EM.first << "; "
-       << "// 0b" << std::bitset<32>(EM.first).to_string() << '\n';
-  OS << '\n';
-  for (const auto &II : InsnInfos) II.emitClass(OS);
+  for (const auto &II : InsnInfos) {
+    II.emitClass(OS);
+    OS << '\n';
+  }
 
-  OS << "std::unique_ptr<IInsn> decode(uint32_t opcode) {\n";
-
-  OS << "} // decode()\n";
+  emitDecoderFunc(OS, InsnInfos);
 }
 
 void DecoderEmitter::dump() const {
   RK_.dump();
 }
-
 
 static TableGen::Emitter::OptClass<DecoderEmitter> X("gen-decoder", "Generate rv decoder");
 
