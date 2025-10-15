@@ -46,12 +46,12 @@ class EncodingField final {
   bool IsEncoded_ = false; // determines whether the field is a real encoding field
   std::optional<uint32_t> Value_ = std::nullopt;
 
-  StringRef Name_ = "???";
+  std::string Name_ = "???";
 public:
-  EncodingField(uint32_t First, uint32_t Last, StringRef Name)
+  EncodingField(uint32_t First, uint32_t Last, std::string Name)
     : First_(First), Last_(Last), Size_(Last_ - First + 1),
       IsEncoded_(false), Value_(std::nullopt), Name_(Name) {}
-  EncodingField(uint32_t First, uint32_t Last, uint32_t Value, StringRef Name)
+  EncodingField(uint32_t First, uint32_t Last, uint32_t Value, std::string Name)
     : First_(First), Last_(Last), Size_(Last_ - First + 1),
       IsEncoded_(true), Value_(Value), Name_(Name) {}
 
@@ -64,6 +64,8 @@ public:
 
   uint32_t getLSBPos() const { return First_; }
   uint32_t getMSBPos() const { return Last_; }
+
+  std::string getName() const { return Name_; }
 };
 }
 
@@ -74,60 +76,100 @@ class InstructionInfo final {
 
   std::vector<EncodingField> EncodingFields_;
 
+  // Operand mask is has bits set from LSB to MSB, others are zeroed
   using OpndMaskTy = std::pair<uint32_t, uint32_t>;
   // operand masks for each operand from LSB to MSB
-  std::vector<OpndMaskTy> OpndMasks_;
+  std::vector<std::pair<OpndMaskTy, std::string>> OpndMasks_;
 
   std::string Name_;
+  std::string Type_;
   std::string AsmStr_;
   std::string ExecuteCode_; // todo add to ctor
 
 public:
   InstructionInfo(uint32_t RawEncoding, uint32_t TypeMask,
                   std::vector<EncodingField> EncodingFields,
-                  std::string Name, std::string AsmStr)
+                  std::string Name, std::string Type, std::string AsmStr)
     : RawEncoding_(RawEncoding), TypeMask_(TypeMask), EncodingFields_(EncodingFields),
-      Name_(Name), AsmStr_(AsmStr) {}
+      Name_(Name), Type_(Type), AsmStr_(AsmStr) {
+
+        for (const auto &EF: EncodingFields_) {
+          if (EF.isOperand())
+            OpndMasks_.push_back(std::pair<OpndMaskTy, std::string>(
+              OpndMaskTy(EF.getLSBPos(), EF.getMSBPos()),
+              EF.getName()
+            )
+          );
+        }
+    }
 
   uint32_t getTypeMask() const { return TypeMask_; }
   uint32_t getRawEncoding() const { return RawEncoding_; }
   std::string getName() const { return Name_; }
 
-  /**
-   * @returns index of the added operand
-   */
-  uint32_t addOperandMask(uint32_t OpMskLSB, uint32_t OpMskMSB) noexcept {
-    OpndMasks_.push_back(OpndMaskTy(OpMskLSB, OpMskMSB));
-    return OpndMasks_.size() - 1;
+  uint32_t getOperandMaskLSB(uint32_t OpIdx) const noexcept {
+    return OpndMasks_[OpIdx].first.first;
   }
 
-  uint32_t getOperandMaskLSB(uint32_t OpIdx) const noexcept {
-    return OpndMasks_[OpIdx].first;
+  std::string getOperandName(uint32_t OpIdx) const noexcept {
+    return OpndMasks_[OpIdx].second;
   }
 
   uint32_t getOperandMask(uint32_t OpIdx) const noexcept {
-    uint32_t LSB = OpndMasks_[OpIdx].first;
-    uint32_t MSB = OpndMasks_[OpIdx].second;
+    uint32_t LSB = OpndMasks_[OpIdx].first.first;
+    uint32_t MSB = OpndMasks_[OpIdx].first.second;
     uint32_t Mask = (1 << (MSB - LSB + 1)) - 1;
     return Mask << LSB;
   }
 
   uint32_t nOperands() const noexcept { return OpndMasks_.size(); }
 
-  void emitClass(raw_ostream &Out) const {
-    Out << "class " << Name_ << " final : public IInsn {\n";
-    Out << "\t" << "const uint32_t RawEncoding_ = " << RawEncoding_ << "; // "
+  void emitClass(raw_ostream &OS) const {
+    OS << "class " << Name_ << " final : public IInsn {\n";
+    OS << "\t" << "const uint32_t RawEncoding_ = " << RawEncoding_ << "; // "
                 << "0b" << std::bitset<32>(RawEncoding_).to_string() << "\n";
-    Out << "\t" << "const uint32_t TypeMask_ = " << TypeMask_ << "; // "
+    OS << "\t" << "const uint32_t TypeMask_ = " << TypeMask_ << "; // "
                 << "0b" << std::bitset<32>(TypeMask_).to_string() << "\n";
-    Out << "\t" << "const std::string AsmStr_  = \"" << AsmStr_ << "\";\n";
-    Out << "public:\n";
+    OS << "\t" << "uint32_t Opcode_ = 0; // fully encoded instruction\n";
+    OS << "\t" << "const std::string AsmStr_  = \"" << AsmStr_ << "\";\n";
 
-    Out << "\t" << "void execute(IRVModel &Model) const override {\n"
-        << "\t" << ExecuteCode_ << '\n'
-        << "\t}\n";
+    OS << "\t" << "std::vector<std::pair<uint32_t, std::string>> Operands_;\n";
 
-    Out << "};\n";
+    OS << "public:\n";
+
+    // constructors
+    OS << "\t" << Name_ << "() = delete;\n";
+    OS << "\t" << Name_ << "(uint32_t Opcode) : Opcode_(Opcode) {}\n\n";
+
+    // opcode
+    OS << "\t" << "uint32_t getOpcode() const override {\n"
+       << "\t\t" << "return Opcode_;\n"
+       << "\t" << "}\n\n";
+
+    // operand functions
+    OS << "\t" << "// returns index of the pushed operand\n";
+    OS << "\t" << "uint32_t addOperand(uint32_t OpVal, std::string Name) const override {\n"
+       << "\t\t" << "Operands_.push_back(std::pair<uint32_t, std::string>(OpVal, Name));\n"
+       << "\t\t" << "return Operands_.size() - 1;\n"
+       << "\t" << "}\n\n";
+    OS << "\t" << "uint32_t getOperand(uint32_t OpIdx) const override {\n"
+       << "\t\t" << "return Operands_[OpIdx].first;\n"
+       << "\t" << "}\n\n";
+    OS << "\t" << "uint32_t nOperands() const override {\n"
+       << "\t\t" << "return Operands_.size();\n"
+       << "\t" << "}\n\n";
+
+    // execute
+    OS << "\t" << "void execute(IRVModel &Model) const override {\n"
+       << "\t" << ExecuteCode_ << '\n'
+       << "\t}\n";
+
+    // print
+    OS << "\t" << "void print(std::ostream &Out) const {\n"
+       << "\t\t" << "Out << std::bitset<32>(Opcode_).to_string() << (\""
+                 << Type_ << ")\";\n";
+    OS << "\t" << "}";
+    OS << "};\n";
 
     return;
   }
@@ -242,22 +284,9 @@ uint32_t DecoderEmitter::formEncodingFields(const Record * const Def,
   uint32_t EncodingMask = 0;
 
   while (TGEncodingFieldInit != TGEncodingFields->end() &&
-          TGEncodingValueInit != TGEncodingValues->end()) {
+         TGEncodingValueInit != TGEncodingValues->end()) {
 
-    std::optional<StringRef> EncName;
-
-    //? is it ok? can it be simplified? do we need catch block at all?
-    try {
-      EncName = Def->getValueAsOptionalString("Name");
-    } catch (...) {
-      PrintFatalError(Def->getLoc(), "Name field does not exist in RVEncodingField");
-      return 0;
-    }
-
-    if (EncName == std::nullopt) {
-      PrintError(Def->getLoc(), "Name field is uninitialized in RVEncodingField");
-      continue;
-    }
+    std::string EncName = (*TGEncodingFieldInit)->getAsString();
 
     DefInit *TGEncodingField = dyn_cast<DefInit>(*TGEncodingFieldInit);
     if (!TGEncodingField || !TGEncodingField->getDef()->isSubClassOf("RVEncodingField")) {
@@ -276,7 +305,7 @@ uint32_t DecoderEmitter::formEncodingFields(const Record * const Def,
 
     // todo add more rules to skip encoding part
     if (!(*TGEncodingValueInit)->isComplete()) {
-      EncFields.push_back(EncodingField(LSBPos, MSBPos, EncName.value()));
+      EncFields.push_back(EncodingField(LSBPos, MSBPos, EncName));
       TGEncodingFieldInit++;
       TGEncodingValueInit++;
       continue;
@@ -288,7 +317,7 @@ uint32_t DecoderEmitter::formEncodingFields(const Record * const Def,
     RawEncoding |= EncValCode << LSBPos;
 
     EncodingMask |= ((1 << (MSBPos - LSBPos + 1)) - 1) << LSBPos;
-    EncFields.push_back(EncodingField(LSBPos, MSBPos, EncValCode, EncName.value()));
+    EncFields.push_back(EncodingField(LSBPos, MSBPos, EncValCode, EncName));
 
     TGEncodingFieldInit++;
     TGEncodingValueInit++;
@@ -304,16 +333,17 @@ void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
     OS << "\t""if (uint32_t RawOpcode = "
                         "Opcode & 0b" << std::bitset<32>(II.getTypeMask()).to_string() << ") {\n"
        << "\t\t""if (RawOpcode == 0b" << std::bitset<32>(II.getRawEncoding()).to_string() << ") {\n"
-       << "\t\t\t""std::unique_ptr<IInsn>Insn(new " << II.getName() << "());\n";
+       << "\t\t\t""std::unique_ptr<IInsn>Insn(new " << II.getName() << "(Opcode));\n";
       for (uint32_t OpIdx = 0; OpIdx != II.nOperands(); ++OpIdx)
         OS << "\t\t\t""Insn.addOperand(Opcode & " << II.getOperandMask(OpIdx)
-                                        << " >> " << II.getOperandMaskLSB(OpIdx)
+                                        << " >> " << II.getOperandMaskLSB(OpIdx) << ", "
+                                        << "\"" << II.getOperandName(OpIdx) << "\""
            << ");\n";
     OS << "\t\t\t""return Insn;\n"
       << "\t\t""}\n"
       << "\t""}\n";
   }
-  // во время парсинга таблеген описания доставать инфу об операндах и пушить в вектор в II
+
   OS << "\t""std::cerr << \"Fatal - failed to decode [\" << Opcode << \"]\";\n";
   OS << "\t""return std::nullptr;\n";
   OS << "} // decode()\n";
@@ -332,15 +362,10 @@ void DecoderEmitter::run(raw_ostream &OS) {
 
   std::vector<InstructionInfo> InsnInfos;
 
-  // whenever a unique instruction type is encountered
-  // its mask is stored here for its further use in decoder function
-  std::set<std::pair<uint32_t, StringRef>> EncodingMasks;
-
   for (auto D : RK_.getAllDerivedDefinitions("RVInsn")) {
     std::vector<EncodingField> EncodingFields;
 
     uint32_t RawEncoding = 0;
-    uint32_t EncodingMask = 0;
 
     std::string InsnName = D->getNameInitAsString();
     std::optional<StringRef> AsmStr = D->getValueAsOptionalString("Name");
@@ -357,18 +382,18 @@ void DecoderEmitter::run(raw_ostream &OS) {
       return;
     }
 
-    EncodingMask = formEncodingFields(D, EncodingFields, RawEncoding);
+    uint32_t EncodingMask = formEncodingFields(D, EncodingFields, RawEncoding);
     assert(EncodingMask && "EncMask can't be zero");
 
-    EncodingMasks.insert(std::pair<uint32_t, StringRef>(EncodingMask, TyName.value()));
-    InstructionInfo II(RawEncoding, EncodingMask, EncodingFields,
-                       InsnName, AsmStr.value().str());
-    for (auto &EF : EncodingFields) {
-      if (EF.isOperand())
-        II.addOperandMask(EF.getLSBPos(), EF.getMSBPos());
-    }
-    InsnInfos.push_back(II);
+    InsnInfos.push_back(
+      InstructionInfo(
+        RawEncoding, EncodingMask, EncodingFields,
+        InsnName, TyName.value().str(), AsmStr.value().str()
+      )
+    );
   }
+
+  OS << "namespace RVISA {\n\n";
 
   for (const auto &II : InsnInfos) {
     II.emitClass(OS);
@@ -376,6 +401,8 @@ void DecoderEmitter::run(raw_ostream &OS) {
   }
 
   emitDecoderFunc(OS, InsnInfos);
+
+  OS << "} // RVISA\n";
 }
 
 void DecoderEmitter::dump() const {
