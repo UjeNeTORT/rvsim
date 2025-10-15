@@ -127,15 +127,15 @@ public:
   uint32_t nOperands() const noexcept { return OpndMasks_.size(); }
 
   void emitClass(raw_ostream &OS) const {
-    OS << "class " << Name_ << " final : public IInsn {\n";
+    OS << "class " << Name_ << " : public IInsn {\n";
     OS << "\t" << "const uint32_t RawEncoding_ = " << RawEncoding_ << "; // "
                 << "0b" << std::bitset<32>(RawEncoding_).to_string() << "\n";
     OS << "\t" << "const uint32_t TypeMask_ = " << TypeMask_ << "; // "
                 << "0b" << std::bitset<32>(TypeMask_).to_string() << "\n";
     OS << "\t" << "uint32_t Opcode_ = 0; // fully encoded instruction\n";
-    OS << "\t" << "const std::string AsmStr_  = \"" << AsmStr_ << "\";\n";
+    OS << "\t" << "const std::string AsmStr_ = \"" << AsmStr_ << "\";\n";
 
-    OS << "\t" << "std::vector<std::pair<uint32_t, std::string>> Operands_;\n";
+    OS << "\t" << "std::vector<std::pair<uint32_t, std::string>> Operands_;\n\n";
 
     OS << "public:\n";
 
@@ -147,11 +147,12 @@ public:
     OS << "\t" << "uint32_t getOpcode() const override { return Opcode_; }\n";
 
     // type
-    OS << "\t" << "RVInsnTypes getType() const override { return " << Type_ << "_TYPE_INSN; }\n\n";
+    OS << "\t" << "RVInsnTypes getType() const override {\n"
+       << "\t\t" << "return RVInsnTypes::" << Type_ << "_TYPE_INSN; }\n\n";
 
     // operand functions
     OS << "\t" << "// returns index of the pushed operand\n";
-    OS << "\t" << "uint32_t addOperand(uint32_t OpVal, std::string Name) const override {\n"
+    OS << "\t" << "uint32_t addOperand(uint32_t OpVal, std::string Name) override {\n"
        << "\t\t" << "Operands_.push_back(std::pair<uint32_t, std::string>(OpVal, Name));\n"
        << "\t\t" << "return Operands_.size() - 1;\n"
        << "\t" << "}\n\n";
@@ -171,8 +172,12 @@ public:
     OS << "\t" << "void print(std::ostream &Out) const {\n"
        << "\t\t" << "Out << std::bitset<32>(Opcode_).to_string() << AsmStr_ << \"("
                  << Type_ << ")\";\n";
-    OS << "\t""}\n";
+    OS << "\t""}\n\n";
+
+    // destructor
+    OS << "\t" << "~" << Name_ << "() = default;\n";
     OS << "};\n";
+
 
     return;
   }
@@ -340,7 +345,7 @@ void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
        << "\t\t""if (RawOpcode == 0b" << std::bitset<32>(II.getRawEncoding()).to_string() << ") {\n"
        << "\t\t\t""std::unique_ptr<IInsn>Insn(new " << II.getName() << "(Opcode));\n";
       for (uint32_t OpIdx = 0; OpIdx != II.nOperands(); ++OpIdx)
-        OS << "\t\t\t""Insn.addOperand(Opcode & " << II.getOperandMask(OpIdx)
+        OS << "\t\t\t""Insn->addOperand(Opcode & " << II.getOperandMask(OpIdx)
                                         << " >> " << II.getOperandMaskLSB(OpIdx) << ", "
                                         << "\"" << II.getOperandName(OpIdx) << "\""
            << ");\n";
@@ -350,7 +355,7 @@ void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
   }
 
   OS << "\t""std::cerr << \"Fatal - failed to decode [\" << Opcode << \"]\";\n";
-  OS << "\t""return std::nullptr;\n";
+  OS << "\t""return nullptr;\n";
   OS << "} // decode()\n";
   return;
 }
@@ -367,16 +372,19 @@ void DecoderEmitter::emitTypesEnum(raw_ostream &OS,
   OS << "};\n\n";
   return;
 }
-
+надо заамендить коммит в котором додебаживается decoder.inc (undefined ref to vtable/typeinfo)
 void DecoderEmitter::run(raw_ostream &OS) {
   dump();
 
   emitSourceFileHeader("RV Decoder structures", OS);
 
   OS << "#include <iostream>\n"
+     << "#include <bitset>\n"
+     << "#include <memory>\n"
      << "#include <cstdint>\n"
+     << "#include <vector>\n"
      << "\n"
-     << "#include \"encoding,hpp\"\n"
+     << "#include \"encoding.hpp\"\n"
      << "\n";
 
   std::vector<InstructionInfo> InsnInfos;
