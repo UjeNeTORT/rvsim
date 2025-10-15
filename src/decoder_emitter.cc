@@ -93,19 +93,21 @@ public:
     : RawEncoding_(RawEncoding), TypeMask_(TypeMask), EncodingFields_(EncodingFields),
       Name_(Name), Type_(Type), AsmStr_(AsmStr) {
 
-        for (const auto &EF: EncodingFields_) {
-          if (EF.isOperand())
-            OpndMasks_.push_back(std::pair<OpndMaskTy, std::string>(
-              OpndMaskTy(EF.getLSBPos(), EF.getMSBPos()),
-              EF.getName()
-            )
-          );
-        }
+    for (const auto &EF: EncodingFields_) {
+      if (!EF.isOperand()) continue;
+
+      OpndMasks_.push_back(std::pair<OpndMaskTy, std::string>(
+          OpndMaskTy(EF.getLSBPos(), EF.getMSBPos()),
+          EF.getName()
+        )
+      );
     }
+  }
 
   uint32_t getTypeMask() const { return TypeMask_; }
   uint32_t getRawEncoding() const { return RawEncoding_; }
   std::string getName() const { return Name_; }
+  std::string getType() const { return Type_; }
 
   uint32_t getOperandMaskLSB(uint32_t OpIdx) const noexcept {
     return OpndMasks_[OpIdx].first.first;
@@ -142,9 +144,10 @@ public:
     OS << "\t" << Name_ << "(uint32_t Opcode) : Opcode_(Opcode) {}\n\n";
 
     // opcode
-    OS << "\t" << "uint32_t getOpcode() const override {\n"
-       << "\t\t" << "return Opcode_;\n"
-       << "\t" << "}\n\n";
+    OS << "\t" << "uint32_t getOpcode() const override { return Opcode_; }\n";
+
+    // type
+    OS << "\t" << "RVInsnTypes getType() const override { return " << Type_ << "_TYPE_INSN; }\n\n";
 
     // operand functions
     OS << "\t" << "// returns index of the pushed operand\n";
@@ -162,13 +165,13 @@ public:
     // execute
     OS << "\t" << "void execute(IRVModel &Model) const override {\n"
        << "\t" << ExecuteCode_ << '\n'
-       << "\t}\n";
+       << "\t}\n\n";
 
     // print
     OS << "\t" << "void print(std::ostream &Out) const {\n"
-       << "\t\t" << "Out << std::bitset<32>(Opcode_).to_string() << (\""
+       << "\t\t" << "Out << std::bitset<32>(Opcode_).to_string() << AsmStr_ << \"("
                  << Type_ << ")\";\n";
-    OS << "\t" << "}";
+    OS << "\t""}\n";
     OS << "};\n";
 
     return;
@@ -189,6 +192,8 @@ class DecoderEmitter final {
 
   static void emitDecoderFunc(raw_ostream &OS,
                               const std::vector<InstructionInfo> &InsnInfos);
+  static void emitTypesEnum(raw_ostream &OS,
+                            const std::vector<InstructionInfo> &InsnInfos);
 public:
   DecoderEmitter(const RecordKeeper &RK) : RK_(RK) {}
 
@@ -347,6 +352,20 @@ void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
   OS << "\t""std::cerr << \"Fatal - failed to decode [\" << Opcode << \"]\";\n";
   OS << "\t""return std::nullptr;\n";
   OS << "} // decode()\n";
+  return;
+}
+
+void DecoderEmitter::emitTypesEnum(raw_ostream &OS,
+                                   const std::vector<InstructionInfo> &InsnInfos) {
+  std::set<std::string> InsnTypes;
+  OS << "enum class RVInsnTypes : uint32_t {\n";
+  OS << "\t""UNDEF_TYPE_INSN = 0,\n";
+  for (auto &II: InsnInfos) {
+    std::string ITy = II.getType();
+    if (InsnTypes.emplace(ITy).second) OS << "\t" << ITy << "_TYPE_INSN" << ",\n";
+  }
+  OS << "};\n\n";
+  return;
 }
 
 void DecoderEmitter::run(raw_ostream &OS) {
@@ -374,7 +393,7 @@ void DecoderEmitter::run(raw_ostream &OS) {
       return;
     }
 
-    std::optional<StringRef> TyName;
+    std::optional<StringRef> TyName = std::nullopt;
     try {
       TyName = D->getValueAsOptionalString("Type");
     } catch (...) {
@@ -394,6 +413,8 @@ void DecoderEmitter::run(raw_ostream &OS) {
   }
 
   OS << "namespace RVISA {\n\n";
+
+  emitTypesEnum(OS, InsnInfos);
 
   for (const auto &II : InsnInfos) {
     II.emitClass(OS);
