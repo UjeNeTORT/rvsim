@@ -169,15 +169,12 @@ public:
        << "\t}\n\n";
 
     // print
-    OS << "\t" << "void print(std::ostream &Out) const {\n"
+    OS << "\t" << "void print(std::ostream &Out) const override {\n"
        << "\t\t" << "Out << std::bitset<32>(Opcode_).to_string() << AsmStr_ << \"("
                  << Type_ << ")\";\n";
     OS << "\t""}\n\n";
 
-    // destructor
-    OS << "\t" << "~" << Name_ << "() = default;\n";
     OS << "};\n";
-
 
     return;
   }
