@@ -3,8 +3,6 @@
 
 #include <cstdint>
 
-#include "encoding.hpp"
-
 namespace rv32i_sim {
 
 constexpr std::size_t DEFAULT_SEG_SIZE = 1 << 16;
@@ -20,27 +18,27 @@ constexpr uint8_t DEFAULT_RIGHTS = RIGHTS_R; // READ
 /// @brief describes a segment of memory
 /// @brief but does not store any data
 class Segment {
-  addr_t vaddr_; ///< begin address of a segment
-  addr_t size_; ///< size in the direction of increasing addresses
+  uint32_t vaddr_; ///< begin address of a segment
+  uint32_t size_; ///< size in the direction of increasing addresses
   uint8_t rights_; ///< RWX
   uint8_t align_; ///< alignment
 
 public:
   Segment() {}
-  Segment(addr_t vaddr,
-          addr_t size = DEFAULT_SEG_SIZE,
+  Segment(uint32_t vaddr,
+          uint32_t size = DEFAULT_SEG_SIZE,
           uint8_t rights = DEFAULT_RIGHTS,
           uint8_t align = DEFAULT_ALIGN);
 
-  addr_t getVaddr() const;
-  addr_t getSize() const;
+  uint32_t getVaddr() const;
+  uint32_t getSize() const;
   uint8_t getRights() const;
   uint8_t getAlign() const;
 
   bool checkRights(uint8_t rights) const;
 
-  static Segment createSegment(addr_t vaddr,
-                               addr_t size = DEFAULT_SEG_SIZE,
+  static Segment createSegment(uint32_t vaddr,
+                               uint32_t size = DEFAULT_SEG_SIZE,
                                uint8_t rights = DEFAULT_RIGHTS,
                                uint8_t align = DEFAULT_ALIGN);
 

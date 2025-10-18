@@ -12,11 +12,11 @@
 
 #include "isim.hpp"
 #include "instruction.hpp"
-#include "isa.hpp"
-#include "encoding.hpp"
 #include "memory.hpp"
 #include "register_file.hpp"
 #include "exec_env.hpp"
+
+#include "decoder.inc"
 
 namespace elf = ELFIO;
 
@@ -54,17 +54,17 @@ const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 class RVModel final : IRVModel {
   MemoryModel mem_;
   RegisterFile regs_;
-  addr_t pc_;
+  uint32_t pc_;
 
   bool execution = false;
   bool is_valid_ = false;
 
 public:
-  RVModel(addr_t pc_init = 0) : pc_(pc_init) {}
-  RVModel(const MemoryModel& mem_init, const RegisterFile& regs_init, addr_t pc_init)
+  RVModel(uint32_t pc_init = 0) : pc_(pc_init) {}
+  RVModel(const MemoryModel& mem_init, const RegisterFile& regs_init, uint32_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
-  RVModel(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init)
+  RVModel(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
   RVModel(std::filesystem::path& elf_path) {
@@ -82,7 +82,7 @@ public:
     mem_ = MemoryModel::fromELF(elf_reader);
 
     // setting up stack and initial stack frame
-    addr_t sp = mem_.setUpStack();
+    uint32_t sp = mem_.setUpStack();
     regs_.set(Register::X2, sp); // SP = sp
     regs_.set(Register::X8, sp); // FP = sp
 
@@ -106,33 +106,33 @@ public:
   }
 
   void init(const MemoryModel& mem_init, const RegisterFile& regs_init,
-                                                              addr_t pc_init) override;
-  void init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init) override;
+                                                              uint32_t pc_init) override;
+  void init(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init) override;
 
   bool operator== (const RVModel& other) const;
 
-  addr_t getPC() const override;
-  void setPC(addr_t pc_new) override;
+  uint32_t getPC() const override;
+  void setPC(uint32_t pc_new) override;
 
 private:
-  std::unique_ptr<IInsn> decode(addr_t insn_code);
-  void printInsn(std::ostream& out, const IInsn& insn);
+  std::unique_ptr<RVISA::IRVInsn> decode(uint32_t insn_code);
+  void printInsn(std::ostream& out, const RVISA::IRVInsn& insn);
 
 public:
   bool isValid() const override;
 
-  byte_t readByte(addr_t addr) const override;
-  half_t readHalf(addr_t addr) const override;
-  word_t readWord(addr_t addr) const override;
+  uint8_t readByte(uint32_t addr) const override;
+  uint16_t readHalf(uint32_t addr) const override;
+  uint32_t readWord(uint32_t addr) const override;
 
-  void writeByte(addr_t addr, byte_t val) override;
-  void writeHalf(addr_t addr, half_t val) override;
-  void writeWord(addr_t addr, word_t val) override;
+  void writeByte(uint32_t addr, uint8_t val) override;
+  void writeHalf(uint32_t addr, uint16_t val) override;
+  void writeWord(uint32_t addr, uint32_t val) override;
 
-  addr_t getReg(Register reg) const override;
-  void setReg(Register reg, word_t val) override;
+  uint32_t getReg(Register reg) const override;
+  void setReg(Register reg, uint32_t val) override;
 
-  addr_t setUpEnvironment(addr_t pc_main);
+  uint32_t setUpEnvironment(uint32_t pc_main);
 
   void execute() override;
   void exit() override;
@@ -159,7 +159,7 @@ void RVModel::init(std::ifstream& model_state_file) {
   }
 
   // read pc
-  model_state_file.read(reinterpret_cast<char *>(&pc_), sizeof(addr_t));
+  model_state_file.read(reinterpret_cast<char *>(&pc_), sizeof(uint32_t));
   assert(pc_ % IALIGN == 0 && "PC at unaligned position");
 
   // the order of initialization is important (see bstate format)
@@ -169,13 +169,13 @@ void RVModel::init(std::ifstream& model_state_file) {
   is_valid_ = regs_.isValid() && mem_.isValid() && pc_ % IALIGN == 0;
 }
 
-void RVModel::init(const MemoryModel& mem_init, const RegisterFile& regs_init, addr_t pc_init) {
+void RVModel::init(const MemoryModel& mem_init, const RegisterFile& regs_init, uint32_t pc_init) {
   mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
   assert(pc_ % IALIGN == 0 && "PC at unaligned position");
   if (pc_ % IALIGN == 0) is_valid_ = true;
 }
 
-void RVModel::init(MemoryModel&& mem_init, RegisterFile&& regs_init, addr_t pc_init) {
+void RVModel::init(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init) {
   mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
   assert(pc_ % IALIGN == 0 && "PC at unaligned position");
   if (pc_ % IALIGN == 0) is_valid_ = true;
@@ -185,11 +185,11 @@ bool RVModel::operator== (const RVModel& other) const {
   return pc_ == other.pc_ && regs_ == other.regs_ && mem_ == other.mem_;
 }
 
-addr_t RVModel::getPC() const {
+uint32_t RVModel::getPC() const {
   return pc_;
 }
 
-void RVModel::setPC(addr_t pc_new) {
+void RVModel::setPC(uint32_t pc_new) {
   assert(pc_new % IALIGN == 0 && "PC set to unaligned position");
   if (pc_new % IALIGN != 0) is_valid_ = false;
 
@@ -198,16 +198,16 @@ void RVModel::setPC(addr_t pc_new) {
 
 bool RVModel::isValid() const { return is_valid_; }
 
-byte_t RVModel::readByte(addr_t addr) const { return mem_.readByte(addr); }
-half_t RVModel::readHalf(addr_t addr) const { return mem_.readHalf(addr); }
-word_t RVModel::readWord(addr_t addr) const { return mem_.readWord(addr); }
+uint8_t  RVModel::readByte(uint32_t addr) const { return mem_.readByte(addr); }
+uint16_t RVModel::readHalf(uint32_t addr) const { return mem_.readHalf(addr); }
+uint32_t RVModel::readWord(uint32_t addr) const { return mem_.readWord(addr); }
 
-void RVModel::writeByte(addr_t addr, byte_t val) { mem_.writeByte(addr, val); }
-void RVModel::writeHalf(addr_t addr, half_t val) { mem_.writeHalf(addr, val); }
-void RVModel::writeWord(addr_t addr, word_t val) { mem_.writeWord(addr, val); }
+void RVModel::writeByte(uint32_t addr, uint8_t val)  { mem_.writeByte(addr, val); }
+void RVModel::writeHalf(uint32_t addr, uint16_t val) { mem_.writeHalf(addr, val); }
+void RVModel::writeWord(uint32_t addr, uint32_t val) { mem_.writeWord(addr, val); }
 
-std::unique_ptr<IInsn> RVModel::decode(addr_t insn_code) {
-  return RVInsn::decode(insn_code);
+std::unique_ptr<RVISA::IRVInsn> RVModel::decode(uint32_t insn_code) {
+  return RVISA::decode(insn_code);
 }
 
 void RVModel::execute() {
@@ -216,18 +216,18 @@ void RVModel::execute() {
   execution = true;
 
   while (execution && is_valid_) {
-    addr_t insn_code = mem_.readWord(pc_); // fetch
-    std::unique_ptr<IInsn> insn = decode(insn_code);
+    uint32_t insn_code = mem_.readWord(pc_); // fetch
+    std::unique_ptr<RVISA::IRVInsn> insn = RVISA::decode(insn_code);
 
     printInsn(std::cerr, *insn);
 
-    if (insn->getType() == RVInsnType::UNDEF_TYPE_INSN) {
+    if (insn->getType() == RVISA::RVInsnTypes::UNDEF_TYPE_INSN) {
       break; // todo should refactor this
     }
 
     insn->execute(*this);
 
-    setPC(pc_ + sizeof(word_t) * execution); // advance if executing, else - do nothing
+    setPC(pc_ + sizeof(uint32_t) * execution); // advance if executing, else - do nothing
   }
 
   std::cerr << "DBG: end execution (pc = " << pc_ << ")\n";
@@ -240,7 +240,7 @@ void RVModel::exit() {
   execution = false;
 }
 
-void RVModel::printInsn(std::ostream& out, const IInsn& insn) {
+void RVModel::printInsn(std::ostream& out, const RVISA::IRVInsn& insn) {
   out << insn << ' ' << insn.getName() << " <pc = " << getPC() << ">\n";
 }
 
@@ -259,23 +259,23 @@ void RVModel::binaryDump(std::ofstream& fout) {
 
   fout.write(RV32I_MODEL_STATE_SIGNATURE.c_str(),
              RV32I_MODEL_STATE_SIGNATURE.size() + 1);
-  fout.write(reinterpret_cast<char *>(&pc_), sizeof(addr_t));
+  fout.write(reinterpret_cast<char *>(&pc_), sizeof(uint32_t));
   regs_.binaryDump(fout);
   mem_.binaryDump(fout);
 }
 
-addr_t RVModel::getReg(Register reg) const {
+uint32_t RVModel::getReg(Register reg) const {
   return regs_.get(reg);
 }
 
-void RVModel::setReg(Register reg, word_t val) {
+void RVModel::setReg(Register reg, uint32_t val) {
   regs_.set(reg, val);
 }
 
-addr_t RVModel::setUpEnvironment(addr_t pc_main) {
+uint32_t RVModel::setUpEnvironment(uint32_t pc_main) {
   assert(pc_main < mem_.size() && "pc of main is set too high");
 
-  addr_t env_vaddr = mem_.pushSegment(
+  uint32_t env_vaddr = mem_.pushSegment(
     ENV_SEG_SIZE,
     RIGHTS_R | RIGHTS_X | RIGHTS_W, // todo discard W right, user vs supervisor mode
     DEFAULT_ALIGN
@@ -285,344 +285,347 @@ addr_t RVModel::setUpEnvironment(addr_t pc_main) {
 
   rvJAL jal_main;
   jal_main.encode(Register::X1,
-    static_cast<sword_t>(pc_main) - static_cast<sword_t>(env_vaddr) - sizeof(addr_t)
+    static_cast<int32_t>(pc_main) - static_cast<int32_t>(env_vaddr) - sizeof(uint32_t)
   );
 
   rvEBREAK ebreak;
 
   // emit environment code
   writeWord(env_vaddr, jal_main.getCode());
-  writeWord(env_vaddr + sizeof(addr_t), ebreak.getCode());
+  writeWord(env_vaddr + sizeof(uint32_t), ebreak.getCode());
 
   return env_vaddr;
 }
 
-void rvADD::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  model.setReg(dst_, op1 + op2);
-}
-
-void rvSUB::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  model.setReg(dst_, op1 - op2);
-}
-
-void rvSLL::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  model.setReg(dst_, op1 << (op2 & MASK_4_0));
-}
-
-void rvSLT::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  model.setReg(dst_, std::bit_cast<sword_t>(op1) < std::bit_cast<sword_t>(op2));
-}
-
-void rvSLTU::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  model.setReg(dst_, op1 < op2);
-}
-
-void rvXOR::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  model.setReg(dst_, op1 ^ op2);
-}
-
-void rvSRL::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  model.setReg(dst_, op1 >> (op2 & MASK_4_0));
-}
-
-void rvSRA::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  model.setReg(dst_, std::bit_cast<sword_t>(op1) >> (op2 & MASK_4_0));
-}
-
-void rvOR::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  model.setReg(dst_, op1 | op2);
-}
-
-void rvAND::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  model.setReg(dst_, op1 & op2);
-}
-
-void rvUNDEF_R::execute(IRVModel& model) const {
-  // do nothing
-}
-
-void rvJALR::execute(IRVModel& model) const {
-  addr_t ret_addr = model.getPC(); // actual return address will be set at
-                                   // advance pc stage, where pc += 4
-  model.setReg(rd_, ret_addr);
-
-  addr_t jmp_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
-  jmp_addr &= 0xFFFF'FFFE; // clear least significant bit
-  model.setPC(jmp_addr);
-}
-
-void rvLB::execute(IRVModel& model) const {
-  addr_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
-  byte_t mem_val = model.readByte(mem_addr);
-  model.setReg(rd_, sign_extend_8_to_32(mem_val));
-}
-
-void rvLH::execute(IRVModel& model) const {
-  addr_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
-  half_t mem_val = model.readHalf(mem_addr);
-  model.setReg(rd_, sign_extend_16_to_32(mem_val));
-}
-
-void rvLW::execute(IRVModel& model) const {
-  addr_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
-  word_t mem_val = model.readWord(mem_addr);
-
-  model.setReg(rd_, mem_val);
-}
-
-void rvLBU::execute(IRVModel& model) const {
-  addr_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
-  byte_t mem_val = model.readByte(mem_addr);
-  model.setReg(rd_, static_cast<addr_t>(mem_val));
-}
-
-void rvLHU::execute(IRVModel& model) const {
-  addr_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
-  half_t mem_val = model.readHalf(mem_addr);
-  model.setReg(rd_, static_cast<addr_t>(mem_val));
-}
-
-void rvADDI::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  model.setReg(rd_, op1 + sign_extend_12_to_32(imm_));
-}
-
-void rvSLTI::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  model.setReg(rd_, std::bit_cast<sword_t>(op1) < sign_extend_12_to_32(imm_));
-}
-
-void rvSLTIU::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  model.setReg(rd_, op1 < std::bit_cast<addr_t>(sign_extend_12_to_32(imm_)));
-}
-
-void rvXORI::execute(IRVModel& model) const {
-  sword_t signed_imm = sign_extend_12_to_32(imm_);
-  addr_t op1 = model.getReg(rs1_);
-
-  // Note, “XORI rd, rs1, -1” performs a bitwise logical
-  // inversion of register rs1
-  // (assembler pseudo-instruction NOT rd, rs)
-  //
-  // source: https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#lb
-  if (signed_imm == -1)
-    model.setReg(rd_, ~op1);
-  else
-    model.setReg(rd_, op1 ^ signed_imm);
-}
-
-void rvORI::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  model.setReg(rd_, op1 | sign_extend_12_to_32(imm_));
-}
-
-void rvANDI::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  model.setReg(rd_, op1 & sign_extend_12_to_32(imm_));
-}
-
-void rvSLLI::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t shamt = imm_ & MASK_4_0;
-
-  model.setReg(rd_, op1 << shamt);
-}
-
-void rvSRLI::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t shamt = imm_ & MASK_4_0;
-
-  model.setReg(rd_, op1 >> shamt);
-}
-
-void rvSRAI::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t shamt = imm_ & MASK_4_0;
-
-  model.setReg(rd_, std::bit_cast<sword_t>(op1) >> shamt);
-}
-
-void rvUNDEF_I::execute(IRVModel& model) const {
-  // do nothing
-}
-
-void rvSB::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  addr_t mem_addr = op1 + sign_extend_12_to_32(imm_);
-  byte_t val = op2 & 0xFF; // 8 bits mask
-
-  model.writeByte(mem_addr, val);
-};
-
-void rvSH::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  addr_t mem_addr = op1 + sign_extend_12_to_32(imm_);
-  half_t val = op2 & 0xFFFF; // 16 bits mask
-
-  model.writeHalf(mem_addr, val);
-};
-
-void rvSW::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-  addr_t mem_addr = op1 + sign_extend_12_to_32(imm_);
-  word_t val = op2 & 0xFFFF'FFFF; // 32 bits mask
-
-  model.writeWord(mem_addr, val);
-};
-
-void rvUNDEF_S::execute(IRVModel& model) const {
-  // do nothing
-  std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
-}
-
-void rvBEQ::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-
-  if (op1 == op2) {
-    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
-    model.setPC(branch_addr);
-  }
-}
-
-void rvBNE::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-
-  if (op1 != op2) {
-    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
-    model.setPC(branch_addr);
-  }
-}
-
-void rvBLT::execute(IRVModel& model) const {
-  sword_t op1 = std::bit_cast<sword_t>(model.getReg(rs1_));
-  sword_t op2 = std::bit_cast<sword_t>(model.getReg(rs2_));
-
-  if (op1 < op2) {
-    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
-    model.setPC(branch_addr);
-  }
-}
-
-void rvBLTU::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-
-  if (op1 < op2) {
-    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
-    model.setPC(branch_addr);
-  }
-}
-
-void rvBGE::execute(IRVModel& model) const {
-  sword_t op1 = std::bit_cast<sword_t>(model.getReg(rs1_));
-  sword_t op2 = std::bit_cast<sword_t>(model.getReg(rs2_));
-
-  if (op1 >= op2) {
-    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
-    model.setPC(branch_addr);
-  }
-}
-
-void rvBGEU::execute(IRVModel& model) const {
-  addr_t op1 = model.getReg(rs1_);
-  addr_t op2 = model.getReg(rs2_);
-
-  if (op1 >= op2) {
-    addr_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
-    model.setPC(branch_addr);
-  }
-}
-
-void rvUNDEF_B::execute(IRVModel& model) const {
-  // do nothing
-}
-
-void rvLUI::execute(IRVModel& model) const {
-  model.setReg(rd_, imm_);
-}
-
-void rvAUIPC::execute(IRVModel& model) const {
-  addr_t curr_pc = model.getPC();
-  model.setReg(rd_, curr_pc + imm_);
-}
-
-void rvUNDEF_U::execute(IRVModel& model) const {
-  // do nothing
-}
-
-void rvJAL::execute(IRVModel& model) const {
-  addr_t curr_pc = model.getPC();
-
-  model.setReg(rd_, curr_pc); // actual return address will be set at
-                              // advance pc stage, where pc += 4
-  model.setPC(curr_pc + sign_extend_21_to_32(imm_));
-}
-
-void rvEBREAK::execute(IRVModel& model) const {
-  model.exit();
-}
-
-// todo implement handlers
-void rvECALL::execute(IRVModel& model) const {
-  // Arch/ABI	arg1	arg2	arg3	arg4	arg5	arg6	 syscall No
-  // riscv	    a0	  a1	  a2	  a3	  a4	  a5	      a7
-
-  EESyscall syscall = static_cast<EESyscall>(model.getReg(Register::X17));
-
-  switch (syscall)
-  {
-  case EESyscall::READ:
-  {
-    std::cerr << "READ SYSCALL" << "\n";
-    std::string input (static_cast<uint8_t>(model.getReg(Register::X11)), '\0');
-    std::cin >> input;
-    std::cerr << input << '\n';
-    break;
-  }
-  case EESyscall::WRITE:
-    std::cerr << "WRITE SYSCALL" << "\n";
-    break;
-
-  case EESyscall::EXIT:
-    std::cerr << "EXIT SYSCALL" << "\n";
-    model.exit();
-    break;
-
-  default:
-    std::cerr << "Unknown syscall\n";
-    break;
-  }
-}
-
-void GeneralUndefInsn::execute(IRVModel& model) const {
-  // do nothing
-}
+// A GREAT PIECE OF LEGACY HERE WHICH IS GOING TO BE DELETED SOON
+// It is left here only to help writing execute() funcs in tablegen
+//
+// void rvADD::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // model.setReg(dst_, op1 + op2);
+// }
+
+// void rvSUB::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // model.setReg(dst_, op1 - op2);
+// }
+
+// void rvSLL::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // model.setReg(dst_, op1 << (op2 & MASK_4_0));
+// }
+
+// void rvSLT::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // model.setReg(dst_, std::bit_cast<suint32_t>(op1) < std::bit_cast<suint32_t>(op2));
+// }
+
+// void rvSLTU::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // model.setReg(dst_, op1 < op2);
+// }
+
+// void rvXOR::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // model.setReg(dst_, op1 ^ op2);
+// }
+
+// void rvSRL::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // model.setReg(dst_, op1 >> (op2 & MASK_4_0));
+// }
+
+// void rvSRA::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // model.setReg(dst_, std::bit_cast<suint32_t>(op1) >> (op2 & MASK_4_0));
+// }
+
+// void rvOR::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // model.setReg(dst_, op1 | op2);
+// }
+
+// void rvAND::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // model.setReg(dst_, op1 & op2);
+// }
+
+// void rvUNDEF_R::execute(IRVModel& model) const {
+  // // do nothing
+// }
+
+// void rvJALR::execute(IRVModel& model) const {
+  // uint32_t ret_addr = model.getPC(); // actual return address will be set at
+                                   // // advance pc stage, where pc += 4
+  // model.setReg(rd_, ret_addr);
+
+  // uint32_t jmp_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  // jmp_addr &= 0xFFFF'FFFE; // clear least significant bit
+  // model.setPC(jmp_addr);
+// }
+
+// void rvLB::execute(IRVModel& model) const {
+  // uint32_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  // uint8_t mem_val = model.readByte(mem_addr);
+  // model.setReg(rd_, sign_extend_8_to_32(mem_val));
+// }
+
+// void rvLH::execute(IRVModel& model) const {
+  // uint32_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  // uint16_t mem_val = model.readHalf(mem_addr);
+  // model.setReg(rd_, sign_extend_16_to_32(mem_val));
+// }
+
+// void rvLW::execute(IRVModel& model) const {
+  // uint32_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  // uint32_t mem_val = model.readWord(mem_addr);
+
+  // model.setReg(rd_, mem_val);
+// }
+
+// void rvLBU::execute(IRVModel& model) const {
+  // uint32_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  // uint8_t mem_val = model.readByte(mem_addr);
+  // model.setReg(rd_, static_cast<uint32_t>(mem_val));
+// }
+
+// void rvLHU::execute(IRVModel& model) const {
+  // uint32_t mem_addr = model.getReg(rs1_) + sign_extend_12_to_32(imm_);
+  // uint16_t mem_val = model.readHalf(mem_addr);
+  // model.setReg(rd_, static_cast<uint32_t>(mem_val));
+// }
+
+// void rvADDI::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // model.setReg(rd_, op1 + sign_extend_12_to_32(imm_));
+// }
+
+// void rvSLTI::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // model.setReg(rd_, std::bit_cast<suint32_t>(op1) < sign_extend_12_to_32(imm_));
+// }
+
+// void rvSLTIU::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // model.setReg(rd_, op1 < std::bit_cast<uint32_t>(sign_extend_12_to_32(imm_)));
+// }
+
+// void rvXORI::execute(IRVModel& model) const {
+  // suint32_t signed_imm = sign_extend_12_to_32(imm_);
+  // uint32_t op1 = model.getReg(rs1_);
+
+  // // Note, “XORI rd, rs1, -1” performs a bitwise logical
+  // // inversion of register rs1
+  // // (assembler pseudo-instruction NOT rd, rs)
+  // //
+  // // source: https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#lb
+  // if (signed_imm == -1)
+    // model.setReg(rd_, ~op1);
+  // else
+    // model.setReg(rd_, op1 ^ signed_imm);
+// }
+
+// void rvORI::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // model.setReg(rd_, op1 | sign_extend_12_to_32(imm_));
+// }
+
+// void rvANDI::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // model.setReg(rd_, op1 & sign_extend_12_to_32(imm_));
+// }
+
+// void rvSLLI::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t shamt = imm_ & MASK_4_0;
+
+  // model.setReg(rd_, op1 << shamt);
+// }
+
+// void rvSRLI::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t shamt = imm_ & MASK_4_0;
+
+  // model.setReg(rd_, op1 >> shamt);
+// }
+
+// void rvSRAI::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t shamt = imm_ & MASK_4_0;
+
+  // model.setReg(rd_, std::bit_cast<suint32_t>(op1) >> shamt);
+// }
+
+// void rvUNDEF_I::execute(IRVModel& model) const {
+  // // do nothing
+// }
+
+// void rvSB::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // uint32_t mem_addr = op1 + sign_extend_12_to_32(imm_);
+  // uint8_t val = op2 & 0xFF; // 8 bits mask
+
+  // model.writeByte(mem_addr, val);
+// };
+
+// void rvSH::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // uint32_t mem_addr = op1 + sign_extend_12_to_32(imm_);
+  // uint16_t val = op2 & 0xFFFF; // 16 bits mask
+
+  // model.writeHalf(mem_addr, val);
+// };
+
+// void rvSW::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+  // uint32_t mem_addr = op1 + sign_extend_12_to_32(imm_);
+  // uint32_t val = op2 & 0xFFFF'FFFF; // 32 bits mask
+
+  // model.writeWord(mem_addr, val);
+// };
+
+// void rvUNDEF_S::execute(IRVModel& model) const {
+  // // do nothing
+  // std::cerr << *this << " ??? <pc = " << model.getPC() << ">\n";
+// }
+
+// void rvBEQ::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+
+  // if (op1 == op2) {
+    // uint32_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    // model.setPC(branch_addr);
+  // }
+// }
+
+// void rvBNE::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+
+  // if (op1 != op2) {
+    // uint32_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    // model.setPC(branch_addr);
+  // }
+// }
+
+// void rvBLT::execute(IRVModel& model) const {
+  // suint32_t op1 = std::bit_cast<suint32_t>(model.getReg(rs1_));
+  // suint32_t op2 = std::bit_cast<suint32_t>(model.getReg(rs2_));
+
+  // if (op1 < op2) {
+    // uint32_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    // model.setPC(branch_addr);
+  // }
+// }
+
+// void rvBLTU::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+
+  // if (op1 < op2) {
+    // uint32_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    // model.setPC(branch_addr);
+  // }
+// }
+
+// void rvBGE::execute(IRVModel& model) const {
+  // suint32_t op1 = std::bit_cast<suint32_t>(model.getReg(rs1_));
+  // suint32_t op2 = std::bit_cast<suint32_t>(model.getReg(rs2_));
+
+  // if (op1 >= op2) {
+    // uint32_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    // model.setPC(branch_addr);
+  // }
+// }
+
+// void rvBGEU::execute(IRVModel& model) const {
+  // uint32_t op1 = model.getReg(rs1_);
+  // uint32_t op2 = model.getReg(rs2_);
+
+  // if (op1 >= op2) {
+    // uint32_t branch_addr = model.getPC() + sign_extend_13_to_32(imm_);
+    // model.setPC(branch_addr);
+  // }
+// }
+
+// void rvUNDEF_B::execute(IRVModel& model) const {
+  // // do nothing
+// }
+
+// void rvLUI::execute(IRVModel& model) const {
+  // model.setReg(rd_, imm_);
+// }
+
+// void rvAUIPC::execute(IRVModel& model) const {
+  // uint32_t curr_pc = model.getPC();
+  // model.setReg(rd_, curr_pc + imm_);
+// }
+
+// void rvUNDEF_U::execute(IRVModel& model) const {
+  // // do nothing
+// }
+
+// void rvJAL::execute(IRVModel& model) const {
+  // uint32_t curr_pc = model.getPC();
+
+  // model.setReg(rd_, curr_pc); // actual return address will be set at
+                              // // advance pc stage, where pc += 4
+  // model.setPC(curr_pc + sign_extend_21_to_32(imm_));
+// }
+
+// void rvEBREAK::execute(IRVModel& model) const {
+  // model.exit();
+// }
+
+// // todo implement handlers
+// void rvECALL::execute(IRVModel& model) const {
+  // // Arch/ABI	arg1	arg2	arg3	arg4	arg5	arg6	 syscall No
+  // // riscv	    a0	  a1	  a2	  a3	  a4	  a5	      a7
+
+  // EESyscall syscall = static_cast<EESyscall>(model.getReg(Register::X17));
+
+  // switch (syscall)
+  // {
+  // case EESyscall::READ:
+  // {
+    // std::cerr << "READ SYSCALL" << "\n";
+    // std::string input (static_cast<uint8_t>(model.getReg(Register::X11)), '\0');
+    // std::cin >> input;
+    // std::cerr << input << '\n';
+    // break;
+  // }
+  // case EESyscall::WRITE:
+    // std::cerr << "WRITE SYSCALL" << "\n";
+    // break;
+
+  // case EESyscall::EXIT:
+    // std::cerr << "EXIT SYSCALL" << "\n";
+    // model.exit();
+    // break;
+
+  // default:
+    // std::cerr << "Unknown syscall\n";
+    // break;
+  // }
+// }
+
+// void GeneralUndefInsn::execute(IRVModel& model) const {
+  // // do nothing
+// }
 
 } // namespace rv32i_sim
 

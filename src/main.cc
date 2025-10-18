@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
 
   bool checkpoints = false;
   int logs = 0;
-  rv32i_sim::addr_t pc_init = 0;
+  uint32_t pc_init = 0;
   std::filesystem::path istate;
   std::filesystem::path ostate;
   std::filesystem::path imem;
@@ -44,7 +44,7 @@ int main(int argc, char *argv[]) {
     ("omem", po::value<std::filesystem::path>(&omem),
         "output simulator memory to a binary file at the end of execution")
 
-    ("pc", po::value<rv32i_sim::addr_t>(&pc_init), "initial pc")
+    ("pc", po::value<uint32_t>(&pc_init), "initial pc")
 
     ("elf", po::value<std::filesystem::path>(&elf_path),
         "run simulator on an ELF file. Discards all the other input sources qualifiers")

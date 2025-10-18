@@ -2,12 +2,12 @@
 #define REGISTER_FILE_HPP
 
 #include <cassert>
+#include <cstdint>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <vector>
 
-#include "encoding.hpp"
 #include "registers.hpp"
 
 namespace rv32i_sim {
@@ -15,12 +15,12 @@ namespace rv32i_sim {
 const std::string RV32I_REGS_STATE_SIGNATURE = "RV32I_REG_STATE";
 
 class RegisterFile final {
-  std::vector<addr_t> regs_ = std::vector<addr_t>(N_REGS);
+  std::vector<uint32_t> regs_ = std::vector<uint32_t>(N_REGS);
   bool is_valid_ = false;
 
 public:
   RegisterFile(bool valid = true);
-  RegisterFile(std::vector<addr_t> regs, bool valid = true);
+  RegisterFile(std::vector<uint32_t> regs, bool valid = true);
 
   // construct from bstate file format
   RegisterFile(std::ifstream& regs_bstate);
@@ -34,20 +34,19 @@ public:
   // verify validity and return is_valid
   bool validate();
 
-  bool operator==(const RegisterFile& other) const;
+  bool operator==(const RegisterFile &other) const;
 
-  void set(Register reg, sword_t val);
-  addr_t get(Register reg) const;
+  void set(Register reg, int32_t val);
+  uint32_t get(Register reg) const;
 
-  std::ostream& print(std::ostream& out);
-  void binaryDump(std::ofstream& fout);
+  std::ostream &print(std::ostream &out);
+  void binaryDump(std::ofstream &fout);
 };
-
-std::ostream& operator<<(std::ostream& out, RegisterFile& rf);
 
 bool isRegValid(Register reg);
 
-std::ostream& operator<< (std::ostream& out, Register reg);
+std::ostream &operator<<(std::ostream &out, RegisterFile &rf);
+std::ostream &operator<<(std::ostream &out, Register reg);
 
 } // rv32i_sim
 

@@ -1,7 +1,8 @@
 #include "memory.hpp"
 
-#include <cassert>
 #include <bit>
+#include <cassert>
+#include <climits>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
@@ -34,8 +35,8 @@ static uint32_t alignAs(std::vector<T>& vec, uint32_t align) {
 namespace rv32i_sim {
 
 ELFError checkELF(elf::elfio& elf_reader) {
-  addr_t elf_class = elf_reader.get_class();
-  addr_t elf_encoding = elf_reader.get_encoding();
+  uint32_t elf_class = elf_reader.get_class();
+  uint32_t elf_encoding = elf_reader.get_encoding();
 
   if (elf_class != elf::ELFCLASS32) {
     std::cerr << "ERROR: wrong ELF class: " << elf_class
@@ -73,7 +74,7 @@ MemoryModel MemoryModel::fromELF(elf::elfio& elf_reader) {
   uint32_t seg_rights = 0;
   uint32_t seg_align = 0;
 
-  std::vector<byte_t> memory (DEFAULT_ADDR_SPACE);
+  std::vector<uint8_t> memory (DEFAULT_ADDR_SPACE);
   std::vector<Segment> segments;
 
   auto seg = elf_reader.segments.begin();
@@ -147,7 +148,7 @@ MemoryModel MemoryModel::fromBstate(std::ifstream& mem_file) {
   uint32_t file_size = static_cast<uint32_t>(fileBytesLeft(mem_file));
   uint32_t memory_size = file_size > DEFAULT_ADDR_SPACE ? file_size :
                                                               DEFAULT_ADDR_SPACE;
-  std::vector<byte_t> memory(memory_size);
+  std::vector<uint8_t> memory(memory_size);
   mem_file.read(std::bit_cast<char *>(memory.data()), file_size);
 
   memory_size = alignAs(memory, DEFAULT_ALIGN);
@@ -170,13 +171,13 @@ MemoryModel MemoryModel::fromBstate(std::ifstream& mem_file) {
 
 // sets up stack segment of size = stack_size with canary at the top
 // returns address where initial sp is placed - the bottom of the segment
-addr_t MemoryModel::setUpStack(uint32_t stack_size) {
+uint32_t MemoryModel::setUpStack(uint32_t stack_size) {
   assert(stack_size < MAX_STACK_SIZE && "Stack size is too big!");
 
   // stack resides at the bottom of the address space
   // and is protected by a canary segment from both sides
-  addr_t canary_top_vaddr = alignAs(mem_, DEFAULT_ALIGN);
-  addr_t stack_vaddr = canary_top_vaddr + DEFAULT_CANARY_SIZE;
+  uint32_t canary_top_vaddr = alignAs(mem_, DEFAULT_ALIGN);
+  uint32_t stack_vaddr = canary_top_vaddr + DEFAULT_CANARY_SIZE;
   Segment stack {
     stack_vaddr,
     stack_size,
@@ -199,11 +200,11 @@ addr_t MemoryModel::setUpStack(uint32_t stack_size) {
   segments_.push_back(stack);
   segments_.push_back(canary_bottom);
 
-  return stack_vaddr + stack_size - sizeof(addr_t);
+  return stack_vaddr + stack_size - sizeof(uint32_t);
 }
 
-addr_t MemoryModel::pushSegment(addr_t size, uint8_t rights, uint8_t align) {
-  addr_t seg_vaddr = alignAs(mem_, align);
+uint32_t MemoryModel::pushSegment(uint32_t size, uint8_t rights, uint8_t align) {
+  uint32_t seg_vaddr = alignAs(mem_, align);
 
   if (mem_.size() < seg_vaddr + size)
     mem_.resize(seg_vaddr + size);
@@ -222,10 +223,10 @@ addr_t MemoryModel::pushSegment(addr_t size, uint8_t rights, uint8_t align) {
   return seg_vaddr;
 }
 
-addr_t MemoryModel::pushSegment(Segment seg) {
+uint32_t MemoryModel::pushSegment(Segment seg) {
   assert(seg.getVaddr() >= mem_.size() && "New segment cannot overlap the existing one");
 
-  addr_t max_addr = seg.getVaddr() + seg.getSize();
+  uint32_t max_addr = seg.getVaddr() + seg.getSize();
   if (mem_.size() < max_addr) mem_.resize(max_addr);
 
   std::memset(mem_.data() + seg.getVaddr(), ENV_CODE_BYTE, seg.getSize());
@@ -235,7 +236,7 @@ addr_t MemoryModel::pushSegment(Segment seg) {
   return max_addr;
 }
 
-bool MemoryModel::checkRights(addr_t addr, uint8_t rights) const {
+bool MemoryModel::checkRights(uint32_t addr, uint8_t rights) const {
   for (auto seg : segments_) {
     if (seg.getVaddr() <= addr && addr < seg.getVaddr() + seg.getSize()) {
       return seg.checkRights(rights);
@@ -280,74 +281,74 @@ bool MemoryModel::operator==(const MemoryModel& other) const {
   return endian_ == other.endian_ && mem_eq;
 }
 
-void MemoryModel::set(addr_t addr, uint8_t val, uint32_t n) {
+void MemoryModel::set(uint32_t addr, uint8_t val, uint32_t n) {
   if (mem_.size() < addr + n) mem_.resize(addr + n);
   std::memset(mem_.data() + addr, val, n);
 }
 
-byte_t MemoryModel::readByte(addr_t addr) const {
+uint8_t MemoryModel::readByte(uint32_t addr) const {
   assert(checkRights(addr, RIGHTS_R) && "No rights to read");
-  assert(addr % sizeof(addr_t) == 0 && "Address not aligned");
+  assert(addr % sizeof(uint32_t) == 0 && "Address not aligned");
   assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
   return mem_[addr];
 }
 
-half_t MemoryModel::readHalf(addr_t addr) const {
+uint16_t MemoryModel::readHalf(uint32_t addr) const {
   assert(checkRights(addr, RIGHTS_R) && "No rights to read");
-  assert(addr % sizeof(addr_t) == 0 && "Address not aligned");
+  assert(addr % sizeof(uint32_t) == 0 && "Address not aligned");
   assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
-  half_t res = 0;
-  for (int i = sizeof(half_t) - 1; i >= 0; --i) {
-    res <<= sizeof(byte_t) * BITS_BYTE;
-    res |= half_t(mem_[addr + i]);
+  uint16_t res = 0;
+  for (int i = sizeof(uint16_t) - 1; i >= 0; --i) {
+    res <<= sizeof(uint8_t) * CHAR_BIT;
+    res |= uint16_t(mem_[addr + i]);
   }
 
   return res;
 }
 
-word_t MemoryModel::readWord(addr_t addr) const {
+uint32_t MemoryModel::readWord(uint32_t addr) const {
   assert(checkRights(addr, RIGHTS_R) && "No rights to read");
-  assert(addr % sizeof(addr_t) == 0 && "Address not aligned");
+  assert(addr % sizeof(uint32_t) == 0 && "Address not aligned");
   assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
-  word_t res = 0;
-  for (int i = sizeof(word_t) - 1; i >= 0; --i) {
-    res <<= sizeof(byte_t) * BITS_BYTE;
-    res |= word_t(mem_[addr + i]);
+  uint32_t res = 0;
+  for (int i = sizeof(uint32_t) - 1; i >= 0; --i) {
+    res <<= sizeof(uint8_t) * CHAR_BIT;
+    res |= uint32_t(mem_[addr + i]);
   }
 
   return res;
 }
 
-void MemoryModel::writeByte(addr_t addr, byte_t val) {
+void MemoryModel::writeByte(uint32_t addr, uint8_t val) {
   assert(checkRights(addr, RIGHTS_W) && "No rights to write");
   assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
   mem_[addr] = val;
 }
 
-void MemoryModel::writeHalf(addr_t addr, half_t val) {
+void MemoryModel::writeHalf(uint32_t addr, uint16_t val) {
   assert(checkRights(addr, RIGHTS_W) && "No rights to write");
   assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
-  for (int i = 0; i != sizeof(half_t); ++i) {
-    byte_t curr = val & 0xFF;
+  for (int i = 0; i != sizeof(uint16_t); ++i) {
+    uint8_t curr = val & 0xFF;
     mem_[addr++] = curr;
-    val >>= BITS_BYTE; // next byte
+    val >>= CHAR_BIT; // next byte
   }
 }
 
-void MemoryModel::writeWord(addr_t addr, word_t val) {
+void MemoryModel::writeWord(uint32_t addr, uint32_t val) {
   assert(checkRights(addr, RIGHTS_W) && "No rights to write");
   assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
-  for (int i = 0; i != sizeof(word_t); ++i) {
-    byte_t curr = val & 0xFF;
+  for (int i = 0; i != sizeof(uint32_t); ++i) {
+    uint8_t curr = val & 0xFF;
     mem_[addr++] = curr;
-    val >>= BITS_BYTE; // next byte
+    val >>= CHAR_BIT; // next byte
   }
 }
 
 void MemoryModel::binaryDump(std::ofstream& fout) const {
   fout.write(RV32I_MEMORY_STATE_SIGNATURE.c_str(),
               RV32I_MEMORY_STATE_SIGNATURE.size() + 1);
-  // reinterpret:  byte_t * -> char *, and add const
+  // reinterpret:  uint8_t * -> char *, and add const
   fout.write(reinterpret_cast<const char *>(mem_.data()), mem_.size());
 
   // as bstate files must be at least DEFAULT_ADDR_SPACE large
@@ -356,9 +357,9 @@ void MemoryModel::binaryDump(std::ofstream& fout) const {
     return;
 
   uint32_t bytes_left = DEFAULT_ADDR_SPACE - mem_.size();
-  std::vector<byte_t> null_vec(bytes_left);
+  std::vector<uint8_t> null_vec(bytes_left);
 
-  // reinterpret:  byte_t * -> char *, and add const
+  // reinterpret:  uint8_t * -> char *, and add const
   fout.write(reinterpret_cast<const char *>(null_vec.data()), null_vec.size());
 }
 

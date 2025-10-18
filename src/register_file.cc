@@ -9,7 +9,7 @@
 namespace rv32i_sim {
 
 RegisterFile::RegisterFile(bool valid) : is_valid_(valid) {}
-RegisterFile::RegisterFile(std::vector<addr_t> regs, bool valid) :
+RegisterFile::RegisterFile(std::vector<uint32_t> regs, bool valid) :
                                               regs_(regs), is_valid_(valid) {
   if (regs.size() != N_REGS) {
     std::cerr << "WARNING: initial regs state has " << regs.size()
@@ -39,7 +39,7 @@ RegisterFile::RegisterFile(std::ifstream& regs_bstate) {
 
   is_valid_ = true;
 
-  regs_bstate.read(reinterpret_cast<char *>(regs_.data()), sizeof(word_t) * N_REGS);
+  regs_bstate.read(reinterpret_cast<char *>(regs_.data()), sizeof(uint32_t) * N_REGS);
 
   validate();
   assert(is_valid_ && "Registers invalid after creation");
@@ -69,24 +69,21 @@ bool RegisterFile::operator==(const RegisterFile& other) const {
   return regs_ == other.regs_;
 }
 
-void RegisterFile::set(Register reg, sword_t val) {
+void RegisterFile::set(Register reg, int32_t val) {
   if (reg == Register::X0) return;
 
   regs_[static_cast<uint8_t>(reg)] = val;
 }
 
-addr_t RegisterFile::get(Register reg) const {
-  assert(static_cast<addr_t>(regs_[0]) == 0 && "Register X0 not zero");
+uint32_t RegisterFile::get(Register reg) const {
+  assert(static_cast<uint32_t>(regs_[0]) == 0 && "Register X0 not zero");
 
   return regs_[static_cast<uint8_t>(reg)];
 }
 
 std::ostream& RegisterFile::print(std::ostream& out) {
-  for (int i = 0; i != N_REGS; ++i) {
-    out << "X" << i << " = "
-        << std::hex << regs_[i] << '\n'
-        << std::dec;
-  }
+  for (int i = 0; i != N_REGS; ++i)
+    out << "X" << i << " = " << std::hex << regs_[i] << '\n' << std::dec;
 
   return out;
 }
@@ -98,9 +95,9 @@ void RegisterFile::binaryDump(std::ofstream& fout) {
   }
 
   fout.write(RV32I_REGS_STATE_SIGNATURE.c_str(),
-              RV32I_REGS_STATE_SIGNATURE.size() + 1);
+             RV32I_REGS_STATE_SIGNATURE.size() + 1);
 
-  fout.write(reinterpret_cast<char *>(regs_.data()), regs_.size() * sizeof(word_t));
+  fout.write(reinterpret_cast<char *>(regs_.data()), regs_.size() * sizeof(uint32_t));
 }
 
 std::ostream& operator<<(std::ostream& out, RegisterFile& rf) {

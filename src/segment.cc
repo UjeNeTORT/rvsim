@@ -2,7 +2,7 @@
 
 namespace rv32i_sim {
 
-Segment::Segment(addr_t vaddr, addr_t size, uint8_t rights, uint8_t align) :
+Segment::Segment(uint32_t vaddr, uint32_t size, uint8_t rights, uint8_t align) :
           vaddr_(vaddr), size_(size), rights_(rights), align_(align) {
 
   // this is done to fight rights violation in example test/elf/plus.elf
@@ -11,11 +11,11 @@ Segment::Segment(addr_t vaddr, addr_t size, uint8_t rights, uint8_t align) :
   if (rights & RIGHTS_W) rights_ |= RIGHTS_R;
 }
 
-addr_t Segment::getVaddr() const {
+uint32_t Segment::getVaddr() const {
   return vaddr_;
 }
 
-addr_t Segment::getSize() const {
+uint32_t Segment::getSize() const {
   return size_;
 }
 
@@ -31,7 +31,7 @@ bool Segment::checkRights(uint8_t rights) const {
   return rights_ & rights;
 }
 
-Segment Segment::createSegment(addr_t vaddr, addr_t size,
+Segment Segment::createSegment(uint32_t vaddr, uint32_t size,
                                uint8_t rights, uint8_t align) {
 
   return Segment(vaddr, size, rights, align);
