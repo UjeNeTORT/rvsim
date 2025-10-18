@@ -17,14 +17,44 @@ set (CMAKE_CXX_FLAGS "-fdiagnostics-color=always")
 find_package(LLVM REQUIRED CONFIG)
 find_package(Boost COMPONENTS program_options REQUIRED)
 find_library(GTEST_LIBRARY NAMES gtest gtest_main)
-include_directories( ${Boost_INCLUDE_DIR} )
+include_directories(${Boost_INCLUDE_DIR})
 
 set (CMAKE_CURRENT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
-include_directories(${CMAKE_SOURCE_DIR}/include)
-include_directories(${CMAKE_SOURCE_DIR}/ELFIO)
+set (CMAKE_DECODER_DIR        ${CMAKE_BINARY_DIR}/decoder)
+set (GEN_DECODER              ${CMAKE_DECODER_DIR}/decoder.inc)
 
+## create generated decoder dir
+#file(MAKE_DIRECTORY "${CMAKE_DECODER_DIR}")
+
+include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_DECODER_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/ELFIO)
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
+
+add_executable(gendecode ${CMAKE_CURRENT_SOURCE_DIR}/decoder_emitter.cc)
+target_link_libraries(gendecode PRIVATE LLVMTableGen)
+
+add_custom_command(
+  OUTPUT ${GEN_DECODER}
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_DECODER_DIR}
+  COMMAND $<TARGET_FILE:gendecode>
+          -I ${LLVM_INCLUDE_DIRS} -I ${CMAKE_CURRENT_SOURCE_DIR}
+          -gen-decoder
+          ${CMAKE_CURRENT_SOURCE_DIR}/RV.td
+          -o ${GEN_DECODER}
+  DEPENDS gendecode
+          ${CMAKE_CURRENT_SOURCE_DIR}/decoder_emitter.cc
+          ${CMAKE_CURRENT_SOURCE_DIR}/RV.td
+          ${CMAKE_CURRENT_SOURCE_DIR}/RVInsn.td
+          ${CMAKE_CURRENT_SOURCE_DIR}/RVInsnTypes.td
+          ${CMAKE_CURRENT_SOURCE_DIR}/RVEncoding.td
+          ${CMAKE_CURRENT_SOURCE_DIR}/RVOpcodes.td
+  COMMENT "Generating decoder.inc from RV.td"
+  VERBATIM
+)
+
+add_custom_target(decoder_inc DEPENDS ${GEN_DECODER})
 
 add_library(segment STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/segment.cc)
@@ -36,35 +66,14 @@ target_link_libraries(memory segment)
 add_library(registers STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/register_file.cc)
 
-add_executable(gendecode ${CMAKE_CURRENT_SOURCE_DIR}/decoder_emitter.cc)
-target_link_libraries(gendecode PRIVATE LLVMTableGen)
-
-add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/main.cc)
+add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/main.cc ${GEN_DECODER})
 target_link_libraries(${PROJECT_NAME} segment memory registers)
+add_dependencies(${PROJECT_NAME} decoder_inc)
 
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
 target_link_libraries(${PROJECT_NAME} Boost::program_options)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(test ${CMAKE_CURRENT_SOURCE_DIR}/test.cc)
 target_link_libraries(test gtest segment memory registers)
-
-add_custom_command(
-  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/decoder.inc
-  COMMAND gendecode
-          -I ${LLVM_INCLUDE_DIRS} -I ${CMAKE_CURRENT_SOURCE_DIR}
-          -gen-decoder
-          ${CMAKE_CURRENT_SOURCE_DIR}/RV.td
-          -o ${CMAKE_CURRENT_BINARY_DIR}/decoder.inc
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/decoder_emitter.cc
-          ${CMAKE_CURRENT_SOURCE_DIR}/RV.td
-          ${CMAKE_CURRENT_SOURCE_DIR}/RVInsn.td
-          ${CMAKE_CURRENT_SOURCE_DIR}/RVInsnTypes.td
-          ${CMAKE_CURRENT_SOURCE_DIR}/RVEncoding.td
-          ${CMAKE_CURRENT_SOURCE_DIR}/RVOpcodes.td
-  COMMENT "Generating decoder.inc from RV.td"
-)
-
-add_custom_target(gendecoder DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/decoder.inc)
-add_dependencies(${PROJECT_NAME} gendecoder)

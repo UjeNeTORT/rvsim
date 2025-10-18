@@ -127,13 +127,13 @@ public:
   uint32_t nOperands() const noexcept { return OpndMasks_.size(); }
 
   void emitClass(raw_ostream &OS) const {
-    OS << "class " << Name_ << " : public IInsn {\n";
+    OS << "class " << Name_ << " : public IRVInsn {\n";
     OS << "\t" << "const uint32_t RawEncoding_ = " << RawEncoding_ << "; // "
                 << "0b" << std::bitset<32>(RawEncoding_).to_string() << "\n";
     OS << "\t" << "const uint32_t TypeMask_ = " << TypeMask_ << "; // "
                 << "0b" << std::bitset<32>(TypeMask_).to_string() << "\n";
     OS << "\t" << "uint32_t Opcode_ = 0; // fully encoded instruction\n";
-    OS << "\t" << "const std::string AsmStr_ = \"" << AsmStr_ << "\";\n";
+    OS << "\t" << "std::string AsmStr_ = \"" << AsmStr_ << "\";\n";
 
     OS << "\t" << "std::vector<std::pair<uint32_t, std::string>> Operands_;\n\n";
 
@@ -163,8 +163,13 @@ public:
        << "\t\t" << "return Operands_.size();\n"
        << "\t" << "}\n\n";
 
+    // name
+    OS << "\t" << "std::string getName() const override {\n"
+       << "\t\t" << "return AsmStr_;\n"
+       << "\t}\n\n";
+
     // execute
-    OS << "\t" << "void execute(IRVModel &Model) const override {\n"
+    OS << "\t" << "void execute(rv32i_sim::IRVModel &Model) const override {\n"
        << "\t" << ExecuteCode_ << '\n'
        << "\t}\n\n";
 
@@ -335,12 +340,12 @@ uint32_t DecoderEmitter::formEncodingFields(const Record * const Def,
 
 void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
                                      const std::vector<InstructionInfo> &InsnInfos) {
-  OS << "std::unique_ptr<IInsn> decode(uint32_t Opcode) {\n";
+  OS << "std::unique_ptr<IRVInsn> decode(uint32_t Opcode) {\n";
   for (auto &II : InsnInfos) {
     OS << "\t""if (uint32_t RawOpcode = "
                         "Opcode & 0b" << std::bitset<32>(II.getTypeMask()).to_string() << ") {\n"
        << "\t\t""if (RawOpcode == 0b" << std::bitset<32>(II.getRawEncoding()).to_string() << ") {\n"
-       << "\t\t\t""std::unique_ptr<IInsn>Insn(new " << II.getName() << "(Opcode));\n";
+       << "\t\t\t""std::unique_ptr<IRVInsn>Insn(new " << II.getName() << "(Opcode));\n";
       for (uint32_t OpIdx = 0; OpIdx != II.nOperands(); ++OpIdx)
         OS << "\t\t\t""Insn->addOperand(Opcode & " << II.getOperandMask(OpIdx)
                                         << " >> " << II.getOperandMaskLSB(OpIdx) << ", "
@@ -369,7 +374,7 @@ void DecoderEmitter::emitTypesEnum(raw_ostream &OS,
   OS << "};\n\n";
   return;
 }
-// todo надо заамендить коммит в котором додебаживается decoder.inc (undefined ref to vtable/typeinfo)
+
 void DecoderEmitter::run(raw_ostream &OS) {
   dump();
 
@@ -380,8 +385,6 @@ void DecoderEmitter::run(raw_ostream &OS) {
      << "#include <memory>\n"
      << "#include <cstdint>\n"
      << "#include <vector>\n"
-     << "\n"
-     << "#include \"encoding.hpp\"\n"
      << "\n";
 
   std::vector<InstructionInfo> InsnInfos;
