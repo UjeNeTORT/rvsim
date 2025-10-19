@@ -150,6 +150,11 @@ public:
     OS << "\t" << "RVInsnTypes getType() const override {\n"
        << "\t\t" << "return RVInsnTypes::" << Type_ << "_TYPE_INSN; }\n\n";
 
+    // name
+    OS << "\t" << "std::string getName() const override {\n"
+       << "\t\t" << "return AsmStr_;\n"
+       << "\t}\n\n";
+
     // operand functions
     OS << "\t" << "// returns index of the pushed operand\n";
     OS << "\t" << "uint32_t addOperand(uint32_t OpVal, std::string Name) override {\n"
@@ -163,10 +168,23 @@ public:
        << "\t\t" << "return Operands_.size();\n"
        << "\t" << "}\n\n";
 
-    // name
-    OS << "\t" << "std::string getName() const override {\n"
-       << "\t\t" << "return AsmStr_;\n"
-       << "\t}\n\n";
+    // encode
+    OS << "\t" << "// encode operands\n";
+    for (uint32_t OpIdx = 0; OpIdx != nOperands(); ++OpIdx) {
+      OS << "\t" << "// @param Operands[" << OpIdx << "] - "
+                 << getOperandName(OpIdx) << "\n";
+    }
+	  OS << "\t" << "// @throws `std::out_of_range` exception if `Operands` vector is too small,\n"
+	     << "\t" << "//          if it is too big, the extra elements are ignored\n"
+	     << "\t" << "// @returns freshly encoded instruction\n"
+       << "\t" << "uint32_t encode(std::vector<uint32_t> Operands) override {\n";
+    for (uint32_t OpIdx = 0; OpIdx != nOperands(); ++OpIdx) {
+      OS << "\t\t" << "Opcode_ |= Operands.at(" << OpIdx << ") << "
+                   << getOperandMaskLSB(OpIdx) << "; // "
+                   << getOperandName(OpIdx) << "\n";
+    }
+    OS << "\t\t" << "return Opcode_;\n";
+    OS << "\t" << "}\n\n";
 
     // execute
     OS << "\t" << "void execute(rv32i_sim::IRVModel &Model) const override {\n"
