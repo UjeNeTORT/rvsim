@@ -132,7 +132,7 @@ public:
                 << "0b" << std::bitset<32>(RawEncoding_).to_string() << "\n";
     OS << "\t" << "const uint32_t TypeMask_ = " << TypeMask_ << "; // "
                 << "0b" << std::bitset<32>(TypeMask_).to_string() << "\n";
-    OS << "\t" << "uint32_t Opcode_ = 0; // fully encoded instruction\n";
+    OS << "\t" << "uint32_t Opcode_ = RawEncoding_; // fully encoded instruction\n";
     OS << "\t" << "std::string AsmStr_ = \"" << AsmStr_ << "\";\n";
 
     OS << "\t" << "std::vector<std::pair<uint32_t, std::string>> Operands_;\n\n";
@@ -140,7 +140,6 @@ public:
     OS << "public:\n";
 
     // constructors
-    OS << "\t" << Name_ << "() = delete;\n";
     OS << "\t" << Name_ << "(uint32_t Opcode) : Opcode_(Opcode) {}\n\n";
 
     // opcode

@@ -25,3 +25,9 @@ def XORI : RVInsnI<[?, ?, !cast<int>(0b100), ?, OPC_OP_IMM.Val], "xori">;
 def SLLI : RVInsnISh<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "slli">;
 def SRLI : RVInsnISh<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b101), ?, OPC_OP_IMM.Val], "srli">;
 def SRAI : RVInsnISh<[!cast<int>(0b0100000), ?, ?, !cast<int>(0b101), ?, OPC_OP_IMM.Val], "srai">;
+
+def EBREAK : RVInsnSystem<[!cast<int>(0b000000000001), // funct12
+                           !cast<int>(0b00000),        // rs1
+                           !cast<int>(0b000),          // funct3
+                           !cast<int>(0b00000),        // rd
+                           OPC_SYSTEM.Val], "ebreak">;

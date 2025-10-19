@@ -283,16 +283,17 @@ uint32_t RVModel::setUpEnvironment(uint32_t pc_main) {
 
   mem_.set(env_vaddr, ENV_CODE_BYTE, ENV_SEG_SIZE);
 
-  rvJAL jal_main;
-  jal_main.encode(Register::X1,
-    static_cast<int32_t>(pc_main) - static_cast<int32_t>(env_vaddr) - sizeof(uint32_t)
+  RVISA::JAL jal_main;
+  jal_main.encode(
+    static_cast<int32_t>(pc_main) - static_cast<int32_t>(env_vaddr) - sizeof(uint32_t),
+    Register::X1
   );
 
-  rvEBREAK ebreak;
+  RVISA::EBREAK ebreak;
 
   // emit environment code
-  writeWord(env_vaddr, jal_main.getCode());
-  writeWord(env_vaddr + sizeof(uint32_t), ebreak.getCode());
+  writeWord(env_vaddr, jal_main.getOpcode());
+  writeWord(env_vaddr + sizeof(uint32_t), ebreak.getOpcode());
 
   return env_vaddr;
 }
