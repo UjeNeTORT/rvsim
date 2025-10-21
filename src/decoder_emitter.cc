@@ -89,9 +89,10 @@ class InstructionInfo final {
 public:
   InstructionInfo(uint32_t RawEncoding, uint32_t TypeMask,
                   std::vector<EncodingField> EncodingFields,
-                  std::string Name, std::string Type, std::string AsmStr)
+                  std::string Name, std::string Type, std::string AsmStr,
+                  std::string ExecuteCode = "")
     : RawEncoding_(RawEncoding), TypeMask_(TypeMask), EncodingFields_(EncodingFields),
-      Name_(Name), Type_(Type), AsmStr_(AsmStr) {
+      Name_(Name), Type_(Type), AsmStr_(AsmStr), ExecuteCode_(ExecuteCode) {
 
     for (const auto &EF: EncodingFields_) {
       if (!EF.isOperand()) continue;
@@ -141,7 +142,14 @@ public:
 
     // constructors
     OS << "\t" << Name_ << "() = default;\n\n";
-    OS << "\t" << Name_ << "(uint32_t Opcode) : Opcode_(Opcode) {}\n\n";
+    OS << "\t" << Name_ << "(uint32_t Opcode) : Opcode_(Opcode) {\n";
+    for (uint32_t OpIdx = 0, NOps = nOperands(); OpIdx != NOps; ++OpIdx)
+      OS << "\t\t\t""addOperand((Opcode & " << getOperandMask(OpIdx)
+         << ") >> " << getOperandMaskLSB(OpIdx) << ", "
+         << "\""   << getOperandName(OpIdx) << "\""
+         << ");\n";
+    OS << "\t}\n\n";
+    // чтобы операнды сразу создавал и потом вписать его в jal
 
     // opcode
     OS << "\t" << "uint32_t getOpcode() const override { return Opcode_; }\n";
@@ -191,12 +199,11 @@ public:
     // execute
     OS << "\t" << "void execute(rv32i_sim::IRVModel &Model) const override {\n"
        << "\t\t" << ExecuteCode_ << '\n'
-       << "\t\t" << "(void)TypeMask_; (void)Model;"
        << "\t}\n\n";
 
     // print
     OS << "\t" << "void print(std::ostream &Out) const override {\n"
-       << "\t\t" << "Out << std::bitset<32>(Opcode_).to_string() << AsmStr_ << \"("
+       << "\t\t" << "Out << std::bitset<32>(Opcode_).to_string() << ' ' << AsmStr_ << \" ("
                  << Type_ << ")\";\n";
     OS << "\t""}\n\n";
 
@@ -367,11 +374,6 @@ void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
                         "Opcode & 0b" << std::bitset<32>(II.getTypeMask()).to_string() << ") {\n"
        << "\t\t""if (RawOpcode == 0b" << std::bitset<32>(II.getRawEncoding()).to_string() << ") {\n"
        << "\t\t\t""std::unique_ptr<IRVInsn>Insn(new " << II.getName() << "(Opcode));\n";
-      for (uint32_t OpIdx = 0; OpIdx != II.nOperands(); ++OpIdx)
-        OS << "\t\t\t""Insn->addOperand(Opcode & " << II.getOperandMask(OpIdx)
-                                        << " >> " << II.getOperandMaskLSB(OpIdx) << ", "
-                                        << "\"" << II.getOperandName(OpIdx) << "\""
-           << ");\n";
     OS << "\t\t\t""return Insn;\n"
       << "\t\t""}\n"
       << "\t""}\n";
@@ -406,7 +408,9 @@ void DecoderEmitter::run(raw_ostream &OS) {
      << "#include <memory>\n"
      << "#include <cstdint>\n"
      << "#include <vector>\n"
-     << "\n";
+     << "\n"
+     << "#include \"decoder_helpers.hpp\"\n\n"
+     << "using namespace RVDecoder;\n\n";
 
   std::vector<InstructionInfo> InsnInfos;
 
@@ -430,13 +434,22 @@ void DecoderEmitter::run(raw_ostream &OS) {
       return;
     }
 
+    std::optional<StringRef> ExecCode = std::nullopt;
+    try {
+      ExecCode = D->getValueAsOptionalString("Code");
+    } catch (...) {
+      PrintFatalError(D->getLoc(), "Code field does not exist in RVEncodingField");
+      return;
+    }
+
     uint32_t EncodingMask = formEncodingFields(D, EncodingFields, RawEncoding);
     assert(EncodingMask && "EncMask can't be zero");
 
     InsnInfos.push_back(
       InstructionInfo(
         RawEncoding, EncodingMask, EncodingFields,
-        InsnName, TyName.value().str(), AsmStr.value().str()
+        InsnName, TyName.value().str(), AsmStr.value().str(),
+        ExecCode.value_or("(void)Model; (void)TypeMask_; // no code provided in .td\n").str()
       )
     );
   }
