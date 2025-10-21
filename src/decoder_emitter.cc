@@ -140,6 +140,7 @@ public:
     OS << "public:\n";
 
     // constructors
+    OS << "\t" << Name_ << "() = default;\n\n";
     OS << "\t" << Name_ << "(uint32_t Opcode) : Opcode_(Opcode) {}\n\n";
 
     // opcode
@@ -147,7 +148,8 @@ public:
 
     // type
     OS << "\t" << "RVInsnTypes getType() const override {\n"
-       << "\t\t" << "return RVInsnTypes::" << Type_ << "_TYPE_INSN; }\n\n";
+       << "\t\t" << "return RVInsnTypes::" << Type_ << "_TYPE_INSN;\n"
+       << "\t" << "}\n\n";
 
     // name
     OS << "\t" << "std::string getName() const override {\n"
@@ -176,7 +178,8 @@ public:
 	  OS << "\t" << "// @throws `std::out_of_range` exception if `Operands` vector is too small,\n"
 	     << "\t" << "//          if it is too big, the extra elements are ignored\n"
 	     << "\t" << "// @returns freshly encoded instruction\n"
-       << "\t" << "uint32_t encode(std::vector<uint32_t> Operands) override {\n";
+       << "\t" << "uint32_t encode(std::vector<uint32_t> Operands) override {\n"
+       << "\t\t" << "(void) Operands; // unused var warning for insns w/o operands\n";
     for (uint32_t OpIdx = 0; OpIdx != nOperands(); ++OpIdx) {
       OS << "\t\t" << "Opcode_ |= Operands.at(" << OpIdx << ") << "
                    << getOperandMaskLSB(OpIdx) << "; // "
@@ -187,7 +190,8 @@ public:
 
     // execute
     OS << "\t" << "void execute(rv32i_sim::IRVModel &Model) const override {\n"
-       << "\t" << ExecuteCode_ << '\n'
+       << "\t\t" << ExecuteCode_ << '\n'
+       << "\t\t" << "(void)TypeMask_; (void)Model;"
        << "\t}\n\n";
 
     // print
@@ -373,7 +377,7 @@ void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
       << "\t""}\n";
   }
 
-  OS << "\t""std::cerr << \"Fatal - failed to decode [\" << Opcode << \"]\";\n";
+  OS << "\t""std::cerr << \"Fatal - failed to decode [\" << Opcode << \"]\\n\\n\";\n";
   OS << "\t""return nullptr;\n";
   OS << "} // decode()\n";
   return;

@@ -45,6 +45,35 @@ class RVInsnISh<list<int> encvalues, string name> : RVInsnIShBase<name> {
   let EncValues = encvalues;
 }
 
+class RVInsnJBase<string name>
+  : RVInsn<[ENC_IMM_20,
+            ENC_IMM_10_1,
+            ENC_IMM_11,
+            ENC_IMM_19_12,
+            ENC_RD,
+            ENC_OPC],
+            name> {
+  let Type = "J";
+}
+
+class RVInsnJ<list<int> encvalues, string name> : RVInsnJBase<name> {
+  let EncValues = encvalues;
+}
+
+class RVInsnJALRBase<string name>
+  : RVInsn<[ENC_IMM_11_0,
+            ENC_RS1,
+            ENC_FUNCT3,
+            ENC_RD,
+            ENC_OPC],
+            name> {
+  let Type = "JALR";
+}
+
+class RVInsnJALR<list<int> encvalues, string name> : RVInsnJALRBase<name> {
+  let EncValues = encvalues;
+}
+
 class RVInsnSystemBase<string name>
   : RVInsn<[ENC_FUNCT12,
             ENC_RS1,

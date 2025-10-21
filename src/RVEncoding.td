@@ -48,3 +48,7 @@ def ENC_FUNCT12   : RVEncF<20, 31, "funct12">;
 def ENC_IMM_11_0  : RVEncF<20, 31, "imm[11:0]">;
 def ENC_IMM_11_5  : RVEncF<25, 31, "imm[11:5]">;
 def ENC_SHAMT_4_0 : RVEncF<20, 24, "shamt[4:0]">;
+def ENC_IMM_10_1  : RVEncF<21, 30, "imm[10:1]">;
+def ENC_IMM_19_12 : RVEncF<12, 19, "imm[12:19]">;
+def ENC_IMM_11    : RVEncF<20, 20, "imm[11]">;
+def ENC_IMM_20    : RVEncF<31, 31, "imm[20]">;

@@ -44,6 +44,16 @@ int32_t sign_extend_21_to_32(uint32_t val) {
 int32_t sign_extend_32_to_32(uint32_t val) {
   return std::bit_cast<int32_t>(val);
 }
+
+std::vector<uint32_t> getJalArgs(uint32_t Offset, uint32_t Rd) {
+  std::vector<uint32_t> Res;
+  Res.push_back(Offset & (1 << 20) >> 20);      // imm[20]
+  Res.push_back(Offset & ((1 << 11) - 1) >> 1); // imm[10:1]
+  Res.push_back(Offset & (1 << 11) >> 11);      // imm[11]
+  Res.push_back(Offset & ((1 << 9) - 1) >> 12); // imm[19:12]
+  Res.push_back(Rd);
+  return Res;
+}
 } // namespace
 
 namespace rv32i_sim {
@@ -283,17 +293,25 @@ uint32_t RVModel::setUpEnvironment(uint32_t pc_main) {
 
   mem_.set(env_vaddr, ENV_CODE_BYTE, ENV_SEG_SIZE);
 
-  RVISA::JAL jal_main;
-  jal_main.encode(
-    static_cast<int32_t>(pc_main) - static_cast<int32_t>(env_vaddr) - sizeof(uint32_t),
-    Register::X1
-  );
+  RVISA::JAL JalMain;
+  uint32_t Offset = static_cast<uint32_t>(pc_main)
+                  - static_cast<int32_t>(env_vaddr)
+                  - sizeof(uint32_t);
+  uint32_t Rd = static_cast<uint32_t>(Register::X1);
 
-  RVISA::EBREAK ebreak;
+  // todo check if move ctor is called
+  std::vector<uint32_t> JalArgs = getJalArgs(Offset, Rd);
+  try {
+    JalMain.encode(JalArgs);
+  } catch (...) {
+    // todo never happening behaviour, but still need smth
+  }
+
+  RVISA::EBREAK Ebreak;
 
   // emit environment code
-  writeWord(env_vaddr, jal_main.getOpcode());
-  writeWord(env_vaddr + sizeof(uint32_t), ebreak.getOpcode());
+  writeWord(env_vaddr, JalMain.getOpcode());
+  writeWord(env_vaddr + sizeof(uint32_t), Ebreak.getOpcode());
 
   return env_vaddr;
 }
