@@ -54,7 +54,11 @@ add_custom_command(
   VERBATIM
 )
 
+add_library(decoder_helpers STATIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/decoder_helpers.cc)
+
 add_custom_target(decoder_inc DEPENDS ${GEN_DECODER})
+target_link_libraries(decoder_helpers)
 
 add_library(segment STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/segment.cc)
@@ -67,7 +71,7 @@ add_library(registers STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/register_file.cc)
 
 add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/main.cc ${GEN_DECODER})
-target_link_libraries(${PROJECT_NAME} segment memory registers)
+target_link_libraries(${PROJECT_NAME} segment memory registers decoder_helpers)
 add_dependencies(${PROJECT_NAME} decoder_inc)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
@@ -76,4 +80,4 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(test ${CMAKE_CURRENT_SOURCE_DIR}/test.cc)
-target_link_libraries(test gtest segment memory registers)
+target_link_libraries(test gtest segment memory registers decoder_helpers)
