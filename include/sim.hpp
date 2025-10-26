@@ -197,20 +197,19 @@ void RVModel::execute() {
     printInsn(std::cerr, *insn);
 
     if (insn->getType() == RVISA::RVInsnTypes::UNDEF_TYPE_INSN) {
-      break; // todo should refactor this
+      break;
     }
 
     insn->execute(*this);
 
-    setPC(pc_ + sizeof(uint32_t) * execution); // advance if executing, else - do nothing
+    // advance if executing, else - do nothing
+    setPC(pc_ + sizeof(uint32_t) * execution);
   }
 
   std::cerr << "DBG: end execution (pc = " << pc_ << ")\n";
 }
 
-// todo this function should somehow return control to exec env
-// not figured out how to implement it correctly yet
-// so this is a workaround
+// todo return control to exec env
 void RVModel::exit() {
   execution = false;
 }

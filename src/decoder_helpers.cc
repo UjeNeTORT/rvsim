@@ -1,8 +1,9 @@
-#include <cassert>
 #include <bit>
+#include <cassert>
 #include <cstdint>
-#include <vector>
 #include <string>
+#include <tuple>
+#include <vector>
 
 #include "decoder_helpers.hpp"
 
@@ -33,10 +34,10 @@ int32_t sign_extend_32_to_32(uint32_t val) {
 
 std::vector<uint32_t> createJalArgs(uint32_t Offset, uint32_t Rd) {
   std::vector<uint32_t> Res;
-  Res.push_back(Offset & (1 << 20) >> 20);      // imm[20]
-  Res.push_back(Offset & ((1 << 11) - 1) >> 1); // imm[10:1]
-  Res.push_back(Offset & (1 << 11) >> 11);      // imm[11]
-  Res.push_back(Offset & ((1 << 9) - 1) >> 12); // imm[19:12]
+  Res.push_back((Offset >> 20) & 1);     // imm[20]
+  Res.push_back((Offset >> 1)  & 0x3ff); // imm[10:1]
+  Res.push_back((Offset >> 11) & 1);     // imm[11]
+  Res.push_back((Offset >> 12) & 0xff);  // imm[19:12]
   Res.push_back(Rd);
   return Res;
 }
@@ -50,4 +51,28 @@ std::pair<uint32_t, uint32_t> getJalArgs(std::vector<std::pair<uint32_t, std::st
   Offset |= Encods[0].first << 20;
   return std::pair<uint32_t, uint32_t>(Offset, Encods[4].first);
 }
+
+std::vector<uint32_t> createBArgs(uint32_t Imm, uint32_t Rs2, uint32_t Rs1) {
+  std::vector<uint32_t> Res;
+  Res.push_back((Imm >> 12) & 1);   // imm[12]
+  Res.push_back((Imm >> 5) & 0x3f); // imm[10:5]
+  Res.push_back(Rs2);
+  Res.push_back(Rs1);
+  Res.push_back((Imm >> 1) & 0xf);  // imm[4:1]
+  Res.push_back((Imm >> 11) & 1);   // imm[11]
+  return Res;
+}
+
+std::tuple<uint32_t, uint32_t, uint32_t> getBArgs(std::vector<std::pair<uint32_t, std::string>> Encods) {
+  assert(Encods.size() == 6);
+  uint32_t Imm = 0;
+  Imm |= (Encods[0].first << 12) & 1;
+  Imm |= (Encods[1].first << 5)  & 0x3f;
+  Imm |= (Encods[4].first << 1)  & 0xf;
+  Imm |= (Encods[5].first << 11) & 1;
+  return std::tuple<uint32_t, uint32_t, uint32_t>(
+    Imm, Encods[2].first /*Rs2*/, Encods[3].first /*Rs1*/
+  );
+}
+
 } // namespace RVDecoder

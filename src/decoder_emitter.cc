@@ -149,7 +149,6 @@ public:
          << "\""   << getOperandName(OpIdx) << "\""
          << ");\n";
     OS << "\t}\n\n";
-    // чтобы операнды сразу создавал и потом вписать его в jal
 
     // opcode
     OS << "\t" << "uint32_t getOpcode() const override { return Opcode_; }\n";
@@ -379,7 +378,8 @@ void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
       << "\t""}\n";
   }
 
-  OS << "\t""std::cerr << \"Fatal - failed to decode [\" << Opcode << \"]\\n\\n\";\n";
+  OS << "\t""std::cerr << \"Fatal - failed to decode [\" << std::hex << std::showbase "
+                      "<< Opcode << std::dec << \"]\\n\\n\";\n";
   OS << "\t""return nullptr;\n";
   OS << "} // decode()\n";
   return;
@@ -408,8 +408,10 @@ void DecoderEmitter::run(raw_ostream &OS) {
      << "#include <memory>\n"
      << "#include <cstdint>\n"
      << "#include <vector>\n"
+     << "#include <iomanip>\n"
      << "\n"
      << "#include \"decoder_helpers.hpp\"\n\n"
+     << "namespace Sim = rv32i_sim;\n\n"
      << "using namespace RVDecoder;\n\n";
 
   std::vector<InstructionInfo> InsnInfos;

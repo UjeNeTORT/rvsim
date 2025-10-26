@@ -1,4 +1,5 @@
 #include <cstdint>
+#include <tuple>
 #include <vector>
 
 namespace RVDecoder {
@@ -12,5 +13,8 @@ int32_t sign_extend_32_to_32(uint32_t val);
 
 std::vector<uint32_t> createJalArgs(uint32_t Offset, uint32_t Rd);
 std::pair<uint32_t, uint32_t> getJalArgs(std::vector<std::pair<uint32_t, std::string>> Encods);
+
+std::vector<uint32_t> createBArgs(uint32_t Offset, uint32_t Rd);
+std::tuple<uint32_t, uint32_t, uint32_t> getBArgs(std::vector<std::pair<uint32_t, std::string>> Encods);
 
 } // namespace RVDecoder

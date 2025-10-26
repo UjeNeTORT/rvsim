@@ -51,7 +51,7 @@ class RVInsnISh<list<int> encvalues, string name, code execcode>
 class RVInsnJBase<string name, code execcode>
   : RVInsn<[ENC_IMM_20,
             ENC_IMM_10_1,
-            ENC_IMM_11,
+            ENC_IMM_11_AT_20,
             ENC_IMM_19_12,
             ENC_RD,
             ENC_OPC],
@@ -76,6 +76,24 @@ class RVInsnJALRBase<string name, code execcode>
 
 class RVInsnJALR<list<int> encvalues, string name, code execcode>
   : RVInsnJALRBase<name, execcode> {
+  let EncValues = encvalues;
+}
+
+class RVInsnBBase<string name, code execcode>
+  : RVInsn<[ENC_IMM_12,
+            ENC_IMM_10_5,
+            ENC_RS2,
+            ENC_RS1,
+            ENC_FUNCT3,
+            ENC_IMM_4_1,
+            ENC_IMM_11_AT_7,
+            ENC_OPC],
+            name, execcode> {
+  let Type = "B";
+}
+
+class RVInsnB<list<int> encvalues, string name, code execcode>
+  : RVInsnBBase<name, execcode> {
   let EncValues = encvalues;
 }
 
