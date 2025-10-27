@@ -54,5 +54,6 @@ def ENC_IMM_20    : RVEncF<31, 31, "imm[20]">;
 def ENC_IMM_12    : RVEncF<31, 31, "imm[12]">;
 def ENC_IMM_10_5  : RVEncF<25, 30, "imm[10:5]">;
 def ENC_IMM_4_1   : RVEncF< 8, 11, "imm[4:1]">;
+def ENC_IMM_31_12 : RVEncF<12, 31, "imm[31:12]">;
 def ENC_IMM_11_AT_20 : RVEncF<20, 20, "imm[11]">;
 def ENC_IMM_11_AT_7  : RVEncF< 7,  7, "imm[11]">;

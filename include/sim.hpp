@@ -193,6 +193,7 @@ void RVModel::execute() {
   while (execution && is_valid_) {
     uint32_t insn_code = mem_.readWord(pc_); // fetch
     std::unique_ptr<RVISA::IRVInsn> insn = RVISA::decode(insn_code);
+    if (!insn) break;
 
     printInsn(std::cerr, *insn);
 

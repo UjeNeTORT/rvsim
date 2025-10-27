@@ -97,6 +97,19 @@ class RVInsnB<list<int> encvalues, string name, code execcode>
   let EncValues = encvalues;
 }
 
+class RVInsnUBase<string name, code execcode>
+  : RVInsn<[ENC_IMM_31_12,
+            ENC_RD,
+            ENC_OPC],
+            name, execcode> {
+  let Type = "U";
+}
+
+class RVInsnU<list<int> encvalues, string name, code execcode>
+  :RVInsnUBase<name, execcode> {
+  let EncValues = encvalues;
+}
+
 class RVInsnSystemBase<string name, code execcode>
   : RVInsn<[ENC_FUNCT12,
             ENC_RS1,

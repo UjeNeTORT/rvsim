@@ -88,30 +88,34 @@ defvar BExecutePrefix =
 def BEQ : RVInsnB<[?, ?, ?, ?, !cast<int>(0b000), ?, ?, OPC_BRANCH.Val], "beq",
   !strconcat(BExecutePrefix,
   "if (Op1 == Op2) Model.setPC(Model.getPC() + SImm - sizeof(uint32_t));\n\t\t")>;
-
 def BNE : RVInsnB<[?, ?, ?, ?, !cast<int>(0b001), ?, ?, OPC_BRANCH.Val], "bne",
   !strconcat(BExecutePrefix,
   "if (Op1 != Op2) Model.setPC(Model.getPC() + SImm - sizeof(uint32_t));\n\t\t")>;
-
 def BLT : RVInsnB<[?, ?, ?, ?, !cast<int>(0b100), ?, ?, OPC_BRANCH.Val], "blt",
   !strconcat(BExecutePrefix,
   "int32_t SOp1 = std::bit_cast<int32_t>(Op1);\n\t\t"
   "int32_t SOp2 = std::bit_cast<int32_t>(Op2);\n\t\t"
   "if (SOp1 < SOp2) Model.setPC(Model.getPC() + SImm - sizeof(uint32_t));\n\t\t")>;
-
 def BGE : RVInsnB<[?, ?, ?, ?, !cast<int>(0b101), ?, ?, OPC_BRANCH.Val], "bge",
   !strconcat(BExecutePrefix,
   "int32_t SOp1 = std::bit_cast<int32_t>(Op1);\n\t\t"
   "int32_t SOp2 = std::bit_cast<int32_t>(Op2);\n\t\t"
   "if (SOp1 >= SOp2) Model.setPC(Model.getPC() + SImm - sizeof(uint32_t));\n\t\t")>;
-
 def BLTU : RVInsnB<[?, ?, ?, ?, !cast<int>(0b110), ?, ?, OPC_BRANCH.Val], "bltu",
   !strconcat(BExecutePrefix,
   "if (Op1 < Op2) Model.setPC(Model.getPC() + SImm - sizeof(uint32_t));\n\t\t")>;
-
 def BGEU : RVInsnB<[?, ?, ?, ?, !cast<int>(0b111), ?, ?, OPC_BRANCH.Val], "bgeu",
   !strconcat(BExecutePrefix,
   "if (Op1 >= Op2) Model.setPC(Model.getPC() + SImm - sizeof(uint32_t));\n\t\t")>;
+
+defvar UExecutePrefix =
+  "uint32_t Imm = getOperand(0);\n\t\t"
+  "Sim::Register Rd = static_cast<Sim::Register>(getOperand(1));\n\t\t";
+
+def LUI : RVInsnU<[?, ?, OPC_LUI.Val], "lui",
+  !strconcat(UExecutePrefix, "Model.setReg(Rd, Imm);\n\t\t")>;
+def AUIPC : RVInsnU<[?, ?, OPC_AUIPC.Val], "auipc",
+  !strconcat(UExecutePrefix, "Model.setReg(Rd, Imm + Model.getPC());\n\t\t")>;
 
 def EBREAK : RVInsnSystem<[!cast<int>(0b000000000001), // funct12
                            !cast<int>(0b00000),        // rs1
