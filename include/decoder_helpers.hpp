@@ -17,4 +17,6 @@ std::pair<uint32_t, uint32_t> getJalArgs(std::vector<std::pair<uint32_t, std::st
 std::vector<uint32_t> createBArgs(uint32_t Offset, uint32_t Rd);
 std::tuple<uint32_t, uint32_t, uint32_t> getBArgs(std::vector<std::pair<uint32_t, std::string>> Encods);
 
+uint32_t getSTOREImm(std::vector<std::pair<uint32_t, std::string>> Encods);
+
 } // namespace RVDecoder

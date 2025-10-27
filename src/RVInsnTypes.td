@@ -106,7 +106,30 @@ class RVInsnUBase<string name, code execcode>
 }
 
 class RVInsnU<list<int> encvalues, string name, code execcode>
-  :RVInsnUBase<name, execcode> {
+  : RVInsnUBase<name, execcode> {
+  let EncValues = encvalues;
+}
+
+class RVInsnLOAD<list<int> encvalues, string name, code execcode>
+  : RVInsn<[ENC_IMM_11_0,
+            ENC_RS1,
+            ENC_FUNCT3,
+            ENC_RD,
+            ENC_OPC],
+            name, execcode> {
+  let Type = "LOAD";
+  let EncValues = encvalues;
+}
+
+class RVInsnSTORE<list<int> encvalues, string name, code execcode>
+  : RVInsn<[ENC_IMM_11_5,
+            ENC_RS2,
+            ENC_RS1,
+            ENC_FUNCT3,
+            ENC_IMM_4_0,
+            ENC_OPC],
+            name, execcode> {
+  let Type = "STORE";
   let EncValues = encvalues;
 }
 

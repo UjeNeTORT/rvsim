@@ -117,6 +117,48 @@ def LUI : RVInsnU<[?, ?, OPC_LUI.Val], "lui",
 def AUIPC : RVInsnU<[?, ?, OPC_AUIPC.Val], "auipc",
   !strconcat(UExecutePrefix, "Model.setReg(Rd, Imm + Model.getPC());\n\t\t")>;
 
+defvar LOADExecutePrefix =
+  "uint32_t Imm = getOperand(0);\n\t\t"
+  "Sim::Register Rs1 = static_cast<Sim::Register>(getOperand(1));\n\t\t"
+  "Sim::Register Rd  = static_cast<Sim::Register>(getOperand(2));\n\t\t"
+  "int32_t SImm = sign_extend_12_to_32(Imm);\n\t\t"
+  "uint32_t MemAddr = Model.getReg(Rs1) + SImm;\n\t\t";
+
+def LB : RVInsnLOAD<[?, ?, !cast<int>(0b000), ?, OPC_LOAD.Val], "lb",
+  !strconcat(LOADExecutePrefix,
+  "Model.setReg(Rd, sign_extend_8_to_32(Model.readByte(MemAddr)));")>;
+def LH : RVInsnLOAD<[?, ?, !cast<int>(0b001), ?, OPC_LOAD.Val], "lh",
+  !strconcat(LOADExecutePrefix,
+  "Model.setReg(Rd, sign_extend_16_to_32(Model.readHalf(MemAddr)));")>;
+def LW : RVInsnLOAD<[?, ?, !cast<int>(0b010), ?, OPC_LOAD.Val], "lw",
+  !strconcat(LOADExecutePrefix,
+  "Model.setReg(Rd, Model.readWord(MemAddr));")>;
+def LBU : RVInsnLOAD<[?, ?, !cast<int>(0b100), ?, OPC_LOAD.Val], "lbu",
+  !strconcat(LOADExecutePrefix,
+  "Model.setReg(Rd, static_cast<uint32_t>(Model.readByte(MemAddr)));")>;
+def LHU : RVInsnLOAD<[?, ?, !cast<int>(0b101), ?, OPC_LOAD.Val], "lhu",
+  !strconcat(LOADExecutePrefix,
+  "Model.setReg(Rd, static_cast<uint32_t>(Model.readHalf(MemAddr)));")>;
+
+defvar STORExecutePrefix =
+  "uint32_t Imm = getSTOREImm(Operands_);\n\t\t"
+  "Sim::Register Rs2 = static_cast<Sim::Register>(getOperand(1));\n\t\t"
+  "Sim::Register Rs1 = static_cast<Sim::Register>(getOperand(2));\n\t\t"
+  "uint32_t Op1 = Model.getReg(Rs1);\n\t\t"
+  "uint32_t Op2 = Model.getReg(Rs2);\n\t\t"
+  "int32_t SImm = sign_extend_12_to_32(Imm);\n\t\t"
+  "uint32_t MemAddr = Op1 + SImm;\n\t\t";
+
+def SB : RVInsnSTORE<[?, ?, ?, !cast<int>(0b000), ?, OPC_STORE.Val], "sb",
+  !strconcat(STORExecutePrefix,
+  "Model.writeByte(MemAddr, static_cast<uint8_t>(Op2 & 0xff));")>;
+def SH : RVInsnSTORE<[?, ?, ?, !cast<int>(0b001), ?, OPC_STORE.Val], "sh",
+  !strconcat(STORExecutePrefix,
+  "Model.writeByte(MemAddr, static_cast<uint16_t>(Op2 & 0xffff));")>;
+def SW : RVInsnSTORE<[?, ?, ?, !cast<int>(0b010), ?, OPC_STORE.Val], "sw",
+  !strconcat(STORExecutePrefix,
+  "Model.writeByte(MemAddr, Op2 & 0xffffffff);")>;
+
 def EBREAK : RVInsnSystem<[!cast<int>(0b000000000001), // funct12
                            !cast<int>(0b00000),        // rs1
                            !cast<int>(0b000),          // funct3
