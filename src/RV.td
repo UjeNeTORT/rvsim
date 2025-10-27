@@ -17,7 +17,8 @@ def SUB  : RVInsnR<[!cast<int>(0b0100000), ?, ?, !cast<int>(0b000), ?, OPC_OP.Va
 def SLL  : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b001), ?, OPC_OP.Val], "sll",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 << (Op2 & 0x1f));\n\t\t")>;
 def SLT  : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b010), ?, OPC_OP.Val], "slt",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 << (Op2 & 0x1f));\n\t\t")>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, "
+  "std::bit_cast<int32_t>(Op1) < std::bit_cast<int32_t>(Op2));\n\t\t")>;
 def SLTU : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b011), ?, OPC_OP.Val], "sltu",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 < Op2);\n\t\t")>;
 def XOR  : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b100), ?, OPC_OP.Val], "xor",
