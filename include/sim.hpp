@@ -31,7 +31,8 @@ class RVModel final : IRVModel {
   RegisterFile regs_;
   uint32_t pc_;
 
-  bool execution = false;
+  bool logs_ = false;
+  bool execution_ = false;
   bool is_valid_ = false;
 
 public:
@@ -51,7 +52,8 @@ public:
     }
 
     pc_ = elf_reader.get_entry();
-    std::cerr << "Found user entry point at: " << pc_ << '\n';
+    if (logs_)
+      std::cerr << "Found user entry point at: " << pc_ << '\n';
 
     regs_ = RegisterFile();
     mem_ = MemoryModel::fromELF(elf_reader);
@@ -111,6 +113,8 @@ public:
 
   void execute() override;
   void exit() override;
+
+  void setLogs(int logs);
 
   std::ostream& print(std::ostream& out) override;
   void binaryDump(std::ofstream& fout) override;
@@ -186,16 +190,17 @@ std::unique_ptr<RVISA::IRVInsn> RVModel::decode(uint32_t insn_code) {
 }
 
 void RVModel::execute() {
-  std::cerr << "DBG: begin execution (pc = " << pc_ << ")\n";
+  if (logs_)
+    std::cerr << "DBG: begin execution (pc = " << pc_ << ")\n";
 
-  execution = true;
+  execution_ = true;
 
-  while (execution && is_valid_) {
+  while (execution_ && is_valid_) {
     uint32_t insn_code = mem_.readWord(pc_); // fetch
     std::unique_ptr<RVISA::IRVInsn> insn = RVISA::decode(insn_code);
     if (!insn) break;
 
-    printInsn(std::cerr, *insn);
+    if (logs_) printInsn(std::cerr, *insn);
 
     if (insn->getType() == RVISA::RVInsnTypes::UNDEF_TYPE_INSN) {
       break;
@@ -204,16 +209,19 @@ void RVModel::execute() {
     insn->execute(*this);
 
     // advance if executing, else - do nothing
-    setPC(pc_ + sizeof(uint32_t) * execution);
+    setPC(pc_ + sizeof(uint32_t) * execution_);
   }
 
-  std::cerr << "DBG: end execution (pc = " << pc_ << ")\n";
+  if (logs_)
+    std::cerr << "DBG: end execution (pc = " << pc_ << ")\n";
 }
 
 // todo return control to exec env
 void RVModel::exit() {
-  execution = false;
+  execution_ = false;
 }
+
+void RVModel::setLogs(int logs) { logs_ = static_cast<bool>(logs); }
 
 void RVModel::printInsn(std::ostream& out, const RVISA::IRVInsn& insn) {
   out << insn << ' ' << insn.getName() << " <pc = " << getPC() << ">\n";

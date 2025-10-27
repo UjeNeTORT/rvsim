@@ -50,9 +50,8 @@ int main(int argc, char *argv[]) {
         "run simulator on an ELF file. Discards all the other input sources qualifiers")
 
     ("logs", po::value<int>(&logs)->default_value(0),
-             "set logs verbosity level (0 - logs disabled, \n"
-             "                          1 - enabled, \n"
-             "                          2 - super-hyper-verbose mode)")
+             "set logs verbosity level (0 - disabled, \n"
+             "                          1 - enabled")
 
     ("checkpoints", po::value<bool>(&checkpoints)->default_value(false),
                     "record checkpoints (after each insn execution "
@@ -74,10 +73,6 @@ int main(int argc, char *argv[]) {
 
   if (vm.count("omem")) {
     std::cerr << "Sorry, option --omem is not yet implemented\n";
-  }
-
-  if (logs) {
-    std::cerr << "Sorry, option --logs is not yet implemented\n";
   }
 
   if (checkpoints) {
@@ -124,6 +119,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
+  model.setLogs(logs);
   model.execute();
 
   if (vm.count("ostate")) {
