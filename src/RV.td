@@ -111,12 +111,13 @@ def BGEU : RVInsnB<[?, ?, ?, ?, !cast<int>(0b111), ?, ?, OPC_BRANCH.Val], "bgeu"
 
 defvar UExecutePrefix =
   "uint32_t Imm = getOperand(0);\n\t\t"
+  "uint32_t UImm = Imm << 12;\n\t\t"
   "Sim::Register Rd = static_cast<Sim::Register>(getOperand(1));\n\t\t";
 
 def LUI : RVInsnU<[?, ?, OPC_LUI.Val], "lui",
-  !strconcat(UExecutePrefix, "Model.setReg(Rd, Imm);\n\t\t")>;
+  !strconcat(UExecutePrefix, "Model.setReg(Rd, UImm);\n\t\t")>;
 def AUIPC : RVInsnU<[?, ?, OPC_AUIPC.Val], "auipc",
-  !strconcat(UExecutePrefix, "Model.setReg(Rd, Imm + Model.getPC());\n\t\t")>;
+  !strconcat(UExecutePrefix, "Model.setReg(Rd, UImm + Model.getPC());\n\t\t")>;
 
 defvar LOADExecutePrefix =
   "uint32_t Imm = getOperand(0);\n\t\t"
