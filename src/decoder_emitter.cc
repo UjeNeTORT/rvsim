@@ -131,8 +131,6 @@ public:
     OS << "class " << Name_ << " : public IRVInsn {\n";
     OS << "\t" << "const uint32_t RawEncoding_ = " << RawEncoding_ << "; // "
                 << "0b" << std::bitset<32>(RawEncoding_).to_string() << "\n";
-    OS << "\t" << "const uint32_t TypeMask_ = " << TypeMask_ << "; // "
-                << "0b" << std::bitset<32>(TypeMask_).to_string() << "\n";
     OS << "\t" << "uint32_t Opcode_ = RawEncoding_; // fully encoded instruction\n";
     OS << "\t" << "std::string AsmStr_ = \"" << AsmStr_ << "\";\n";
 
@@ -156,6 +154,10 @@ public:
     // type
     OS << "\t" << "RVInsnTypes getType() const override {\n"
        << "\t\t" << "return RVInsnTypes::" << Type_ << "_TYPE_INSN;\n"
+       << "\t" << "}\n\n";
+    OS << "\t" << "static uint32_t getTypeMask() {\n"
+       << "\t\t" << "return " << TypeMask_ << "; // "
+                 << "0b" << std::bitset<32>(TypeMask_).to_string() << "\n"
        << "\t" << "}\n\n";
 
     // name
@@ -370,7 +372,7 @@ void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
   OS << "std::unique_ptr<IRVInsn> decode(uint32_t Opcode) {\n";
   for (auto &II : InsnInfos) {
     OS << "\t""if (uint32_t RawOpcode = "
-                        "Opcode & 0b" << std::bitset<32>(II.getTypeMask()).to_string() << ") {\n"
+                        "Opcode & " << II.getName()  << "::getTypeMask()) {\n"
        << "\t\t""if (RawOpcode == 0b" << std::bitset<32>(II.getRawEncoding()).to_string() << ") {\n"
        << "\t\t\t""std::unique_ptr<IRVInsn>Insn(new " << II.getName() << "(Opcode));\n";
     OS << "\t\t\t""return Insn;\n"
