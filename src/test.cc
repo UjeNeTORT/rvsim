@@ -209,8 +209,8 @@ TEST_F(TestRVModel, AND) {
   }
 }
 
-TEST_F(TestRVModel, ELF_FILE) {
-  std::filesystem::path test_dir = "../test/elf";
+TEST_F(TestRVModel, ELF_PLUS) {
+  std::filesystem::path test_dir = "../test/elf/plus";
   for (auto const &dir_entry :
                       std::filesystem::directory_iterator(test_dir)) {
     if (!dir_entry.is_regular_file()) continue;
@@ -219,6 +219,11 @@ TEST_F(TestRVModel, ELF_FILE) {
 
     EXPECT_EQ(TestAnsELF(fpath), true);
   }
+}
+
+TEST_F(TestRVModel, FACTORIAL) {
+  std::filesystem::path fpath = "../test/elf/factorial.elf";
+  EXPECT_EQ(TestAnsELF(fpath), true);
 }
 
 TEST_F(TestRVModel, stress) {
