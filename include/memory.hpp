@@ -1,10 +1,14 @@
 #ifndef MEMORY_HPP
 #define MEMORY_HPP
 
+#include <cassert>
+#include <cstdint>
+#include <cstring>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <elfio/elfio.hpp>
@@ -43,7 +47,8 @@ ELFError checkELF(std::filesystem::path& elf_path);
  * endianness: little (default)
 */
 class MemoryModel final {
-  std::vector<uint8_t> mem_ = std::vector<uint8_t>(DEFAULT_ADDR_SPACE);
+  class Page;
+  std::unordered_map<uint32_t, Page> mem_;
   std::vector<Segment> segments_;
 
   Endianness endian_ = Endianness::LITTLE;
@@ -84,6 +89,7 @@ public:
 
   bool operator==(const MemoryModel& other) const;
 
+  void copy(uint32_t addr, const void * src, uint32_t n);
   void set(uint32_t addr, uint8_t val, uint32_t n);
 
   uint8_t readByte(uint32_t addr) const;
@@ -99,6 +105,54 @@ public:
   std::ostream& printSegments(std::ostream& out) const;
 
   uint32_t size() const;
+};
+
+class MemoryModel::Page final {
+  char *Data_;
+  uint32_t VAddr_;
+  static const size_t Size_ = 1ULL << 12; // 4K
+public:
+  Page(uint32_t VAddr) : Data_(new char[Size_]), VAddr_(VAddr) {}
+  Page(const Page &Other) : Page(0U) {
+    std::memcpy(Data_, Other.Data_, Size_);
+    VAddr_ = Other.VAddr_;
+  }
+
+  Page(Page &&Other) noexcept {
+    Data_ = nullptr;
+    std::swap(Data_, Other.Data_);
+    VAddr_ = Other.VAddr_;
+  }
+
+  Page &operator=(const Page &Rhs) {
+    if (this == &Rhs) return *this;
+    std::memcpy(Data_, Rhs.Data_, Size_);
+    VAddr_ = Rhs.VAddr_;
+    return *this;
+  }
+
+  Page &operator=(Page &&Rhs) noexcept {
+    Data_ = nullptr;
+    std::swap(Data_, Rhs.Data_);
+    VAddr_ = Rhs.VAddr_;
+    return *this;
+  }
+
+  ~Page() { delete [] Data_; }
+
+  template <typename T = uint32_t>
+  T get(uint32_t VAddr) {
+    assert(VAddr >= VAddr_ && "Cannot access data at addr < page begin addr!");
+    assert(VAddr < VAddr_ + Size_ && "Cannot access data at addr > page end addr");
+
+    T Res = *reinterpret_cast<T *>(Data_ + (VAddr - VAddr_)); // offset relative to a page start addr
+    return Res;
+  }
+
+  // @param VAddr virtual address of the byte
+  // @returns byte at address VAddr
+  // unsafe - no bounds check
+  char &operator[] (uint32_t VAddr) noexcept { return *(Data_ + (VAddr - VAddr_)); }
 };
 
 std::ostream& operator<<(std::ostream& out, MemoryModel& memory);

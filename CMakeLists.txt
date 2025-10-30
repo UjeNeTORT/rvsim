@@ -65,6 +65,7 @@ add_library(segment STATIC
 
 add_library(memory STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/memory.cc)
+target_include_directories(memory PRIVATE ${CMAKE_SOURCE_DIR}/ELFIO)
 target_link_libraries(memory segment)
 
 add_library(registers STATIC

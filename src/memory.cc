@@ -10,7 +10,8 @@
 
 namespace elf = ELFIO;
 
-static uint32_t fileBytesLeft(std::ifstream& file) {
+namespace {
+uint32_t fileBytesLeft(std::ifstream& file) {
   if (!file) { return 0; }
   uint32_t curr_pos = file.tellg();
   file.seekg(0, std::ios::end);
@@ -23,7 +24,7 @@ static uint32_t fileBytesLeft(std::ifstream& file) {
 /// @brief resize vector to make its size % align == 0
 /// @return number of new elements inserted
 template <typename T>
-static uint32_t alignAs(std::vector<T>& vec, uint32_t align) {
+uint32_t alignAs(std::vector<T>& vec, uint32_t align) {
   uint32_t vec_size = vec.size();
   if (vec_size % align) return 0;
 
@@ -31,7 +32,7 @@ static uint32_t alignAs(std::vector<T>& vec, uint32_t align) {
   vec.resize(new_size);
   return new_size;
 }
-
+} // namespace
 namespace rv32i_sim {
 
 ELFError checkELF(elf::elfio& elf_reader) {
@@ -68,39 +69,40 @@ ELFError checkELF(std::filesystem::path& elf_path) {
 MemoryModel MemoryModel::fromELF(elf::elfio& elf_reader) {
   if(checkELF(elf_reader) != ELFError::OK) { return MemoryModel(false); }
 
-  uint32_t seg_vaddr = 0;
-  uint32_t seg_memsz = 0;
-  uint32_t seg_filesz = 0;
-  uint32_t seg_rights = 0;
-  uint32_t seg_align = 0;
+  uint32_t SegVaddr = 0;
+  uint32_t SegMemsz = 0;
+  uint32_t SegFilesz = 0;
+  uint32_t SegRights = 0;
+  uint32_t SegAlign = 0;
 
   std::vector<uint8_t> memory (DEFAULT_ADDR_SPACE);
   std::vector<Segment> segments;
 
-  auto seg = elf_reader.segments.begin();
-  auto seg_end = elf_reader.segments.end();
-  for ( ; seg != seg_end; ++seg) {
-    seg_vaddr = seg->get()->get_virtual_address();
-    seg_memsz = seg->get()->get_memory_size();
-    seg_filesz = seg->get()->get_file_size();
-    seg_rights = seg->get()->get_flags();
-    seg_align = seg->get()->get_align();
+  auto SegIt = elf_reader.segments.begin();
+  auto SegEnd = elf_reader.segments.end();
+  for ( ; SegIt != SegEnd; ++SegIt) {
+    auto *Seg = SegIt->get();
+    SegVaddr  = Seg->get_virtual_address();
+    SegMemsz  = Seg->get_memory_size();
+    SegFilesz = Seg->get_file_size();
+    SegRights = Seg->get_flags();
+    SegAlign  = Seg->get_align();
 
     // resize if required
-    if (memory.size() < seg_vaddr + seg_memsz)
-      memory.resize(seg_vaddr + seg_memsz);
+    if (memory.size() < SegVaddr + SegMemsz)
+      memory.resize(SegVaddr + SegMemsz);
 
     // handle .bss section
-    if (seg_memsz > seg_filesz) {
-      std::memcpy(memory.data() + seg_vaddr, seg->get()->get_data(), seg_filesz);
-      std::memset(memory.data() + seg_vaddr + seg_filesz, 0x00, seg_memsz - seg_filesz);
+    if (SegMemsz > SegFilesz) {
+      copy(SegVaddr, Seg->get_data(), SegFilesz);
+      set(SegVaddr + SegFilesz, 0x00, SegMemsz - SegFilesz);
     } else {
-      std::memcpy(memory.data() + seg_vaddr, seg->get()->get_data(), seg_memsz);
+      copy(SegVaddr, Seg->get_data(), SegMemsz);
     }
 
     // create a segment for loaded data
     segments.push_back(
-      Segment(seg_vaddr, seg_memsz, seg_rights, seg_align)
+      Segment(SegVaddr, SegMemsz, SegRights, SegAlign)
     );
   }
 
