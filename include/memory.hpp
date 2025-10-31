@@ -3,6 +3,7 @@
 
 #include <cassert>
 #include <cstdint>
+#include <cstddef>
 #include <cstring>
 #include <fstream>
 #include <filesystem>
@@ -48,7 +49,8 @@ ELFError checkELF(std::filesystem::path& elf_path);
 */
 class MemoryModel final {
   class Page;
-  std::unordered_map<uint32_t, Page> mem_;
+  using PageTable_t = std::unordered_map<uint32_t, Page>;
+  PageTable_t mem_;
   std::vector<Segment> segments_;
 
   Endianness endian_ = Endianness::LITTLE;
@@ -57,7 +59,9 @@ class MemoryModel final {
 public:
   MemoryModel(bool valid) : is_valid_(valid) {}
   MemoryModel(Endianness endian = Endianness::LITTLE) : endian_(endian) {}
-  MemoryModel(std::vector<uint8_t> mem, std::vector<Segment> segments, bool valid = true) :
+  MemoryModel(const PageTable_t &mem, const std::vector<Segment> &segments, bool valid = true) :
+      mem_(mem), segments_(segments), is_valid_(valid) {}
+  MemoryModel(PageTable_t &&mem, std::vector<Segment> &&segments, bool valid = true) :
       mem_(mem), segments_(segments), is_valid_(valid) {}
 
   static MemoryModel fromELF(elf::elfio& elf_reader);
@@ -108,11 +112,11 @@ public:
 };
 
 class MemoryModel::Page final {
-  char *Data_;
+  uint8_t *Data_;
   uint32_t VAddr_;
   static const size_t Size_ = 1ULL << 12; // 4K
 public:
-  Page(uint32_t VAddr) : Data_(new char[Size_]), VAddr_(VAddr) {}
+  Page(uint32_t VAddr) : Data_(new uint8_t[Size_]), VAddr_(VAddr) {}
   Page(const Page &Other) : Page(0U) {
     std::memcpy(Data_, Other.Data_, Size_);
     VAddr_ = Other.VAddr_;
@@ -151,7 +155,7 @@ public:
   // @param VAddr virtual address of the byte
   // @returns byte at address VAddr
   // unsafe - no bounds check
-  char &operator[] (uint32_t VAddr) noexcept { return *(Data_ + (VAddr - VAddr_)); }
+  uint8_t &operator[] (uint32_t VAddr) noexcept { return *(Data_ + (VAddr - VAddr_)); }
 };
 
 std::ostream& operator<<(std::ostream& out, MemoryModel& memory);
