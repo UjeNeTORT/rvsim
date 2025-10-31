@@ -132,9 +132,8 @@ public:
   }
 
   Page &operator=(Page &&Rhs) noexcept {
-    Data_ = nullptr;
     std::swap(Data_, Rhs.Data_);
-    VAddr_ = Rhs.VAddr_;
+    std::swap(VAddr_, Rhs.VAddr_);
     return *this;
   }
 
