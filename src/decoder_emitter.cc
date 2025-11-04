@@ -129,7 +129,7 @@ public:
 
   void emitClass(raw_ostream &OS) const {
     OS << "class " << Name_ << " : public IRVInsn {\n";
-    OS << "\t" << "const uint32_t RawEncoding_ = " << RawEncoding_ << "; // "
+    OS << "\t" << "static constexpr uint32_t RawEncoding_ = " << RawEncoding_ << "; // "
                 << "0b" << std::bitset<32>(RawEncoding_).to_string() << "\n";
     OS << "\t" << "uint32_t Opcode_ = RawEncoding_; // fully encoded instruction\n";
     OS << "\t" << "std::string AsmStr_ = \"" << AsmStr_ << "\";\n";
@@ -139,7 +139,7 @@ public:
     OS << "public:\n";
 
     // constructors
-    OS << "\t" << Name_ << "() = default;\n\n";
+    OS << "\t" << Name_ << "() : " << Name_ << "(RawEncoding_) {} // w/a to assign some operands even for default constructed insn;\n\n";
     OS << "\t" << Name_ << "(uint32_t Opcode) : Opcode_(Opcode) {\n";
     for (uint32_t OpIdx = 0, NOps = nOperands(); OpIdx != NOps; ++OpIdx)
       OS << "\t\t\t""addOperand((Opcode & " << getOperandMask(OpIdx)
@@ -193,6 +193,7 @@ public:
       OS << "\t\t" << "Opcode_ |= Operands.at(" << OpIdx << ") << "
                    << getOperandMaskLSB(OpIdx) << "; // "
                    << getOperandName(OpIdx) << "\n";
+      OS << "\t\t" << "Operands_[" << OpIdx << "].first = Operands.at(" << OpIdx << ");\n";
     }
     OS << "\t\t" << "return Opcode_;\n";
     OS << "\t" << "}\n\n";
