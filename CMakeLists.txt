@@ -13,6 +13,7 @@ set(CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -O0 -fsanitize=address")
 set (CMAKE_CXX_FLAGS_RELEASE "-O2")
 set (CMAKE_CXX_FLAGS "-fdiagnostics-color=always")
+set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(LLVM REQUIRED CONFIG)
 find_package(Boost COMPONENTS program_options REQUIRED)
