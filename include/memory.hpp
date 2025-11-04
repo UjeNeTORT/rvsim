@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <elfio/elfio.hpp>
+#include "elfio/elfio.hpp"
 
 #include "segment.hpp"
 
@@ -20,15 +20,17 @@ namespace rv32i_sim {
 
 namespace elf = ELFIO;
 
-constexpr uint32_t DEFAULT_ADDR_SPACE = 1 << 16;
-constexpr uint32_t DEFAULT_STACK_SIZE = 1 << 12;
-constexpr uint32_t ENV_SEG_SIZE = 1 << 6;
-constexpr uint32_t DEFAULT_CANARY_SIZE = 1 << 8;
+const     uint32_t DEFAULT_ADDR_SPACE = 0xffff'ffffU;
+const     uint32_t DEFAULT_STACK_ADDR = 0x7fff'0000U;
+constexpr uint32_t DEFAULT_STACK_SIZE = 4096U;
+const     uint32_t DEFAULT_ENV_ADDR = 0x7fff'f000U;
+constexpr uint32_t ENV_SEG_SIZE = 64U;
+constexpr uint32_t DEFAULT_CANARY_SIZE = 256U;
 
 const uint32_t IALIGN = 4;
 
-constexpr uint8_t STACK_CANARY_BYTE = 0xcc; // to make canaries visible
-constexpr uint8_t ENV_CODE_BYTE = 0xee; // to make environment code visible
+constexpr uint8_t STACK_CANARY_BYTE = 0xcc;
+constexpr uint8_t ENV_CODE_BYTE = 0xee;
 
 const std::string RV32I_MEMORY_STATE_SIGNATURE = "RV32I_MEM_STATE";
 
@@ -69,40 +71,54 @@ public:
   static MemoryModel fromBstate(std::filesystem::path& mem_path);
   static MemoryModel fromBstate(std::ifstream& mem_file);
 
+private:
+  // if page does not exist - allocate, else - do nothing
+  uint32_t preparePage(uint32_t Addr);
+
+public:
+  // @note does not guarantee that the page exists
+  uint32_t getPageAddr(uint32_t Addr) const;
+
   // sets up stack segment of size = stack_size with canary at the top
   // returns address where initial sp is placed - the bottom of the segment
-  uint32_t setUpStack(uint32_t stack_size = DEFAULT_STACK_SIZE);
-  uint32_t setUpEnvironment(uint32_t pc_main);
+  uint32_t setUpStack(uint32_t StkSize = DEFAULT_STACK_SIZE);
+  uint32_t setUpEnvironment(uint32_t MainPC);
 
   /// @brief create a segment and push at the end of memory
-  /// @param size size of segment requested (can be a little bigger due to alignment)
-  /// @param rights RWX
-  /// @param align starting address alignment
+  /// @param Size size of segment requested (can be a little bigger due to alignment)
+  /// @param Rights RWX
+  /// @param Align starting address alignment
   /// @return memory address of pushed segment
-  uint32_t pushSegment(uint32_t size, uint8_t rights, uint8_t align);
+  uint32_t pushSegment(uint32_t Size, uint8_t Rights, uint8_t Align);
 
   /// @brief push requested segment at the end of memory
-  /// @param seg Segment which is to be pushed
+  /// @param Seg Segment which is to be pushed
   /// @return memory address of pushed segment
   /// @warning DISCARDS ALIGNMENT as it is assumed that `seg.vaddr` is already aligned
-  uint32_t pushSegment(Segment seg);
+  uint32_t pushSegment(Segment Seg);
 
-  bool checkRights(uint32_t addr, uint8_t rights) const;
+  bool checkRights(uint32_t Addr, uint8_t Rights) const;
 
   bool isValid() const;
 
   bool operator==(const MemoryModel& other) const;
 
-  void copy(uint32_t addr, const void * src, uint32_t n);
-  void set(uint32_t addr, uint8_t val, uint32_t n);
+  void memCopy(uint32_t Addr, const void * Src, uint32_t N);
+  void memSet(uint32_t Addr, uint8_t Val, uint32_t N);
 
-  uint8_t readByte(uint32_t addr) const;
-  uint16_t readHalf(uint32_t addr) const;
-  uint32_t readWord(uint32_t addr) const;
+  template<typename T> T get(uint32_t Addr);
+  template<typename T> void set(uint32_t Addr, T Val);
 
-  void writeByte(uint32_t addr, uint8_t val);
-  void writeHalf(uint32_t addr, uint16_t val);
-  void writeWord(uint32_t addr, uint32_t val);
+  // safe only for access within one single page
+  uint8_t &operator[](uint32_t Addr);
+
+  uint8_t  readByte(uint32_t Addr);
+  uint16_t readHalf(uint32_t Addr);
+  uint32_t readWord(uint32_t Addr);
+
+  void writeByte(uint32_t Addr, uint8_t Val);
+  void writeHalf(uint32_t Addr, uint16_t Val);
+  void writeWord(uint32_t Addr, uint32_t Val);
 
   void binaryDump(std::ofstream& fout) const;
   std::ostream& print(std::ostream& out) const;
@@ -116,6 +132,7 @@ class MemoryModel::Page final {
   uint32_t VAddr_;
   static const size_t Size_ = 1ULL << 12; // 4K
 public:
+  Page() : Data_(new uint8_t[Size_]), VAddr_(0U) {}
   Page(uint32_t VAddr) : Data_(new uint8_t[Size_]), VAddr_(VAddr) {}
   Page(const Page &Other) : Page(0U) {
     std::memcpy(Data_, Other.Data_, Size_);
@@ -144,12 +161,18 @@ public:
   ~Page() { delete [] Data_; }
 
   template <typename T = uint32_t>
-  T get(uint32_t VAddr) {
-    assert(VAddr >= VAddr_ && "Cannot access data at addr < page begin addr!");
-    assert(VAddr < VAddr_ + Size_ && "Cannot access data at addr > page end addr");
+  T get(uint32_t Offset) {
+    assert(Offset < Size_ && "Cannot access data at addr > page end addr");
 
-    T Res = *reinterpret_cast<T *>(Data_ + (VAddr - VAddr_)); // offset relative to a page start addr
+    T Res = *reinterpret_cast<T *>(Data_ + Offset);
     return Res;
+  }
+
+  template <typename T = uint32_t>
+  void set(uint32_t Offset, T Val) {
+    assert(Offset < Size_ && "Cannot access data at addr > page end addr");
+
+    *reinterpret_cast<T *>(Data_ + Offset) = Val;
   }
 
   // @param VAddr virtual address of the byte

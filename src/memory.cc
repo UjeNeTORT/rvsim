@@ -1,16 +1,19 @@
 #include "memory.hpp"
 
-#include <bit>
 #include <cassert>
-#include <climits>
+#include <cstddef>
+#include <cstdint>
 #include <fstream>
 #include <filesystem>
 #include <iostream>
-#include <string>
+#include <vector>
+
+#include "elfio/elfio.hpp"
 
 namespace elf = ELFIO;
 
 namespace {
+
 uint32_t fileBytesLeft(std::ifstream& file) {
   if (!file) { return 0; }
   uint32_t curr_pos = file.tellg();
@@ -75,38 +78,36 @@ MemoryModel MemoryModel::fromELF(elf::elfio& elf_reader) {
   uint32_t SegRights = 0;
   uint32_t SegAlign = 0;
 
-  std::vector<uint8_t> memory (DEFAULT_ADDR_SPACE);
+  MemoryModel MemM(true);
   std::vector<Segment> segments;
 
   auto SegIt = elf_reader.segments.begin();
   auto SegEnd = elf_reader.segments.end();
   for ( ; SegIt != SegEnd; ++SegIt) {
     auto *Seg = SegIt->get();
+    if (Seg->get_type() != elf::PT_LOAD) continue;
+
     SegVaddr  = Seg->get_virtual_address();
     SegMemsz  = Seg->get_memory_size();
     SegFilesz = Seg->get_file_size();
     SegRights = Seg->get_flags();
     SegAlign  = Seg->get_align();
 
-    // resize if required
-    if (memory.size() < SegVaddr + SegMemsz)
-      memory.resize(SegVaddr + SegMemsz);
-
     // handle .bss section
     if (SegMemsz > SegFilesz) {
-      copy(SegVaddr, Seg->get_data(), SegFilesz);
-      set(SegVaddr + SegFilesz, 0x00, SegMemsz - SegFilesz);
+      MemM.memCopy(SegVaddr, Seg->get_data(), SegFilesz);
+      MemM.memSet(SegVaddr + SegFilesz, 0x00, SegMemsz - SegFilesz);
     } else {
-      copy(SegVaddr, Seg->get_data(), SegMemsz);
+      MemM.memCopy(SegVaddr, Seg->get_data(), SegMemsz);
     }
 
     // create a segment for loaded data
-    segments.push_back(
+    MemM.pushSegment(
       Segment(SegVaddr, SegMemsz, SegRights, SegAlign)
     );
   }
 
-  return MemoryModel(memory, segments, true);
+  return MemM;
 }
 
 MemoryModel MemoryModel::fromELF(std::filesystem::path& elf_path) {
@@ -132,116 +133,85 @@ MemoryModel MemoryModel::fromBstate(std::filesystem::path& mem_path) {
   return MemoryModel::fromBstate(mem_file);
 }
 
-MemoryModel MemoryModel::fromBstate(std::ifstream& mem_file) {
-  if (!mem_file) {
+MemoryModel MemoryModel::fromBstate(std::ifstream& MemFile) {
+  if (!MemFile) {
     std::cerr << "ERROR: wrong memory file\n";
     return MemoryModel(false);
   }
 
-  std::string signature(RV32I_MEMORY_STATE_SIGNATURE.size(), ' ');
-  mem_file.read(signature.data(), RV32I_MEMORY_STATE_SIGNATURE.size() + 1);
+  std::string Signature(RV32I_MEMORY_STATE_SIGNATURE.size(), ' ');
+  MemFile.read(Signature.data(), RV32I_MEMORY_STATE_SIGNATURE.size() + 1);
 
-  if (signature != RV32I_MEMORY_STATE_SIGNATURE) {
+  if (Signature != RV32I_MEMORY_STATE_SIGNATURE) {
     std::cerr << "ERROR: mem state file signature mismatch:\n"
-              << "<" << signature << "> vs <" << RV32I_MEMORY_STATE_SIGNATURE <<">\n";
+              << "<" << Signature << "> vs <" << RV32I_MEMORY_STATE_SIGNATURE <<">\n";
     return MemoryModel(false);
   }
 
-  uint32_t file_size = static_cast<uint32_t>(fileBytesLeft(mem_file));
-  uint32_t memory_size = file_size > DEFAULT_ADDR_SPACE ? file_size :
-                                                              DEFAULT_ADDR_SPACE;
-  std::vector<uint8_t> memory(memory_size);
-  mem_file.read(std::bit_cast<char *>(memory.data()), file_size);
+  // everything after the signature is the memory dump
+  uint32_t MemorySize = fileBytesLeft(MemFile);
 
-  memory_size = alignAs(memory, DEFAULT_ALIGN);
+  // std::vector<uint8_t> memory(memory_size);
+  // mem_file.read(std::bit_cast<char *>(memory.data()), file_size);
+  // memory_size = alignAs(memory, DEFAULT_ALIGN);
+
+  MemoryModel MemM(true);
 
   // bstate format memory consists of a single segment
   // which is RWX. This is done to not overload format with
   // unnessessary data, as bstate is mostly used for testing and
   // debugging.
-  std::vector<Segment> segments {
-    Segment {
-      0,
-      memory_size,
-      RIGHTS_R | RIGHTS_W | RIGHTS_X,
-      DEFAULT_ALIGN
-    }
-  };
+  MemM.pushSegment(Segment(0, MemorySize, RIGHTS_R | RIGHTS_W | RIGHTS_X, DEFAULT_ALIGN));
 
-  return MemoryModel(memory, segments, true);
+  return MemM;
 }
 
-// sets up stack segment of size = stack_size with canary at the top
+uint32_t MemoryModel::preparePage(uint32_t Addr) {
+  uint32_t PageAddr = getPageAddr(Addr);
+  if (mem_.find(PageAddr) == mem_.end())
+    mem_.emplace(PageAddr, Page(PageAddr));
+  return PageAddr;
+}
+
+uint32_t MemoryModel::getPageAddr(uint32_t Addr) const {
+  return Addr & ~0xFFF; // nullify an offset within the page
+}
+
+// sets up stack segment of size = StackSize with canaries
 // returns address where initial sp is placed - the bottom of the segment
-uint32_t MemoryModel::setUpStack(uint32_t stack_size) {
-  assert(stack_size < MAX_STACK_SIZE && "Stack size is too big!");
+uint32_t MemoryModel::setUpStack(uint32_t StackSize) {
+  assert(StackSize < MAX_STACK_SIZE && "Stack size is too big!");
 
-  // stack resides at the bottom of the address space
-  // and is protected by a canary segment from both sides
-  uint32_t canary_top_vaddr = alignAs(mem_, DEFAULT_ALIGN);
-  uint32_t stack_vaddr = canary_top_vaddr + DEFAULT_CANARY_SIZE;
-  Segment stack {
-    stack_vaddr,
-    stack_size,
-    RIGHTS_R | RIGHTS_W,
-  };
+  // stack is located in the end of the address space
+  // and is protected by canary segments from both sides
+  uint32_t CanaryTopVaddr = DEFAULT_STACK_ADDR;
+  uint32_t StackVaddr = CanaryTopVaddr + DEFAULT_CANARY_SIZE;
 
-  mem_.resize(mem_.size() + 2 * DEFAULT_CANARY_SIZE + stack_size);
-  std::memset(mem_.data() + canary_top_vaddr, STACK_CANARY_BYTE, DEFAULT_CANARY_SIZE);
-  std::memset(mem_.data() + stack_vaddr + stack_size,
-                                              STACK_CANARY_BYTE, DEFAULT_CANARY_SIZE);
+  memSet(CanaryTopVaddr,         STACK_CANARY_BYTE, DEFAULT_CANARY_SIZE);
+  memSet(StackVaddr + StackSize, STACK_CANARY_BYTE, DEFAULT_CANARY_SIZE);
 
-  Segment canary_top {canary_top_vaddr, DEFAULT_CANARY_SIZE, 0 /* access forbidden */};
-  Segment canary_bottom {
-    canary_top_vaddr + DEFAULT_CANARY_SIZE + stack_size,
-    DEFAULT_CANARY_SIZE,
-    0 // access forbidden
-  };
+  Segment CanaryStart { CanaryTopVaddr,         DEFAULT_CANARY_SIZE, 0 };
+  Segment Stack       { StackVaddr,             StackSize,           RIGHTS_R | RIGHTS_W };
+  Segment CanaryEnd   { StackVaddr + StackSize, DEFAULT_CANARY_SIZE, 0 };
 
-  segments_.push_back(canary_top);
-  segments_.push_back(stack);
-  segments_.push_back(canary_bottom);
+  segments_.push_back(CanaryStart);
+  segments_.push_back(Stack);
+  segments_.push_back(CanaryEnd);
 
-  return stack_vaddr + stack_size - sizeof(uint32_t);
+  return StackVaddr + StackSize - sizeof(uint32_t); // sp
 }
 
-uint32_t MemoryModel::pushSegment(uint32_t size, uint8_t rights, uint8_t align) {
-  uint32_t seg_vaddr = alignAs(mem_, align);
+uint32_t MemoryModel::pushSegment(Segment Seg) {
+  uint32_t MaxAddr = Seg.getVaddr() + Seg.getSize();
+  segments_.push_back(Seg);
 
-  if (mem_.size() < seg_vaddr + size)
-    mem_.resize(seg_vaddr + size);
-
-  std::memset(mem_.data() + seg_vaddr, ENV_CODE_BYTE, size);
-
-  segments_.push_back(
-    Segment {
-      seg_vaddr,
-      size,
-      rights,
-      align,
-    }
-  );
-
-  return seg_vaddr;
+  return MaxAddr;
 }
 
-uint32_t MemoryModel::pushSegment(Segment seg) {
-  assert(seg.getVaddr() >= mem_.size() && "New segment cannot overlap the existing one");
-
-  uint32_t max_addr = seg.getVaddr() + seg.getSize();
-  if (mem_.size() < max_addr) mem_.resize(max_addr);
-
-  std::memset(mem_.data() + seg.getVaddr(), ENV_CODE_BYTE, seg.getSize());
-
-  segments_.push_back(seg);
-
-  return max_addr;
-}
-
-bool MemoryModel::checkRights(uint32_t addr, uint8_t rights) const {
-  for (auto seg : segments_) {
-    if (seg.getVaddr() <= addr && addr < seg.getVaddr() + seg.getSize()) {
-      return seg.checkRights(rights);
+bool MemoryModel::checkRights(uint32_t Addr, uint8_t Rights) const {
+  for (auto Seg : segments_) {
+    if (Seg.getVaddr() <= Addr && Addr < Seg.getVaddr() + Seg.getSize()) {
+      return Seg.checkRights(Rights);
     }
   }
 
@@ -255,114 +225,106 @@ bool MemoryModel::isValid() const {
 // comparison is so complicated to deal with the cases of vectors with
 // non-meaningful zeros in the end
 bool MemoryModel::operator==(const MemoryModel& other) const {
-  bool mem_eq = mem_ == other.mem_;
-  if (!mem_eq) {
-    std::size_t size = mem_.size();
-    std::size_t other_size = other.mem_.size();
+  // bool mem_eq = mem_ == other.mem_;
+  // if (!mem_eq) {
+    // std::size_t size = mem_.size();
+    // std::size_t other_size = other.mem_.size();
 
-    if (size < other_size) {
-      mem_eq = std::equal(mem_.begin(), mem_.end(), other.mem_.begin());
+    // if (size < other_size) {
+      // mem_eq = std::equal(mem_.begin(), mem_.end(), other.mem_.begin());
 
-      for (unsigned i = size; i < other_size; i++) {
-        if (other.mem_[i] != 0x00) return false;
-      }
+      // for (unsigned i = size; i < other_size; i++) {
+        // if (other.mem_[i] != 0x00) return false;
+      // }
 
-      mem_eq = true;
-    } else if (size > other_size) {
-      mem_eq = std::equal(other.mem_.begin(), other.mem_.end(), mem_.begin());
+      // mem_eq = true;
+    // } else if (size > other_size) {
+      // mem_eq = std::equal(other.mem_.begin(), other.mem_.end(), mem_.begin());
 
-      for (unsigned i = size; i < other_size; i++) {
-        if (mem_[i] != 0x00) return false;
-      }
+      // for (unsigned i = size; i < other_size; i++) {
+        // if (mem_[i] != 0x00) return false;
+      // }
 
-      mem_eq = true;
-    }
-  }
+      // mem_eq = true;
+    // }
+  // }
 
   // todo maybe i can improve this
-  return endian_ == other.endian_ && mem_eq;
+  // return endian_ == other.endian_ && mem_eq;
+  return endian_ == other.endian_;
 }
 
-void MemoryModel::set(uint32_t addr, uint8_t val, uint32_t n) {
-  if (mem_.size() < addr + n) mem_.resize(addr + n);
-  std::memset(mem_.data() + addr, val, n);
+void MemoryModel::memCopy(uint32_t Addr, const void * Src, uint32_t N) {
+  const uint8_t *CSrc = reinterpret_cast<const uint8_t *>(Src);
+  for (size_t Idx = 0; Idx != N; ++Addr, ++Idx)
+    set<uint8_t>(Addr, CSrc[Idx]);
 }
 
-uint8_t MemoryModel::readByte(uint32_t addr) const {
-  assert(checkRights(addr, RIGHTS_R) && "No rights to read");
-  assert(addr % sizeof(uint32_t) == 0 && "Address not aligned");
-  assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
-  return mem_[addr];
+void MemoryModel::memSet(uint32_t Addr, uint8_t Val, uint32_t N) {
+  for (size_t Idx = 0; Idx != N; ++Addr, ++Idx)
+    set<uint8_t>(Addr, Val);
 }
 
-uint16_t MemoryModel::readHalf(uint32_t addr) const {
-  assert(checkRights(addr, RIGHTS_R) && "No rights to read");
-  assert(addr % sizeof(uint32_t) == 0 && "Address not aligned");
-  assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
-  uint16_t res = 0;
-  for (int i = sizeof(uint16_t) - 1; i >= 0; --i) {
-    res <<= sizeof(uint8_t) * CHAR_BIT;
-    res |= uint16_t(mem_[addr + i]);
-  }
-
-  return res;
+template<typename T>
+T MemoryModel::get(uint32_t Addr) {
+  uint32_t PageAddr = preparePage(Addr);
+  uint32_t Offset   = Addr - PageAddr;
+  return mem_[PageAddr].get<T>(Offset);
 }
 
-uint32_t MemoryModel::readWord(uint32_t addr) const {
-  assert(checkRights(addr, RIGHTS_R) && "No rights to read");
-  assert(addr % sizeof(uint32_t) == 0 && "Address not aligned");
-  assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
-  uint32_t res = 0;
-  for (int i = sizeof(uint32_t) - 1; i >= 0; --i) {
-    res <<= sizeof(uint8_t) * CHAR_BIT;
-    res |= uint32_t(mem_[addr + i]);
-  }
-
-  return res;
+template<typename T>
+void MemoryModel::set(uint32_t Addr, T Val) {
+  uint32_t PageAddr = preparePage(Addr);
+  uint32_t Offset   = Addr - PageAddr;
+  mem_[PageAddr].set<T>(Offset, Val);
 }
 
-void MemoryModel::writeByte(uint32_t addr, uint8_t val) {
-  assert(checkRights(addr, RIGHTS_W) && "No rights to write");
-  assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
-  mem_[addr] = val;
+uint8_t &MemoryModel::operator[](uint32_t Addr) {
+  uint32_t PageAddr = preparePage(Addr);
+  uint32_t Offset = Addr - PageAddr;
+  return mem_[PageAddr][Offset];
 }
 
-void MemoryModel::writeHalf(uint32_t addr, uint16_t val) {
-  assert(checkRights(addr, RIGHTS_W) && "No rights to write");
-  assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
-  for (int i = 0; i != sizeof(uint16_t); ++i) {
-    uint8_t curr = val & 0xFF;
-    mem_[addr++] = curr;
-    val >>= CHAR_BIT; // next byte
-  }
+uint8_t MemoryModel::readByte(uint32_t Addr) {
+  assert(checkRights(Addr, RIGHTS_R) && "No rights to read");
+  assert(Addr % sizeof(uint32_t) == 0 && "Address not aligned");
+  return get<uint8_t>(Addr);
 }
 
-void MemoryModel::writeWord(uint32_t addr, uint32_t val) {
-  assert(checkRights(addr, RIGHTS_W) && "No rights to write");
-  assert(addr < mem_.size() && "Address must be within bounds of loaded memory");
-  for (int i = 0; i != sizeof(uint32_t); ++i) {
-    uint8_t curr = val & 0xFF;
-    mem_[addr++] = curr;
-    val >>= CHAR_BIT; // next byte
-  }
+uint16_t MemoryModel::readHalf(uint32_t Addr) {
+  assert(checkRights(Addr, RIGHTS_R) && "No rights to read");
+  assert(Addr % sizeof(uint32_t) == 0 && "Address not aligned");
+  return get<uint16_t>(Addr);
+}
+
+uint32_t MemoryModel::readWord(uint32_t Addr) {
+  assert(checkRights(Addr, RIGHTS_R) && "No rights to read");
+  assert(Addr % sizeof(uint32_t) == 0 && "Address not aligned");
+  return get<uint32_t>(Addr);
+}
+
+void MemoryModel::writeByte(uint32_t Addr, uint8_t Val) {
+  assert(checkRights(Addr, RIGHTS_W) && "No rights to write");
+  set<uint8_t>(Addr, Val);
+}
+
+void MemoryModel::writeHalf(uint32_t Addr, uint16_t Val) {
+  assert(checkRights(Addr, RIGHTS_W) && "No rights to write");
+  set<uint16_t>(Addr, Val);
+}
+
+void MemoryModel::writeWord(uint32_t Addr, uint32_t Val) {
+  assert(checkRights(Addr, RIGHTS_W) && "No rights to write");
+  set<uint32_t>(Addr, Val);
 }
 
 void MemoryModel::binaryDump(std::ofstream& fout) const {
   fout.write(RV32I_MEMORY_STATE_SIGNATURE.c_str(),
               RV32I_MEMORY_STATE_SIGNATURE.size() + 1);
   // reinterpret:  uint8_t * -> char *, and add const
-  fout.write(reinterpret_cast<const char *>(mem_.data()), mem_.size());
-
-  // as bstate files must be at least DEFAULT_ADDR_SPACE large
-  // fill all the rest with zeros
-  if (mem_.size() >= DEFAULT_ADDR_SPACE)
-    return;
-
-  uint32_t bytes_left = DEFAULT_ADDR_SPACE - mem_.size();
-  std::vector<uint8_t> null_vec(bytes_left);
-
-  // reinterpret:  uint8_t * -> char *, and add const
-  fout.write(reinterpret_cast<const char *>(null_vec.data()), null_vec.size());
+  #if 0
+    fout.write(reinterpret_cast<const char *>(mem_.data()), mem_.size());
+  #endif
 }
 
 std::ostream& MemoryModel::print(std::ostream& out) const {
@@ -381,7 +343,7 @@ std::ostream& MemoryModel::printSegments(std::ostream& out) const {
 }
 
 uint32_t MemoryModel::size() const {
-  return mem_.size();
+  return DEFAULT_ADDR_SPACE;
 }
 
 std::ostream& operator<<(std::ostream& out, MemoryModel& memory) {
