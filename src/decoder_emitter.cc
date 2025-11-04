@@ -6,38 +6,12 @@
 #include "llvm/TableGen/Error.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include <bit>
 #include <bitset>
 #include <set>
-#include <ranges>
 
 using namespace llvm;
 
 namespace {
-/**
- * Overengineering, since i am still uncertain what info should be stored in an
- * encoded value.
- * For now these two classes just store single uint32_t value.
- * */
-class IEncodingFieldValue {
-public:
-  virtual uint32_t getEncodedNumber() const;
-  virtual void setEncodedNumber(uint32_t Value);
-  virtual void print(raw_ostream &Out) const;
-  virtual ~IEncodingFieldValue();
-};
-
-class RVEncodingFieldValue final : IEncodingFieldValue {
-  uint32_t Value_;
-public:
-  uint32_t getEncodedNumber() const override { return Value_; }
-  void setEncodedNumber(uint32_t Value) override { Value_ = Value; }
-
-  void print(raw_ostream& Out) const override {
-    Out << Value_;
-    return;
-  }
-};
 
 class EncodingField final {
   uint32_t First_; // field's LSB bit position
