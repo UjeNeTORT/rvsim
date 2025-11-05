@@ -25,7 +25,6 @@ namespace rv32i_sim {
 
 const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 
-// todo refactor mess
 class RVModel final : IRVModel {
   MemoryModel mem_;
   RegisterFile regs_;
@@ -213,8 +212,7 @@ void RVModel::execute() {
 
     insn->execute(*this);
 
-    // advance if executing, else - do nothing
-    setPC(pc_ + sizeof(uint32_t) * execution_);
+    if (!execution_) break;
   }
 
   if (logs_)
@@ -271,7 +269,7 @@ uint32_t RVModel::setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr) {
   mem_.memSet(EnvAddr, ENV_CODE_BYTE, ENV_SEG_SIZE);
 
   RVISA::JAL JalMain;
-  uint32_t Offset = MainPC - EnvAddr - sizeof(uint32_t);
+  uint32_t Offset = MainPC - EnvAddr;
   uint32_t Rd = static_cast<uint32_t>(Register::X1);
 
   std::vector<uint32_t> JalArgs = createJalArgs(Offset, Rd);
