@@ -77,7 +77,7 @@ std::tuple<uint32_t, uint32_t, uint32_t> getBArgs(std::vector<std::pair<uint32_t
 
 uint32_t getSTOREImm(std::vector<std::pair<uint32_t, std::string>> Encods) {
   assert(Encods.size() == 4);
-  uint32_t Imm = (Encods[0].first << 5) & 0x7f;
+  uint32_t Imm = (Encods[0].first & 0x7f) << 5;
   Imm |= Encods[3].first & 0x1f;
   return Imm;
 }
