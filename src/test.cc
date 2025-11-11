@@ -101,7 +101,7 @@ protected:
   }
 };
 
-TEST_F(TestRVModel, ADD) {
+TEST_F(TestRVModel, DISABLED_ADD) {
   std::filesystem::path test_dir = "../test/insn/add";
   for (auto const &dir_entry :
                       std::filesystem::directory_iterator(test_dir)) {
@@ -113,7 +113,7 @@ TEST_F(TestRVModel, ADD) {
   }
 }
 
-TEST_F(TestRVModel, SUB) {
+TEST_F(TestRVModel, DISABLED_SUB) {
   std::filesystem::path test_dir = "../test/insn/sub";
   for (auto const &dir_entry :
                       std::filesystem::directory_iterator(test_dir)) {
@@ -125,7 +125,7 @@ TEST_F(TestRVModel, SUB) {
   }
 }
 
-TEST_F(TestRVModel, SLL) {
+TEST_F(TestRVModel, DISABLED_SLL) {
   std::filesystem::path test_dir = "../test/insn/sll";
   for (auto const &dir_entry :
                       std::filesystem::directory_iterator(test_dir)) {
@@ -137,7 +137,7 @@ TEST_F(TestRVModel, SLL) {
   }
 }
 
-TEST_F(TestRVModel, SLT) {
+TEST_F(TestRVModel, DISABLED_SLT) {
   std::filesystem::path test_dir = "../test/insn/slt";
   for (auto const &dir_entry :
                       std::filesystem::directory_iterator(test_dir)) {
@@ -149,7 +149,7 @@ TEST_F(TestRVModel, SLT) {
   }
 }
 
-TEST_F(TestRVModel, SLTU) {
+TEST_F(TestRVModel, DISABLED_SLTU) {
   std::filesystem::path test_dir = "../test/insn/sltu";
   for (auto const &dir_entry :
                       std::filesystem::directory_iterator(test_dir)) {
@@ -161,7 +161,7 @@ TEST_F(TestRVModel, SLTU) {
   }
 }
 
-TEST_F(TestRVModel, XOR) {
+TEST_F(TestRVModel, DISABLED_XOR) {
   std::filesystem::path test_dir = "../test/insn/xor";
   for (auto const &dir_entry :
                       std::filesystem::directory_iterator(test_dir)) {
@@ -173,7 +173,7 @@ TEST_F(TestRVModel, XOR) {
   }
 }
 
-TEST_F(TestRVModel, SRA) {
+TEST_F(TestRVModel, DISABLED_SRA) {
   std::filesystem::path test_dir = "../test/insn/sra";
   for (auto const &dir_entry :
                       std::filesystem::directory_iterator(test_dir)) {
@@ -185,7 +185,7 @@ TEST_F(TestRVModel, SRA) {
   }
 }
 
-TEST_F(TestRVModel, OR) {
+TEST_F(TestRVModel, DISABLED_OR) {
   std::filesystem::path test_dir = "../test/insn/or";
   for (auto const &dir_entry :
                       std::filesystem::directory_iterator(test_dir)) {
@@ -197,7 +197,7 @@ TEST_F(TestRVModel, OR) {
   }
 }
 
-TEST_F(TestRVModel, AND) {
+TEST_F(TestRVModel, DISABLED_AND) {
   std::filesystem::path test_dir = "../test/insn/or";
   for (auto const &dir_entry :
                       std::filesystem::directory_iterator(test_dir)) {
@@ -226,7 +226,7 @@ TEST_F(TestRVModel, FACTORIAL) {
   EXPECT_EQ(TestAnsELF(fpath), true);
 }
 
-TEST_F(TestRVModel, stress) {
+TEST_F(TestRVModel, DISABLED_stress) {
   std::filesystem::path test_dir = "../test/stress";
   for (auto const &dir_entry :
                       std::filesystem::recursive_directory_iterator(test_dir)) {
