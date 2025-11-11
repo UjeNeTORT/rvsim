@@ -66,10 +66,10 @@ std::vector<uint32_t> createBArgs(uint32_t Imm, uint32_t Rs2, uint32_t Rs1) {
 std::tuple<uint32_t, uint32_t, uint32_t> getBArgs(std::vector<std::pair<uint32_t, std::string>> Encods) {
   assert(Encods.size() == 6);
   uint32_t Imm = 0;
-  Imm |= (Encods[0].first << 12) & 1;
-  Imm |= (Encods[1].first << 5)  & 0x3f;
-  Imm |= (Encods[4].first << 1)  & 0xf;
-  Imm |= (Encods[5].first << 11) & 1;
+  Imm |= (Encods[0].first & 1) << 12;
+  Imm |= (Encods[1].first & 0x3f) << 5;
+  Imm |= (Encods[4].first & 0xf) << 1;
+  Imm |= (Encods[5].first & 1) << 11;
   return std::tuple<uint32_t, uint32_t, uint32_t>(
     Imm, Encods[2].first /*Rs2*/, Encods[3].first /*Rs1*/
   );
@@ -77,7 +77,7 @@ std::tuple<uint32_t, uint32_t, uint32_t> getBArgs(std::vector<std::pair<uint32_t
 
 uint32_t getSTOREImm(std::vector<std::pair<uint32_t, std::string>> Encods) {
   assert(Encods.size() == 4);
-  uint32_t Imm = (Encods[0].first << 5) & 0x7f;
+  uint32_t Imm = (Encods[0].first & 0x7f) << 5;
   Imm |= Encods[3].first & 0x1f;
   return Imm;
 }

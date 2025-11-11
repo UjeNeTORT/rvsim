@@ -6,38 +6,12 @@
 #include "llvm/TableGen/Error.h"
 #include "llvm/Support/raw_ostream.h"
 
-#include <bit>
 #include <bitset>
 #include <set>
-#include <ranges>
 
 using namespace llvm;
 
 namespace {
-/**
- * Overengineering, since i am still uncertain what info should be stored in an
- * encoded value.
- * For now these two classes just store single uint32_t value.
- * */
-class IEncodingFieldValue {
-public:
-  virtual uint32_t getEncodedNumber() const;
-  virtual void setEncodedNumber(uint32_t Value);
-  virtual void print(raw_ostream &Out) const;
-  virtual ~IEncodingFieldValue();
-};
-
-class RVEncodingFieldValue final : IEncodingFieldValue {
-  uint32_t Value_;
-public:
-  uint32_t getEncodedNumber() const override { return Value_; }
-  void setEncodedNumber(uint32_t Value) override { Value_ = Value; }
-
-  void print(raw_ostream& Out) const override {
-    Out << Value_;
-    return;
-  }
-};
 
 class EncodingField final {
   uint32_t First_; // field's LSB bit position
@@ -129,10 +103,8 @@ public:
 
   void emitClass(raw_ostream &OS) const {
     OS << "class " << Name_ << " : public IRVInsn {\n";
-    OS << "\t" << "const uint32_t RawEncoding_ = " << RawEncoding_ << "; // "
+    OS << "\t" << "static constexpr uint32_t RawEncoding_ = " << RawEncoding_ << "; // "
                 << "0b" << std::bitset<32>(RawEncoding_).to_string() << "\n";
-    OS << "\t" << "const uint32_t TypeMask_ = " << TypeMask_ << "; // "
-                << "0b" << std::bitset<32>(TypeMask_).to_string() << "\n";
     OS << "\t" << "uint32_t Opcode_ = RawEncoding_; // fully encoded instruction\n";
     OS << "\t" << "std::string AsmStr_ = \"" << AsmStr_ << "\";\n";
 
@@ -141,7 +113,7 @@ public:
     OS << "public:\n";
 
     // constructors
-    OS << "\t" << Name_ << "() = default;\n\n";
+    OS << "\t" << Name_ << "() : " << Name_ << "(RawEncoding_) {} // w/a to assign some operands even for default constructed insn;\n\n";
     OS << "\t" << Name_ << "(uint32_t Opcode) : Opcode_(Opcode) {\n";
     for (uint32_t OpIdx = 0, NOps = nOperands(); OpIdx != NOps; ++OpIdx)
       OS << "\t\t\t""addOperand((Opcode & " << getOperandMask(OpIdx)
@@ -156,6 +128,10 @@ public:
     // type
     OS << "\t" << "RVInsnTypes getType() const override {\n"
        << "\t\t" << "return RVInsnTypes::" << Type_ << "_TYPE_INSN;\n"
+       << "\t" << "}\n\n";
+    OS << "\t" << "static uint32_t getTypeMask() {\n"
+       << "\t\t" << "return " << TypeMask_ << "; // "
+                 << "0b" << std::bitset<32>(TypeMask_).to_string() << "\n"
        << "\t" << "}\n\n";
 
     // name
@@ -191,6 +167,7 @@ public:
       OS << "\t\t" << "Opcode_ |= Operands.at(" << OpIdx << ") << "
                    << getOperandMaskLSB(OpIdx) << "; // "
                    << getOperandName(OpIdx) << "\n";
+      OS << "\t\t" << "Operands_[" << OpIdx << "].first = Operands.at(" << OpIdx << ");\n";
     }
     OS << "\t\t" << "return Opcode_;\n";
     OS << "\t" << "}\n\n";
@@ -370,7 +347,7 @@ void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
   OS << "std::unique_ptr<IRVInsn> decode(uint32_t Opcode) {\n";
   for (auto &II : InsnInfos) {
     OS << "\t""if (uint32_t RawOpcode = "
-                        "Opcode & 0b" << std::bitset<32>(II.getTypeMask()).to_string() << ") {\n"
+                        "Opcode & " << II.getName()  << "::getTypeMask()) {\n"
        << "\t\t""if (RawOpcode == 0b" << std::bitset<32>(II.getRawEncoding()).to_string() << ") {\n"
        << "\t\t\t""std::unique_ptr<IRVInsn>Insn(new " << II.getName() << "(Opcode));\n";
     OS << "\t\t\t""return Insn;\n"

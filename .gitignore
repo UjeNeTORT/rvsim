@@ -37,3 +37,4 @@
 build
 buildd
 build_sh
+.clang-tidy

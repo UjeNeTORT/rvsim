@@ -13,6 +13,7 @@ set(CMAKE_CXX_STANDARD 20)
 set (CMAKE_CXX_FLAGS_DEBUG "-Wall -Wextra -g -O0 -fsanitize=address")
 set (CMAKE_CXX_FLAGS_RELEASE "-O2")
 set (CMAKE_CXX_FLAGS "-fdiagnostics-color=always")
+set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(LLVM REQUIRED CONFIG)
 find_package(Boost COMPONENTS program_options REQUIRED)
@@ -65,6 +66,7 @@ add_library(segment STATIC
 
 add_library(memory STATIC
   ${CMAKE_CURRENT_SOURCE_DIR}/memory.cc)
+target_include_directories(memory PRIVATE ${CMAKE_SOURCE_DIR}/ELFIO)
 target_link_libraries(memory segment)
 
 add_library(registers STATIC
@@ -74,7 +76,7 @@ add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/main.cc ${GEN_DECODER
 target_link_libraries(${PROJECT_NAME} segment memory registers decoder_helpers)
 add_dependencies(${PROJECT_NAME} decoder_inc)
 
-target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_17)
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 target_link_libraries(${PROJECT_NAME} Boost::program_options)
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})

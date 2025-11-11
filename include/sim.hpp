@@ -25,7 +25,6 @@ namespace rv32i_sim {
 
 const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 
-// todo refactor mess
 class RVModel final : IRVModel {
   MemoryModel mem_;
   RegisterFile regs_;
@@ -51,12 +50,16 @@ public:
       return;
     }
 
-    pc_ = elf_reader.get_entry();
+    uint32_t EntryPoint = elf_reader.get_entry();
     if (logs_)
-      std::cerr << "Found user entry point at: " << pc_ << '\n';
+      std::cerr << "Found user entry point at: "
+                << std::hex << EntryPoint << std::dec << '\n';
 
     regs_ = RegisterFile();
     mem_ = MemoryModel::fromELF(elf_reader);
+    auto LastSegment = std::prev(elf_reader.segments.end());
+    uint32_t EnvAddr = LastSegment->get()->get_virtual_address()
+                     + LastSegment->get()->get_memory_size();
 
     // setting up stack and initial stack frame
     uint32_t sp = mem_.setUpStack();
@@ -65,7 +68,8 @@ public:
 
     // preparing execution environment i.e.
     // code which calls main and does ebreak in the end
-    pc_ = setUpEnvironment(pc_);
+    setUpEnvironment(EntryPoint, EnvAddr);
+    pc_ = EnvAddr;
 
     is_valid_ = mem_.isValid() && regs_.isValid();
   }
@@ -98,9 +102,9 @@ private:
 public:
   bool isValid() const override;
 
-  uint8_t readByte(uint32_t addr) const override;
-  uint16_t readHalf(uint32_t addr) const override;
-  uint32_t readWord(uint32_t addr) const override;
+  uint8_t  readByte(uint32_t addr) override;
+  uint16_t readHalf(uint32_t addr) override;
+  uint32_t readWord(uint32_t addr) override;
 
   void writeByte(uint32_t addr, uint8_t val) override;
   void writeHalf(uint32_t addr, uint16_t val) override;
@@ -109,7 +113,7 @@ public:
   uint32_t getReg(Register reg) const override;
   void setReg(Register reg, uint32_t val) override;
 
-  uint32_t setUpEnvironment(uint32_t pc_main);
+  uint32_t setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr);
 
   void execute() override;
   void exit() override;
@@ -177,9 +181,9 @@ void RVModel::setPC(uint32_t pc_new) {
 
 bool RVModel::isValid() const { return is_valid_; }
 
-uint8_t  RVModel::readByte(uint32_t addr) const { return mem_.readByte(addr); }
-uint16_t RVModel::readHalf(uint32_t addr) const { return mem_.readHalf(addr); }
-uint32_t RVModel::readWord(uint32_t addr) const { return mem_.readWord(addr); }
+uint8_t  RVModel::readByte(uint32_t addr) { return mem_.readByte(addr); }
+uint16_t RVModel::readHalf(uint32_t addr) { return mem_.readHalf(addr); }
+uint32_t RVModel::readWord(uint32_t addr) { return mem_.readWord(addr); }
 
 void RVModel::writeByte(uint32_t addr, uint8_t val)  { mem_.writeByte(addr, val); }
 void RVModel::writeHalf(uint32_t addr, uint16_t val) { mem_.writeHalf(addr, val); }
@@ -191,7 +195,7 @@ std::unique_ptr<RVISA::IRVInsn> RVModel::decode(uint32_t insn_code) {
 
 void RVModel::execute() {
   if (logs_)
-    std::cerr << "DBG: begin execution (pc = " << pc_ << ")\n";
+    std::cerr << "DBG: begin execution <pc = " << std::hex << pc_ << std::dec << ">\n";
 
   execution_ = true;
 
@@ -208,12 +212,11 @@ void RVModel::execute() {
 
     insn->execute(*this);
 
-    // advance if executing, else - do nothing
-    setPC(pc_ + sizeof(uint32_t) * execution_);
+    if (!execution_) break;
   }
 
   if (logs_)
-    std::cerr << "DBG: end execution (pc = " << pc_ << ")\n";
+    std::cerr << "DBG: end execution <pc = " << std::hex << pc_ << std::dec << ">\n";
 }
 
 // todo return control to exec env
@@ -224,7 +227,8 @@ void RVModel::exit() {
 void RVModel::setLogs(int logs) { logs_ = static_cast<bool>(logs); }
 
 void RVModel::printInsn(std::ostream& out, const RVISA::IRVInsn& insn) {
-  out << insn << ' ' << insn.getName() << " <pc = " << getPC() << ">\n";
+  out << insn << ' ' << insn.getName() << " <pc = "
+      << std::hex << getPC() << std::dec << ">\n";
 }
 
 std::ostream& RVModel::print(std::ostream& out) {
@@ -255,24 +259,19 @@ void RVModel::setReg(Register reg, uint32_t val) {
   regs_.set(reg, val);
 }
 
-uint32_t RVModel::setUpEnvironment(uint32_t pc_main) {
-  assert(pc_main < mem_.size() && "pc of main is set too high");
+uint32_t RVModel::setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr) {
+  assert(MainPC < mem_.size() && "main's address is set too high");
 
-  uint32_t env_vaddr = mem_.pushSegment(
-    ENV_SEG_SIZE,
-    RIGHTS_R | RIGHTS_X | RIGHTS_W, // todo discard W right, user vs supervisor mode
-    DEFAULT_ALIGN
+  mem_.pushSegment(
+    Segment(EnvAddr, ENV_SEG_SIZE, RIGHTS_R | RIGHTS_X | RIGHTS_W, DEFAULT_ALIGN)
   );
 
-  mem_.set(env_vaddr, ENV_CODE_BYTE, ENV_SEG_SIZE);
+  mem_.memSet(EnvAddr, ENV_CODE_BYTE, ENV_SEG_SIZE);
 
   RVISA::JAL JalMain;
-  uint32_t Offset = static_cast<uint32_t>(pc_main)
-                  - static_cast<int32_t>(env_vaddr)
-                  - sizeof(uint32_t);
+  uint32_t Offset = MainPC - EnvAddr;
   uint32_t Rd = static_cast<uint32_t>(Register::X1);
 
-  // todo check if move ctor is called
   std::vector<uint32_t> JalArgs = createJalArgs(Offset, Rd);
   try {
     JalMain.encode(JalArgs);
@@ -283,10 +282,10 @@ uint32_t RVModel::setUpEnvironment(uint32_t pc_main) {
   RVISA::EBREAK Ebreak;
 
   // emit environment code
-  writeWord(env_vaddr, JalMain.getOpcode());
-  writeWord(env_vaddr + sizeof(uint32_t), Ebreak.getOpcode());
+  writeWord(EnvAddr, JalMain.getOpcode());
+  writeWord(EnvAddr + sizeof(uint32_t), Ebreak.getOpcode());
 
-  return env_vaddr;
+  return EnvAddr + ENV_SEG_SIZE;
 }
 
 } // namespace rv32i_sim
