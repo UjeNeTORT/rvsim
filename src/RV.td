@@ -34,6 +34,31 @@ def OR   : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b110), ?, OPC_OP.Va
 def AND  : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b111), ?, OPC_OP.Val], "and",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 & Op2);\n\t\t", IncPC)>;
 
+def MUL  : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b000), ?, OPC_OP.Val], "mul",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, (Op1 * Op2) & 0xffff'ffff);\n\t\t")>;
+def MULH : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b001), ?, OPC_OP.Val], "mulh",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, ((static_cast<int64_t>(Op1) * "
+                             "static_cast<int64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t")>;
+def MULHU: RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b011), ?, OPC_OP.Val], "mulhu",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, ((static_cast<uint64_t>(Op1) * "
+                             "static_cast<uint64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t")>;
+def MULHSU: RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b010), ?, OPC_OP.Val], "mulhsu",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, ((static_cast<int64_t>(Op1) * "
+                             "static_cast<uint64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t")>;
+def DIV  : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b100), ?, OPC_OP.Val], "div",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<int32_t>(Op1) / "
+                             "std::bit_cast<int32_t>(Op2)) & 0xffff'ffff);\n\t\t")>;
+def DIVU : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b101), ?, OPC_OP.Val], "divu",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<uint32_t>(Op1) / "
+                             "std::bit_cast<uint32_t>(Op2)) & 0xffff'ffff);\n\t\t")>;
+def REM  : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b110), ?, OPC_OP.Val], "rem",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<int32_t>(Op1) % "
+                             "std::bit_cast<int32_t>(Op2)) & 0xffff'ffff);\n\t\t")>;
+def REMU : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b111), ?, OPC_OP.Val], "remu",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<uint32_t>(Op1) % "
+                             "std::bit_cast<uint32_t>(Op2)) & 0xffff'ffff);\n\t\t")>;
+
+
 defvar IExecutePrefix =
   "uint32_t Imm = getOperand(0);\n\t\t"
   "int32_t SImm = sign_extend_12_to_32(getOperand(0));\n\t\t"

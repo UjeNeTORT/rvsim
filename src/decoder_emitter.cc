@@ -381,9 +381,10 @@ void DecoderEmitter::run(raw_ostream &OS) {
   emitSourceFileHeader("RV Decoder structures", OS);
 
   OS << "#include <iostream>\n"
+     << "#include <bit>\n"
      << "#include <bitset>\n"
-     << "#include <memory>\n"
      << "#include <cstdint>\n"
+     << "#include <memory>\n"
      << "#include <vector>\n"
      << "#include <iomanip>\n"
      << "\n"
