@@ -11,6 +11,42 @@ defvar RExecutePrefix =
   "uint32_t Op1 = Model.getReg(Rs1);\n\t\t"
   "uint32_t Op2 = Model.getReg(Rs2);\n\t\t";
 
+defvar IExecutePrefix =
+  "uint32_t Imm = getOperand(0);\n\t\t"
+  "int32_t SImm = sign_extend_12_to_32(getOperand(0));\n\t\t"
+  "Sim::Register Rs1 = static_cast<Sim::Register>(getOperand(1));\n\t\t"
+  "Sim::Register Rd  = static_cast<Sim::Register>(getOperand(2));\n\t\t"
+  "uint32_t Op1 = Model.getReg(Rs1);\n\t\t";
+
+defvar UExecutePrefix =
+  "uint32_t Imm = getOperand(0);\n\t\t"
+  "uint32_t UImm = Imm << 12;\n\t\t"
+  "Sim::Register Rd = static_cast<Sim::Register>(getOperand(1));\n\t\t";
+
+defvar BExecutePrefix =
+  "auto Args = getBArgs(Operands_);\n\t\t"
+  "int32_t SImm = sign_extend_13_to_32(std::get<0>(Args));\n\t\t"
+  "Sim::Register Rs2 = static_cast<Sim::Register>(std::get<1>(Args));\n\t\t"
+  "Sim::Register Rs1 = static_cast<Sim::Register>(std::get<2>(Args));\n\t\t"
+  "uint32_t Op2 = Model.getReg(Rs2);\n\t\t"
+  "uint32_t Op1 = Model.getReg(Rs1);\n\t\t";
+
+defvar LOADExecutePrefix =
+  "uint32_t Imm = getOperand(0);\n\t\t"
+  "Sim::Register Rs1 = static_cast<Sim::Register>(getOperand(1));\n\t\t"
+  "Sim::Register Rd  = static_cast<Sim::Register>(getOperand(2));\n\t\t"
+  "int32_t SImm = sign_extend_12_to_32(Imm);\n\t\t"
+  "uint32_t MemAddr = Model.getReg(Rs1) + SImm;\n\t\t";
+
+defvar STORExecutePrefix =
+  "uint32_t Imm = getSTOREImm(Operands_);\n\t\t"
+  "Sim::Register Rs2 = static_cast<Sim::Register>(getOperand(1));\n\t\t"
+  "Sim::Register Rs1 = static_cast<Sim::Register>(getOperand(2));\n\t\t"
+  "uint32_t Op1 = Model.getReg(Rs1);\n\t\t"
+  "uint32_t Op2 = Model.getReg(Rs2);\n\t\t"
+  "int32_t SImm = sign_extend_12_to_32(Imm);\n\t\t"
+  "uint32_t MemAddr = Op1 + SImm;\n\t\t";
+
 //                                FUNCT7 RS2 RS1           FUNCT3  RD      OPCODE | asmstr
 def ADD  : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b000), ?, OPC_OP.Val], "add",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 + Op2);\n\t\t", IncPC)>;
@@ -58,13 +94,81 @@ def REMU : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b111), ?, OPC_OP.Va
   !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<uint32_t>(Op1) % "
                              "std::bit_cast<uint32_t>(Op2)) & 0xffff'ffff);\n\t\t")>;
 
+def ANDN : RVInsnR<[!cast<int>(0b0100000), ?, ?, !cast<int>(0b111), ?, OPC_OP.Val], "andn",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 & ~Op2);\n\t\t")>;
+def ORN  : RVInsnR<[!cast<int>(0b0100000), ?, ?, !cast<int>(0b110), ?, OPC_OP.Val], "orn",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 | ~Op2);\n\t\t")>;
+def XNOR : RVInsnR<[!cast<int>(0b0100000), ?, ?, !cast<int>(0b100), ?, OPC_OP.Val], "xnor",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, ~(Op1 ^ Op2));\n\t\t")>;
 
-defvar IExecutePrefix =
-  "uint32_t Imm = getOperand(0);\n\t\t"
-  "int32_t SImm = sign_extend_12_to_32(getOperand(0));\n\t\t"
-  "Sim::Register Rs1 = static_cast<Sim::Register>(getOperand(1));\n\t\t"
-  "Sim::Register Rd  = static_cast<Sim::Register>(getOperand(2));\n\t\t"
-  "uint32_t Op1 = Model.getReg(Rs1);\n\t\t";
+def CLZ  : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00000), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "clz",
+  !strconcat(RExecutePrefix, "uint32_t Res = -1u;\n\t\t"
+                             "for (uint32_t Bit = 31; Bit >= 0; --Bit) {\n\t\t"
+                             "  if (Op1 >> Bit & 1u) {\n\t\t"
+                             "    Res = Bit;\n\t\t"
+                             "    break;\n\t\t"
+                             "  }\n\t\t"
+                             "}\n\t\t"
+                             "Model.setReg(Rd, 31 - Res); // 31 = xlen - 1\n\t\t")>;
+
+def CTZ  : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00001), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "ctz",
+  !strconcat(RExecutePrefix, "uint32_t Res = 32; // xlen\n\t\t"
+                             "for (uint32_t Bit = 0; Bit < 32; --Bit) {\n\t\t"
+                             "  if (Op1 >> Bit & 1u) {\n\t\t"
+                             "    Res = Bit;\n\t\t"
+                             "    break;\n\t\t"
+                             "  }\n\t\t"
+                             "}\n\t\t"
+                             "Model.setReg(Rd, Res);\n\t\t")>;
+
+def CPOP : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00010), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "cpop",
+  !strconcat(RExecutePrefix, "uint32_t BitCount = 0;\n\t\t"
+                             "for (uint32_t Bit = 0; Bit < 32; --Bit) {\n\t\t"
+                             "  if (Op1 >> Bit & 1u)\n\t\t"
+                             "    BitCount++;\n\t\t"
+                             "}\n\t\t"
+                             "Model.setReg(Rd, BitCount);\n\t\t")>;
+
+def MAX  : RVInsnR<[!cast<int>(0b0000101), ?, ?, !cast<int>(0b110), ?, OPC_OP.Val], "max",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, std::bit_cast<int32_t>(Op1) >= std::bit_cast<int32_t>(Op2) ? Op1 : Op2);\n\t\t")>;
+def MAXU : RVInsnR<[!cast<int>(0b0000101), ?, ?, !cast<int>(0b111), ?, OPC_OP.Val], "maxu",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 >= Op2 ? Op1 : Op2);\n\t\t")>;
+def MIN  : RVInsnR<[!cast<int>(0b0000101), ?, ?, !cast<int>(0b100), ?, OPC_OP.Val], "min",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, std::bit_cast<int32_t>(Op1) < std::bit_cast<int32_t>(Op2) ? Op1 : Op2);\n\t\t")>;
+def MINU : RVInsnR<[!cast<int>(0b0000101), ?, ?, !cast<int>(0b101), ?, OPC_OP.Val], "minu",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 < Op2 ? Op1 : Op2);\n\t\t")>;
+
+def SEXT_B : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00100), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "sext.b",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, sign_extend_8_to_32(Op1));\n\t\t")>;
+def SEXT_H : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00101), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "sext.h",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, sign_extend_16_to_32(Op1));\n\t\t")>;
+def ZEXT_H : RVInsnR<[!cast<int>(0b0000100), !cast<int>(0b00000), ?, !cast<int>(0b100), ?, OPC_OP.Val], "zext.h",
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, zero_extend_16_to_32(Op1));\n\t\t")>;
+
+def ROL  : RVInsnR<[!cast<int>(0b0110000), ?, ?, !cast<int>(0b001), ?, OPC_OP.Val], "rol",
+  !strconcat(RExecutePrefix, "uint32_t Shamt = Op2 & 0x1f;\n\t\t"
+                             "Model.setReg(Rd, (Op1 << Shamt) | (Op1 >> (32 - Shamt)));\n\t\t")>;
+def ROR  : RVInsnR<[!cast<int>(0b0110000), ?, ?, !cast<int>(0b101), ?, OPC_OP.Val], "ror",
+  !strconcat(RExecutePrefix, "uint32_t Shamt = Op2 & 0x1f;\n\t\t"
+                             "Model.setReg(Rd, (Op1 >> Shamt) | (Op1 << (32 - Shamt)));\n\t\t")>;
+def RORI : RVInsnR<[!cast<int>(0b0110000), ?, ?, !cast<int>(0b101), ?, OPC_OP_IMM.Val], "rori",
+  !strconcat(IExecutePrefix, "uint32_t Shamt = Imm & 0x1f;\n\t\t"
+                             "Model.setReg(Rd, (Op1 >> Shamt) | (Op1 << (32 - Shamt)));\n\t\t")>;
+
+def ORC_B : RVInsnI<[!cast<int>(0b001010000111), ?, !cast<int>(0b101), ?, OPC_OP_IMM.Val], "orc.b",
+  !strconcat(IExecutePrefix, "uint32_t Output = 0;\n\t\t"
+                             "for (uint32_t i = 0; i < 32; i += 8) {\n\t\t"
+                             "  Output = (Op1 >> i) & 0xff ? Output & ~(0xff << i)\n\t\t"
+                             "                             : Output |= (0xff << i);\n\t\t"
+                             "}\n\t\t"
+                             "Model.setReg(Rd, Output);")>;
+def REV8 : RVInsnI<[!cast<int>(0b011010011000), ?, !cast<int>(0b101), ?, OPC_OP_IMM.Val], "rev8",
+  !strconcat(IExecutePrefix, "uint32_t Output = 0;\n\t\t"
+                             "Output |= (Op1 & 0xff << 0)  << 24;\n\t\t"
+                             "Output |= (Op1 & 0xff << 8)  << 8;\n\t\t"
+                             "Output |= (Op1 & 0xff << 16) >> 8;\n\t\t"
+                             "Output |= (Op1 & 0xff << 24) >> 24;\n\t\t"
+                             "Model.setReg(Rd, Output);")>;
 
 //                                   FUNCT3             OPCODE
 def ADDI : RVInsnI<[?, ?, !cast<int>(0b000), ?, OPC_OP_IMM.Val], "addi",
@@ -105,14 +209,6 @@ def JALR : RVInsnJALR<[?, ?, !cast<int>(0b000), ?, OPC_JALR.Val], "jalr",
   "Model.setPC(JmpAddr);\n\t\t"
   "Model.setReg(Rd, t);\n\t\t">;
 
-defvar BExecutePrefix =
-  "auto Args = getBArgs(Operands_);\n\t\t"
-  "int32_t SImm = sign_extend_13_to_32(std::get<0>(Args));\n\t\t"
-  "Sim::Register Rs2 = static_cast<Sim::Register>(std::get<1>(Args));\n\t\t"
-  "Sim::Register Rs1 = static_cast<Sim::Register>(std::get<2>(Args));\n\t\t"
-  "uint32_t Op2 = Model.getReg(Rs2);\n\t\t"
-  "uint32_t Op1 = Model.getReg(Rs1);\n\t\t";
-
 def BEQ : RVInsnB<[?, ?, ?, ?, !cast<int>(0b000), ?, ?, OPC_BRANCH.Val], "beq",
   !strconcat(BExecutePrefix,
   "if (Op1 == Op2) Model.setPC(Model.getPC() + SImm);\n\t\t"
@@ -142,22 +238,10 @@ def BGEU : RVInsnB<[?, ?, ?, ?, !cast<int>(0b111), ?, ?, OPC_BRANCH.Val], "bgeu"
   "if (Op1 >= Op2) Model.setPC(Model.getPC() + SImm);\n\t\t"
   "else ", IncPC)>;
 
-defvar UExecutePrefix =
-  "uint32_t Imm = getOperand(0);\n\t\t"
-  "uint32_t UImm = Imm << 12;\n\t\t"
-  "Sim::Register Rd = static_cast<Sim::Register>(getOperand(1));\n\t\t";
-
 def LUI : RVInsnU<[?, ?, OPC_LUI.Val], "lui",
   !strconcat(UExecutePrefix, "Model.setReg(Rd, UImm);\n\t\t", IncPC)>;
 def AUIPC : RVInsnU<[?, ?, OPC_AUIPC.Val], "auipc",
   !strconcat(UExecutePrefix, "Model.setReg(Rd, UImm + Model.getPC());\n\t\t", IncPC)>;
-
-defvar LOADExecutePrefix =
-  "uint32_t Imm = getOperand(0);\n\t\t"
-  "Sim::Register Rs1 = static_cast<Sim::Register>(getOperand(1));\n\t\t"
-  "Sim::Register Rd  = static_cast<Sim::Register>(getOperand(2));\n\t\t"
-  "int32_t SImm = sign_extend_12_to_32(Imm);\n\t\t"
-  "uint32_t MemAddr = Model.getReg(Rs1) + SImm;\n\t\t";
 
 def LB : RVInsnLOAD<[?, ?, !cast<int>(0b000), ?, OPC_LOAD.Val], "lb",
   !strconcat(LOADExecutePrefix,
@@ -174,15 +258,6 @@ def LBU : RVInsnLOAD<[?, ?, !cast<int>(0b100), ?, OPC_LOAD.Val], "lbu",
 def LHU : RVInsnLOAD<[?, ?, !cast<int>(0b101), ?, OPC_LOAD.Val], "lhu",
   !strconcat(LOADExecutePrefix,
   "Model.setReg(Rd, static_cast<uint32_t>(Model.readHalf(MemAddr)));\n\t\t", IncPC)>;
-
-defvar STORExecutePrefix =
-  "uint32_t Imm = getSTOREImm(Operands_);\n\t\t"
-  "Sim::Register Rs2 = static_cast<Sim::Register>(getOperand(1));\n\t\t"
-  "Sim::Register Rs1 = static_cast<Sim::Register>(getOperand(2));\n\t\t"
-  "uint32_t Op1 = Model.getReg(Rs1);\n\t\t"
-  "uint32_t Op2 = Model.getReg(Rs2);\n\t\t"
-  "int32_t SImm = sign_extend_12_to_32(Imm);\n\t\t"
-  "uint32_t MemAddr = Op1 + SImm;\n\t\t";
 
 def SB : RVInsnSTORE<[?, ?, ?, !cast<int>(0b000), ?, OPC_STORE.Val], "sb",
   !strconcat(STORExecutePrefix,

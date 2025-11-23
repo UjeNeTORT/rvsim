@@ -24,6 +24,10 @@ int32_t sign_extend_16_to_32(uint16_t val) {
   return std::bit_cast<int32_t>(uint32_t(val) << 16) >> 16;
 }
 
+uint32_t zero_extend_16_to_32(uint16_t val) {
+  return (uint32_t(val) << 16) >> 16;
+}
+
 int32_t sign_extend_21_to_32(uint32_t val) {
   return std::bit_cast<int32_t>(uint32_t(val) << 11) >> 11;
 }
