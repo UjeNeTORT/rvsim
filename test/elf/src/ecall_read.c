@@ -1,5 +1,5 @@
 int main() {
-  unsigned fd = 1; // stdin = 1
+  unsigned fd = 0; // stdin = 0
   char buf[] = "Hello world";
   unsigned count = 6;
   unsigned ret_val = -1;
