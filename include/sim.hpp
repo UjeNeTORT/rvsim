@@ -7,6 +7,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <unistd.h>
 
 #include <elfio/elfio.hpp>
 
@@ -18,12 +19,17 @@
 
 #include "decoder_helpers.hpp"
 #include "decoder.inc"
+#include "registers.hpp"
 
 namespace elf = ELFIO;
 
 namespace rv32i_sim {
 
 const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
+
+// usage:
+// MODEL_LOG << "important logs" << "hahaha";
+#define MODEL_LOG if (logs_) std::cerr
 
 class RVModel final : IRVModel {
   MemoryModel mem_;
@@ -51,9 +57,7 @@ public:
     }
 
     uint32_t EntryPoint = elf_reader.get_entry();
-    if (logs_)
-      std::cerr << "Found user entry point at: "
-                << std::hex << EntryPoint << std::dec << '\n';
+    MODEL_LOG << "Found user entry point at: " << std::hex << EntryPoint << std::dec << '\n';
 
     regs_ = RegisterFile();
     mem_ = MemoryModel::fromELF(elf_reader);
@@ -116,6 +120,7 @@ public:
   uint32_t setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr);
 
   void execute() override;
+  void envCall() override;
   void exit() override;
 
   void setLogs(int logs);
@@ -194,8 +199,7 @@ std::unique_ptr<RVISA::IRVInsn> RVModel::decode(uint32_t insn_code) {
 }
 
 void RVModel::execute() {
-  if (logs_)
-    std::cerr << "DBG: begin execution <pc = " << std::hex << pc_ << std::dec << ">\n";
+  MODEL_LOG << "DBG: begin execution <pc = " << std::hex << pc_ << std::dec << ">\n";
 
   execution_ = true;
 
@@ -215,11 +219,80 @@ void RVModel::execute() {
     if (!execution_) break;
   }
 
-  if (logs_)
-    std::cerr << "DBG: end execution <pc = " << std::hex << pc_ << std::dec << ">\n";
+  MODEL_LOG << "DBG: end execution <pc = " << std::hex << pc_ << std::dec << ">\n";
+}
+
+void RVModel::envCall() {
+  uint32_t Syscall = getReg(Register::A7);
+  uint32_t Arg1 = getReg(Register::A0);
+  uint32_t Arg2 = getReg(Register::A1);
+  uint32_t Arg3 = getReg(Register::A2);
+  uint32_t Arg4 = getReg(Register::A3);
+  uint32_t Arg5 = getReg(Register::A4);
+  uint32_t Arg6 = getReg(Register::A5);
+
+  switch (Syscall) {
+    default: {
+      MODEL_LOG << "Encountered unknown ecall: a7 = " << Syscall << "\n";
+      this->exit();
+      break;
+    }
+    case 63 /*read*/: {
+      MODEL_LOG << "ecall \"" << "read" << "\" (a7 = " << Syscall << ")\n";
+      MODEL_LOG << "      a0 = " << Arg1 << "\n"
+                << "      a1 = " << Arg2 << "\n"
+                << "      a2 = " << Arg3 << "\n";
+      uint32_t Fd     = Arg1;
+      uint32_t UsrBuf = Arg2;
+      uint32_t Count  = Arg3;
+
+      if (Fd == 0 /*stdin*/) {
+        uint8_t *Buffer = new uint8_t[Count];
+        uint32_t Res = read(0, Buffer, Count);
+        setReg(Register::A0, Res);
+        mem_.memCopy(UsrBuf, Buffer, Count);
+        delete [] Buffer;
+      } else {
+        MODEL_LOG << "ecall read is supported only for stdin (0), received: " << Fd << "\n";
+      }
+      setPC(getPC() + sizeof(uint32_t));
+      break;
+    }
+    case 64 /*write*/: {
+      MODEL_LOG << "ecall \"" << "write" << "\" (a7 = " << Syscall << ")\n";
+      MODEL_LOG << "      a0 = " << Arg1 << "\n"
+                << "      a1 = " << Arg2 << "\n"
+                << "      a2 = " << Arg3 << "\n";
+
+      uint32_t Fd     = Arg1;
+      uint32_t UsrBuf = Arg2;
+      uint32_t Count  = Arg3;
+
+      if (Fd == 1 || Fd == 2) {
+        uint8_t *Buffer = new uint8_t[Count];
+        mem_.memCopy(Buffer, UsrBuf, Count);
+        uint32_t Res = write(Fd, Buffer, Count);
+        setReg(Register::A0, Res);
+        delete [] Buffer;
+      } else {
+        MODEL_LOG << "ecall write is supported only for stdout (1) and stderr (2), received: " << Fd << "\n";
+      }
+      setPC(getPC() + sizeof(uint32_t));
+      break;
+    }
+    case 93 /*exit*/: {
+      MODEL_LOG << "ecall \"" << "exit" << "\" (a7 = " << Syscall << ")\n";
+      MODEL_LOG << "      a0 = " << Arg1 << "\n";
+      MODEL_LOG << "Exit status = " << (Arg1 & 0xff) << "\n";
+      this->exit();
+      break;
+    }
+  }
 }
 
 // todo return control to exec env
+// todo rename
+// todo make possible step by step debugging
 void RVModel::exit() {
   execution_ = false;
 }
@@ -287,6 +360,8 @@ uint32_t RVModel::setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr) {
 
   return EnvAddr + ENV_SEG_SIZE;
 }
+
+#undef MODEL_LOG
 
 } // namespace rv32i_sim
 

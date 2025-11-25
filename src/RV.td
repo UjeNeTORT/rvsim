@@ -269,8 +269,14 @@ def SW : RVInsnSTORE<[?, ?, ?, !cast<int>(0b010), ?, OPC_STORE.Val], "sw",
   !strconcat(STORExecutePrefix,
   "Model.writeWord(MemAddr, Op2 & 0xffffffff);\n\t\t", IncPC)>;
 
-def EBREAK : RVInsnSystem<[!cast<int>(0b000000000001), // funct12
-                           !cast<int>(0b00000),        // rs1
-                           !cast<int>(0b000),          // funct3
-                           !cast<int>(0b00000),        // rd
-                           OPC_SYSTEM.Val], "ebreak", "Model.exit();">;
+def EBREAK : RVInsnI<[!cast<int>(0b000000000001), // funct12
+                      !cast<int>(0b00000),        // rs1
+                      !cast<int>(0b000),          // funct3
+                      !cast<int>(0b00000),        // rd
+                       OPC_SYSTEM.Val], "ebreak", "Model.exit();">;
+
+def ECALL : RVInsnI<[!cast<int>(0b000000000000), // funct12
+                     !cast<int>(0b00000),        // rs1
+                     !cast<int>(0b000),          // funct3
+                     !cast<int>(0b00000),        // rd
+                     OPC_SYSTEM.Val], "ecall", "Model.envCall();">;
