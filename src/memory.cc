@@ -254,10 +254,15 @@ bool MemoryModel::operator==(const MemoryModel& other) const {
   return endian_ == other.endian_;
 }
 
-void MemoryModel::memCopy(uint32_t Addr, const void * Src, uint32_t N) {
+void MemoryModel::memCopy(uint32_t Addr, const void *Src, uint32_t N) {
   const uint8_t *CSrc = reinterpret_cast<const uint8_t *>(Src);
   for (size_t Idx = 0; Idx != N; ++Addr, ++Idx)
     set<uint8_t>(Addr, CSrc[Idx]);
+}
+
+void MemoryModel::memCopy(void *Dst, uint32_t Addr, uint32_t N) {
+  for (size_t Idx = 0; Idx != N; ++Addr, ++Idx)
+    reinterpret_cast<uint8_t *>(Dst)[Idx] = readByte(Addr);
 }
 
 void MemoryModel::memSet(uint32_t Addr, uint8_t Val, uint32_t N) {

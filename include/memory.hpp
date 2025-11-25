@@ -104,6 +104,7 @@ public:
   bool operator==(const MemoryModel& other) const;
 
   void memCopy(uint32_t Addr, const void * Src, uint32_t N);
+  void memCopy(void *Dst, uint32_t Addr, uint32_t N);
   void memSet(uint32_t Addr, uint8_t Val, uint32_t N);
 
   template<typename T> T get(uint32_t Addr);
