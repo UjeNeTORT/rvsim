@@ -248,10 +248,10 @@ void RVModel::envCall() {
         setReg(Register::A0, Res);
         mem_.memCopy(UsrBuf, Buffer, Count);
         delete [] Buffer;
-        setPC(getPC() + sizeof(uint32_t));
       } else {
         MODEL_LOG << "ecall read is supported only for stdin (0), received: " << Fd << "\n";
       }
+      setPC(getPC() + sizeof(uint32_t));
       break;
     }
     case 64 /*write*/: {
@@ -267,10 +267,10 @@ void RVModel::envCall() {
         uint32_t Res = write(Fd, Buffer, Count);
         setReg(Register::A0, Res);
         delete [] Buffer;
-        setPC(getPC() + sizeof(uint32_t));
       } else {
         MODEL_LOG << "ecall write is supported only for stdout (1) and stderr (2), received: " << Fd << "\n";
       }
+      setPC(getPC() + sizeof(uint32_t));
       break;
     }
     case 93 /*exit*/: {
