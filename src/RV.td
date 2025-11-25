@@ -71,35 +71,35 @@ def AND  : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b111), ?, OPC_OP.Va
   !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 & Op2);\n\t\t", IncPC)>;
 
 def MUL  : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b000), ?, OPC_OP.Val], "mul",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, (Op1 * Op2) & 0xffff'ffff);\n\t\t")>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, (Op1 * Op2) & 0xffff'ffff);\n\t\t", IncPC)>;
 def MULH : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b001), ?, OPC_OP.Val], "mulh",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, ((static_cast<int64_t>(Op1) * "
-                             "static_cast<int64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t")>;
+                             "static_cast<int64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t", IncPC)>;
 def MULHU: RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b011), ?, OPC_OP.Val], "mulhu",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, ((static_cast<uint64_t>(Op1) * "
-                             "static_cast<uint64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t")>;
+                             "static_cast<uint64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t", IncPC)>;
 def MULHSU: RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b010), ?, OPC_OP.Val], "mulhsu",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, ((static_cast<int64_t>(Op1) * "
-                             "static_cast<uint64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t")>;
+                             "static_cast<uint64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t", IncPC)>;
 def DIV  : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b100), ?, OPC_OP.Val], "div",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<int32_t>(Op1) / "
-                             "std::bit_cast<int32_t>(Op2)) & 0xffff'ffff);\n\t\t")>;
+                             "std::bit_cast<int32_t>(Op2)) & 0xffff'ffff);\n\t\t", IncPC)>;
 def DIVU : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b101), ?, OPC_OP.Val], "divu",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<uint32_t>(Op1) / "
-                             "std::bit_cast<uint32_t>(Op2)) & 0xffff'ffff);\n\t\t")>;
+                             "std::bit_cast<uint32_t>(Op2)) & 0xffff'ffff);\n\t\t", IncPC)>;
 def REM  : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b110), ?, OPC_OP.Val], "rem",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<int32_t>(Op1) % "
-                             "std::bit_cast<int32_t>(Op2)) & 0xffff'ffff);\n\t\t")>;
+                             "std::bit_cast<int32_t>(Op2)) & 0xffff'ffff);\n\t\t", IncPC)>;
 def REMU : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b111), ?, OPC_OP.Val], "remu",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<uint32_t>(Op1) % "
-                             "std::bit_cast<uint32_t>(Op2)) & 0xffff'ffff);\n\t\t")>;
+                             "std::bit_cast<uint32_t>(Op2)) & 0xffff'ffff);\n\t\t", IncPC)>;
 
 def ANDN : RVInsnR<[!cast<int>(0b0100000), ?, ?, !cast<int>(0b111), ?, OPC_OP.Val], "andn",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 & ~Op2);\n\t\t")>;
 def ORN  : RVInsnR<[!cast<int>(0b0100000), ?, ?, !cast<int>(0b110), ?, OPC_OP.Val], "orn",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 | ~Op2);\n\t\t")>;
 def XNOR : RVInsnR<[!cast<int>(0b0100000), ?, ?, !cast<int>(0b100), ?, OPC_OP.Val], "xnor",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, ~(Op1 ^ Op2));\n\t\t")>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, ~(Op1 ^ Op2));\n\t\t", IncPC)>;
 
 def CLZ  : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00000), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "clz",
   !strconcat(RExecutePrefix, "uint32_t Res = -1u;\n\t\t"
@@ -109,7 +109,7 @@ def CLZ  : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00000), ?, !cast<int>(0b
                              "    break;\n\t\t"
                              "  }\n\t\t"
                              "}\n\t\t"
-                             "Model.setReg(Rd, 31 - Res); // 31 = xlen - 1\n\t\t")>;
+                             "Model.setReg(Rd, 31 - Res); // 31 = xlen - 1\n\t\t", IncPC)>;
 
 def CTZ  : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00001), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "ctz",
   !strconcat(RExecutePrefix, "uint32_t Res = 32; // xlen\n\t\t"
@@ -119,7 +119,7 @@ def CTZ  : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00001), ?, !cast<int>(0b
                              "    break;\n\t\t"
                              "  }\n\t\t"
                              "}\n\t\t"
-                             "Model.setReg(Rd, Res);\n\t\t")>;
+                             "Model.setReg(Rd, Res);\n\t\t", IncPC)>;
 
 def CPOP : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00010), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "cpop",
   !strconcat(RExecutePrefix, "uint32_t BitCount = 0;\n\t\t"
@@ -127,33 +127,33 @@ def CPOP : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00010), ?, !cast<int>(0b
                              "  if (Op1 >> Bit & 1u)\n\t\t"
                              "    BitCount++;\n\t\t"
                              "}\n\t\t"
-                             "Model.setReg(Rd, BitCount);\n\t\t")>;
+                             "Model.setReg(Rd, BitCount);\n\t\t", IncPC)>;
 
 def MAX  : RVInsnR<[!cast<int>(0b0000101), ?, ?, !cast<int>(0b110), ?, OPC_OP.Val], "max",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, std::bit_cast<int32_t>(Op1) >= std::bit_cast<int32_t>(Op2) ? Op1 : Op2);\n\t\t")>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, std::bit_cast<int32_t>(Op1) >= std::bit_cast<int32_t>(Op2) ? Op1 : Op2);\n\t\t", IncPC)>;
 def MAXU : RVInsnR<[!cast<int>(0b0000101), ?, ?, !cast<int>(0b111), ?, OPC_OP.Val], "maxu",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 >= Op2 ? Op1 : Op2);\n\t\t")>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 >= Op2 ? Op1 : Op2);\n\t\t", IncPC)>;
 def MIN  : RVInsnR<[!cast<int>(0b0000101), ?, ?, !cast<int>(0b100), ?, OPC_OP.Val], "min",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, std::bit_cast<int32_t>(Op1) < std::bit_cast<int32_t>(Op2) ? Op1 : Op2);\n\t\t")>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, std::bit_cast<int32_t>(Op1) < std::bit_cast<int32_t>(Op2) ? Op1 : Op2);\n\t\t", IncPC)>;
 def MINU : RVInsnR<[!cast<int>(0b0000101), ?, ?, !cast<int>(0b101), ?, OPC_OP.Val], "minu",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 < Op2 ? Op1 : Op2);\n\t\t")>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 < Op2 ? Op1 : Op2);\n\t\t", IncPC)>;
 
 def SEXT_B : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00100), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "sext.b",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, sign_extend_8_to_32(Op1));\n\t\t")>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, sign_extend_8_to_32(Op1));\n\t\t", IncPC)>;
 def SEXT_H : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00101), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "sext.h",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, sign_extend_16_to_32(Op1));\n\t\t")>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, sign_extend_16_to_32(Op1));\n\t\t", IncPC)>;
 def ZEXT_H : RVInsnR<[!cast<int>(0b0000100), !cast<int>(0b00000), ?, !cast<int>(0b100), ?, OPC_OP.Val], "zext.h",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, zero_extend_16_to_32(Op1));\n\t\t")>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, zero_extend_16_to_32(Op1));\n\t\t", IncPC)>;
 
 def ROL  : RVInsnR<[!cast<int>(0b0110000), ?, ?, !cast<int>(0b001), ?, OPC_OP.Val], "rol",
   !strconcat(RExecutePrefix, "uint32_t Shamt = Op2 & 0x1f;\n\t\t"
-                             "Model.setReg(Rd, (Op1 << Shamt) | (Op1 >> (32 - Shamt)));\n\t\t")>;
+                             "Model.setReg(Rd, (Op1 << Shamt) | (Op1 >> (32 - Shamt)));\n\t\t", IncPC)>;
 def ROR  : RVInsnR<[!cast<int>(0b0110000), ?, ?, !cast<int>(0b101), ?, OPC_OP.Val], "ror",
   !strconcat(RExecutePrefix, "uint32_t Shamt = Op2 & 0x1f;\n\t\t"
-                             "Model.setReg(Rd, (Op1 >> Shamt) | (Op1 << (32 - Shamt)));\n\t\t")>;
+                             "Model.setReg(Rd, (Op1 >> Shamt) | (Op1 << (32 - Shamt)));\n\t\t", IncPC)>;
 def RORI : RVInsnR<[!cast<int>(0b0110000), ?, ?, !cast<int>(0b101), ?, OPC_OP_IMM.Val], "rori",
   !strconcat(IExecutePrefix, "uint32_t Shamt = Imm & 0x1f;\n\t\t"
-                             "Model.setReg(Rd, (Op1 >> Shamt) | (Op1 << (32 - Shamt)));\n\t\t")>;
+                             "Model.setReg(Rd, (Op1 >> Shamt) | (Op1 << (32 - Shamt)));\n\t\t", IncPC)>;
 
 def ORC_B : RVInsnI<[!cast<int>(0b001010000111), ?, !cast<int>(0b101), ?, OPC_OP_IMM.Val], "orc.b",
   !strconcat(IExecutePrefix, "uint32_t Output = 0;\n\t\t"
@@ -161,14 +161,14 @@ def ORC_B : RVInsnI<[!cast<int>(0b001010000111), ?, !cast<int>(0b101), ?, OPC_OP
                              "  Output = (Op1 >> i) & 0xff ? Output & ~(0xff << i)\n\t\t"
                              "                             : Output |= (0xff << i);\n\t\t"
                              "}\n\t\t"
-                             "Model.setReg(Rd, Output);")>;
+                             "Model.setReg(Rd, Output);", IncPC)>;
 def REV8 : RVInsnI<[!cast<int>(0b011010011000), ?, !cast<int>(0b101), ?, OPC_OP_IMM.Val], "rev8",
   !strconcat(IExecutePrefix, "uint32_t Output = 0;\n\t\t"
                              "Output |= (Op1 & 0xff << 0)  << 24;\n\t\t"
                              "Output |= (Op1 & 0xff << 8)  << 8;\n\t\t"
                              "Output |= (Op1 & 0xff << 16) >> 8;\n\t\t"
                              "Output |= (Op1 & 0xff << 24) >> 24;\n\t\t"
-                             "Model.setReg(Rd, Output);")>;
+                             "Model.setReg(Rd, Output);", IncPC)>;
 
 //                                   FUNCT3             OPCODE
 def ADDI : RVInsnI<[?, ?, !cast<int>(0b000), ?, OPC_OP_IMM.Val], "addi",
