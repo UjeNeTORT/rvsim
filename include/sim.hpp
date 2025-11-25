@@ -230,6 +230,7 @@ void RVModel::envCall() {
   uint32_t Arg4 = getReg(Register::A3);
   uint32_t Arg5 = getReg(Register::A4);
   uint32_t Arg6 = getReg(Register::A5);
+
   switch (Syscall) {
     default: {
       MODEL_LOG << "Encountered unknown ecall: a7 = " << Syscall << "\n";

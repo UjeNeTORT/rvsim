@@ -292,13 +292,11 @@ uint8_t &MemoryModel::operator[](uint32_t Addr) {
 
 uint8_t MemoryModel::readByte(uint32_t Addr) {
   assert(checkRights(Addr, RIGHTS_R) && "No rights to read");
-  assert(Addr % sizeof(uint32_t) == 0 && "Address not aligned");
   return get<uint8_t>(Addr);
 }
 
 uint16_t MemoryModel::readHalf(uint32_t Addr) {
   assert(checkRights(Addr, RIGHTS_R) && "No rights to read");
-  assert(Addr % sizeof(uint32_t) == 0 && "Address not aligned");
   return get<uint16_t>(Addr);
 }
 
