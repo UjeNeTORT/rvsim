@@ -31,6 +31,7 @@ public:
   virtual void setReg(Register reg, uint32_t val) = 0;
 
   virtual void execute() = 0;
+  virtual void envCall() = 0;
   virtual void exit() = 0;
 
   virtual std::ostream& print(std::ostream& out) = 0;
