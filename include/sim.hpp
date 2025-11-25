@@ -238,6 +238,9 @@ void RVModel::envCall() {
     }
     case 63 /*read*/: {
       MODEL_LOG << "ecall \"" << "read" << "\" (a7 = " << Syscall << ")\n";
+      MODEL_LOG << "      a0 = " << Arg1 << "\n"
+                << "      a1 = " << Arg2 << "\n"
+                << "      a2 = " << Arg3 << "\n";
       uint32_t Fd     = Arg1;
       uint32_t UsrBuf = Arg2;
       uint32_t Count  = Arg3;
@@ -256,6 +259,9 @@ void RVModel::envCall() {
     }
     case 64 /*write*/: {
       MODEL_LOG << "ecall \"" << "write" << "\" (a7 = " << Syscall << ")\n";
+      MODEL_LOG << "      a0 = " << Arg1 << "\n"
+                << "      a1 = " << Arg2 << "\n"
+                << "      a2 = " << Arg3 << "\n";
 
       uint32_t Fd     = Arg1;
       uint32_t UsrBuf = Arg2;
@@ -275,6 +281,7 @@ void RVModel::envCall() {
     }
     case 93 /*exit*/: {
       MODEL_LOG << "ecall \"" << "exit" << "\" (a7 = " << Syscall << ")\n";
+      MODEL_LOG << "      a0 = " << Arg1 << "\n";
       MODEL_LOG << "Exit status = " << (Arg1 & 0xff) << "\n";
       this->exit();
       break;
