@@ -9,7 +9,9 @@
 #include <vector>
 #include <unistd.h>
 
-#include <elfio/elfio.hpp>
+#include "elfio/elfio.hpp"
+#include "spdlog/common.h"
+#include "spdlog/spdlog.h"
 
 #include "isim.hpp"
 #include "instruction.hpp"
@@ -27,16 +29,12 @@ namespace rv32i_sim {
 
 const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 
-// usage:
-// MODEL_LOG << "important logs" << "hahaha";
-#define MODEL_LOG if (logs_) std::cerr
-
 class RVModel final : IRVModel {
   MemoryModel mem_;
   RegisterFile regs_;
   uint32_t pc_;
 
-  bool logs_ = false;
+  uint32_t logs_ = 0;
   bool execution_ = false;
   bool is_valid_ = false;
 
@@ -48,16 +46,17 @@ public:
   RVModel(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
-  RVModel(std::filesystem::path& elf_path) {
+  RVModel(std::filesystem::path& elf_path, uint32_t logs = 0) {
+    setLogs(logs);
     elf::elfio elf_reader;
     if (!elf_reader.load(elf_path)) {
-      std::cerr << "ERROR: failed to load ELF " << elf_path << "\n";
+      SPDLOG_ERROR("ERROR: failed to load ELF {}\n", elf_path.c_str());
       is_valid_ = false;
       return;
     }
 
     uint32_t EntryPoint = elf_reader.get_entry();
-    MODEL_LOG << "Found user entry point at: " << std::hex << EntryPoint << std::dec << '\n';
+    SPDLOG_INFO("Found user entry point at: {:#x}\n", EntryPoint);
 
     regs_ = RegisterFile();
     mem_ = MemoryModel::fromELF(elf_reader);
@@ -199,7 +198,7 @@ std::unique_ptr<RVISA::IRVInsn> RVModel::decode(uint32_t insn_code) {
 }
 
 void RVModel::execute() {
-  MODEL_LOG << "DBG: begin execution <pc = " << std::hex << pc_ << std::dec << ">\n";
+  SPDLOG_INFO("begin execution <pc = {:#x}>", pc_);
 
   execution_ = true;
 
@@ -219,7 +218,7 @@ void RVModel::execute() {
     if (!execution_) break;
   }
 
-  MODEL_LOG << "DBG: end execution <pc = " << std::hex << pc_ << std::dec << ">\n";
+  SPDLOG_INFO("end execution <pc = {:#x}>", pc_);
 }
 
 void RVModel::envCall() {
@@ -233,15 +232,14 @@ void RVModel::envCall() {
 
   switch (Syscall) {
     default: {
-      MODEL_LOG << "Encountered unknown ecall: a7 = " << Syscall << "\n";
+      SPDLOG_CRITICAL("Encountered unknown ecall: a7 = {}", Syscall);
       this->exit();
       break;
     }
     case 63 /*read*/: {
-      MODEL_LOG << "ecall \"" << "read" << "\" (a7 = " << Syscall << ")\n";
-      MODEL_LOG << "      a0 = " << Arg1 << "\n"
-                << "      a1 = " << Arg2 << "\n"
-                << "      a2 = " << Arg3 << "\n";
+      SPDLOG_INFO("ecall \"read\" (a7 = {}, a0 = {}, a1 = {}, a2 = {})",
+        Syscall, Arg1, Arg2, Arg3);
+
       uint32_t Fd     = Arg1;
       uint32_t UsrBuf = Arg2;
       uint32_t Count  = Arg3;
@@ -253,16 +251,14 @@ void RVModel::envCall() {
         mem_.memCopy(UsrBuf, Buffer, Count);
         delete [] Buffer;
       } else {
-        MODEL_LOG << "ecall read is supported only for stdin (0), received: " << Fd << "\n";
+        SPDLOG_ERROR("ecall read is supported only for stdin (0), received: {}", Fd);
       }
       setPC(getPC() + sizeof(uint32_t));
       break;
     }
     case 64 /*write*/: {
-      MODEL_LOG << "ecall \"" << "write" << "\" (a7 = " << Syscall << ")\n";
-      MODEL_LOG << "      a0 = " << Arg1 << "\n"
-                << "      a1 = " << Arg2 << "\n"
-                << "      a2 = " << Arg3 << "\n";
+      SPDLOG_INFO("ecall \"write\" (a7 = {}, a0 = {}, a1 = {}, a2 = {})",
+        Syscall, Arg1, Arg2, Arg3);
 
       uint32_t Fd     = Arg1;
       uint32_t UsrBuf = Arg2;
@@ -275,15 +271,14 @@ void RVModel::envCall() {
         setReg(Register::A0, Res);
         delete [] Buffer;
       } else {
-        MODEL_LOG << "ecall write is supported only for stdout (1) and stderr (2), received: " << Fd << "\n";
+        SPDLOG_ERROR("ecall write is supported only for stdout (1) and stderr (2), received: {}", Fd);
       }
       setPC(getPC() + sizeof(uint32_t));
       break;
     }
     case 93 /*exit*/: {
-      MODEL_LOG << "ecall \"" << "exit" << "\" (a7 = " << Syscall << ")\n";
-      MODEL_LOG << "      a0 = " << Arg1 << "\n";
-      MODEL_LOG << "Exit status = " << (Arg1 & 0xff) << "\n";
+      SPDLOG_INFO("ecall \"exit\" (a7 = {}, a0 = {})",
+        Syscall, Arg1);
       this->exit();
       break;
     }
@@ -297,7 +292,16 @@ void RVModel::exit() {
   execution_ = false;
 }
 
-void RVModel::setLogs(int logs) { logs_ = static_cast<bool>(logs); }
+void RVModel::setLogs(int logs) {
+  logs_ = static_cast<bool>(logs);
+  if (logs_ == 0) spdlog::set_level(spdlog::level::err);
+  else if (logs_ == 1) {
+    spdlog::set_level(spdlog::level::err);
+    spdlog::set_level(spdlog::level::critical);
+    spdlog::set_level(spdlog::level::info);
+  }
+
+}
 
 void RVModel::printInsn(std::ostream& out, const RVISA::IRVInsn& insn) {
   out << insn << ' ' << insn.getName() << " <pc = "
@@ -360,8 +364,6 @@ uint32_t RVModel::setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr) {
 
   return EnvAddr + ENV_SEG_SIZE;
 }
-
-#undef MODEL_LOG
 
 } // namespace rv32i_sim
 

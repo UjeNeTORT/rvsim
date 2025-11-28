@@ -30,6 +30,7 @@ set (GEN_DECODER              ${CMAKE_DECODER_DIR}/decoder.inc)
 include_directories(${CMAKE_SOURCE_DIR}/include)
 include_directories(${CMAKE_DECODER_DIR})
 include_directories(${CMAKE_SOURCE_DIR}/ELFIO)
+include_directories(${CMAKE_SOURCE_DIR}/spdlog/include)
 include_directories(${LLVM_INCLUDE_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
