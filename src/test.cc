@@ -20,13 +20,7 @@ protected:
   virtual void TearDown() {}
 
   bool RunTest(std::filesystem::path testf_path) {
-    std::ifstream testf{testf_path};
-    if (!testf) {
-      std::cerr << "ERROR: could not open test file <" << testf_path << ">\n";
-      return false;
-    }
-
-    model.init(testf);
+    model.fromELF(testf_path);
     if (!model.isValid()) {
       std::cerr << "ERROR: failed to initialize model correctly\n";
       std::cerr << testf_path << '\n';
@@ -90,125 +84,34 @@ protected:
       return false;
     }
 
-    ref_model.init(ansf_path);
-    if (!model.isValid()) {
-      std::cerr << "ERROR: failed to initialize ref model correctly\n";
-      std::cerr << ansf_path << '\n';
-
-      return false;
-    }
-
     return ref_model == model;
   }
 };
 
-TEST_F(TestRVModel, DISABLED_ADD) {
-  std::filesystem::path test_dir = "../test/insn/add";
-  for (auto const &dir_entry :
-                      std::filesystem::directory_iterator(test_dir)) {
-    if (!dir_entry.is_regular_file()) continue;
-    if (dir_entry.path().extension() != ".bstate") continue;
-    auto fpath = dir_entry.path();
-
-    EXPECT_EQ(TestAnsBstate(fpath), true);
+#define TEST_F_INSTRUCTION(InstructionName, TestDirPath)                \
+  TEST_F(TestRVModel, InstructionName) {                                \
+    std::filesystem::path TestDir = TestDirPath;                        \
+    for (auto const &DirEntry :                                         \
+                        std::filesystem::directory_iterator(TestDir)) { \
+      if (!DirEntry.is_regular_file()) continue;                        \
+      if (DirEntry.path().extension() != ".bstate") continue;           \
+      auto fpath = DirEntry.path();                                     \
+      EXPECT_EQ(TestAnsBstate(fpath), true);                            \
+    }                                                                   \
   }
-}
 
-TEST_F(TestRVModel, DISABLED_SUB) {
-  std::filesystem::path test_dir = "../test/insn/sub";
-  for (auto const &dir_entry :
-                      std::filesystem::directory_iterator(test_dir)) {
-    if (!dir_entry.is_regular_file()) continue;
-    if (dir_entry.path().extension() != ".bstate") continue;
-    auto fpath = dir_entry.path();
+TEST_F_INSTRUCTION(ADD, "../test/insn/add");
+TEST_F_INSTRUCTION(SUB, "../test/insn/sub");
+TEST_F_INSTRUCTION(SLL, "../test/insn/sll");
+TEST_F_INSTRUCTION(SLT, "../test/insn/slt");
+TEST_F_INSTRUCTION(SLTU, "../test/insn/sltu");
+TEST_F_INSTRUCTION(XOR, "../test/insn/xor");
+TEST_F_INSTRUCTION(SRA, "../test/insn/sra");
+TEST_F_INSTRUCTION(OR, "../test/insn/or");
+TEST_F_INSTRUCTION(AND, "../test/insn/and");
 
-    EXPECT_EQ(TestAnsBstate(fpath), true);
-  }
-}
+#undef TEST_F_INSTRUCTION
 
-TEST_F(TestRVModel, DISABLED_SLL) {
-  std::filesystem::path test_dir = "../test/insn/sll";
-  for (auto const &dir_entry :
-                      std::filesystem::directory_iterator(test_dir)) {
-    if (!dir_entry.is_regular_file()) continue;
-    if (dir_entry.path().extension() != ".bstate") continue;
-    auto fpath = dir_entry.path();
-
-    EXPECT_EQ(TestAnsBstate(fpath), true);
-  }
-}
-
-TEST_F(TestRVModel, DISABLED_SLT) {
-  std::filesystem::path test_dir = "../test/insn/slt";
-  for (auto const &dir_entry :
-                      std::filesystem::directory_iterator(test_dir)) {
-    if (!dir_entry.is_regular_file()) continue;
-    if (dir_entry.path().extension() != ".bstate") continue;
-    auto fpath = dir_entry.path();
-
-    EXPECT_EQ(TestAnsBstate(fpath), true);
-  }
-}
-
-TEST_F(TestRVModel, DISABLED_SLTU) {
-  std::filesystem::path test_dir = "../test/insn/sltu";
-  for (auto const &dir_entry :
-                      std::filesystem::directory_iterator(test_dir)) {
-    if (!dir_entry.is_regular_file()) continue;
-    if (dir_entry.path().extension() != ".bstate") continue;
-    auto fpath = dir_entry.path();
-
-    EXPECT_EQ(TestAnsBstate(fpath), true);
-  }
-}
-
-TEST_F(TestRVModel, DISABLED_XOR) {
-  std::filesystem::path test_dir = "../test/insn/xor";
-  for (auto const &dir_entry :
-                      std::filesystem::directory_iterator(test_dir)) {
-    if (!dir_entry.is_regular_file()) continue;
-    if (dir_entry.path().extension() != ".bstate") continue;
-    auto fpath = dir_entry.path();
-
-    EXPECT_EQ(TestAnsBstate(fpath), true);
-  }
-}
-
-TEST_F(TestRVModel, DISABLED_SRA) {
-  std::filesystem::path test_dir = "../test/insn/sra";
-  for (auto const &dir_entry :
-                      std::filesystem::directory_iterator(test_dir)) {
-    if (!dir_entry.is_regular_file()) continue;
-    if (dir_entry.path().extension() != ".bstate") continue;
-    auto fpath = dir_entry.path();
-
-    EXPECT_EQ(TestAnsBstate(fpath), true);
-  }
-}
-
-TEST_F(TestRVModel, DISABLED_OR) {
-  std::filesystem::path test_dir = "../test/insn/or";
-  for (auto const &dir_entry :
-                      std::filesystem::directory_iterator(test_dir)) {
-    if (!dir_entry.is_regular_file()) continue;
-    if (dir_entry.path().extension() != ".bstate") continue;
-    auto fpath = dir_entry.path();
-
-    EXPECT_EQ(TestAnsBstate(fpath), true);
-  }
-}
-
-TEST_F(TestRVModel, DISABLED_AND) {
-  std::filesystem::path test_dir = "../test/insn/or";
-  for (auto const &dir_entry :
-                      std::filesystem::directory_iterator(test_dir)) {
-    if (!dir_entry.is_regular_file()) continue;
-    if (dir_entry.path().extension() != ".bstate") continue;
-    auto fpath = dir_entry.path();
-
-    EXPECT_EQ(TestAnsBstate(fpath), true);
-  }
-}
 
 TEST_F(TestRVModel, ELF_PLUS) {
   std::filesystem::path test_dir = "../test/elf/plus";

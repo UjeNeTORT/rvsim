@@ -82,22 +82,6 @@ public:
     is_valid_ = mem_.isValid() && regs_.isValid();
   }
 
-  void init(std::ifstream& model_state_file) override;
-  void init(std::filesystem::path& model_state_path) {
-    std::ifstream bstate_file(model_state_path);
-    if (!bstate_file) {
-      std::cerr << "ERROR: failed to open bstate file " << model_state_path << "\n";
-      is_valid_ = false;
-      return;
-    }
-
-    init(bstate_file);
-  }
-
-  void init(const MemoryModel& mem_init, const RegisterFile& regs_init,
-                                                              uint32_t pc_init) override;
-  void init(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init) override;
-
   bool operator== (const RVModel& other) const;
 
   uint32_t getPC() const override;
@@ -140,46 +124,6 @@ public:
   std::ostream& print(std::ostream& out) override;
   void binaryDump(std::ofstream& fout) override;
 };
-
-void RVModel::init(std::ifstream& model_state_file) {
-  if (!model_state_file) {
-    std::cerr << "ERROR: wrong model state file\n";
-    is_valid_ = false;
-    return;
-  }
-
-  std::string signature(RV32I_MODEL_STATE_SIGNATURE.size(), ' ');
-  model_state_file.read(signature.data(), RV32I_MODEL_STATE_SIGNATURE.size() + 1);
-  if (signature != RV32I_MODEL_STATE_SIGNATURE) {
-    std::cerr << "ERROR: model state file signature mismatch:\n"
-              << "      <" << signature << "> vs <"
-                                            << RV32I_MODEL_STATE_SIGNATURE <<">\n";
-    is_valid_ = false;
-    return;
-  }
-
-  // read pc
-  model_state_file.read(reinterpret_cast<char *>(&pc_), sizeof(uint32_t));
-  assert(pc_ % IALIGN == 0 && "PC at unaligned position");
-
-  // the order of initialization is important (see bstate format)
-  regs_ = RegisterFile::fromBstate(model_state_file);
-  mem_ = MemoryModel::fromBstate(model_state_file);
-
-  is_valid_ = regs_.isValid() && mem_.isValid() && pc_ % IALIGN == 0;
-}
-
-void RVModel::init(const MemoryModel& mem_init, const RegisterFile& regs_init, uint32_t pc_init) {
-  mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
-  assert(pc_ % IALIGN == 0 && "PC at unaligned position");
-  if (pc_ % IALIGN == 0) is_valid_ = true;
-}
-
-void RVModel::init(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init) {
-  mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
-  assert(pc_ % IALIGN == 0 && "PC at unaligned position");
-  if (pc_ % IALIGN == 0) is_valid_ = true;
-}
 
 bool RVModel::operator== (const RVModel& other) const {
   return pc_ == other.pc_ && regs_ == other.regs_ && mem_ == other.mem_;

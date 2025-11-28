@@ -13,11 +13,6 @@ namespace rv32i_sim {
 
 class IRVModel  {
 public:
-  virtual void init(std::ifstream& model_state_file) = 0;
-  virtual void init(const MemoryModel& mem_init, const RegisterFile& regs_init,
-                                                                      uint32_t pc_init) = 0;
-  virtual void init(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init) = 0;
-
   virtual bool isValid() const = 0;
   virtual uint32_t getPC() const = 0;
   virtual void setPC(uint32_t pc_new) = 0;
@@ -51,6 +46,6 @@ std::ostream& operator<<(std::ostream& out, IRVModel& model) {
   return out;
 }
 
-} // rv32i_sim
+} // namespace rv32i_sim
 
 #endif // ISIM_HPP
