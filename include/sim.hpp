@@ -32,6 +32,7 @@ const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 class RVModel final : IRVModel {
   MemoryModel mem_;
   RegisterFile regs_;
+  ExecEnv env_;
   uint32_t pc_;
 
   uint32_t logs_ = 0;
@@ -226,9 +227,6 @@ void RVModel::envCall() {
   uint32_t Arg1 = getReg(Register::A0);
   uint32_t Arg2 = getReg(Register::A1);
   uint32_t Arg3 = getReg(Register::A2);
-  uint32_t Arg4 = getReg(Register::A3);
-  uint32_t Arg5 = getReg(Register::A4);
-  uint32_t Arg6 = getReg(Register::A5);
 
   switch (Syscall) {
     default: {
