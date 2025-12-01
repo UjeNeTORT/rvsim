@@ -1,10 +1,13 @@
 #ifndef ISIM_HPP
 #define ISIM_HPP
 
+#include <cstdint>
 #include <iostream>
 
+#include "exec_env.hpp"
 #include "memory.hpp"
 #include "register_file.hpp"
+#include "io.hpp"
 
 namespace rv32i_sim {
 
@@ -22,6 +25,8 @@ public:
   virtual uint8_t readByte(uint32_t addr) = 0;
   virtual uint16_t readHalf(uint32_t addr) = 0;
   virtual uint32_t readWord(uint32_t addr) = 0;
+  virtual void memCopy(uint32_t Addr, const void * Src, uint32_t N) = 0;
+  virtual void memCopy(void * Dst, uint32_t Addr, uint32_t N) = 0;
 
   virtual void writeByte(uint32_t addr, uint8_t val) = 0;
   virtual void writeHalf(uint32_t addr, uint16_t val) = 0;
@@ -29,6 +34,7 @@ public:
 
   virtual uint32_t getReg(Register reg) const = 0;
   virtual void setReg(Register reg, uint32_t val) = 0;
+  virtual const IOInterface &io() = 0;
 
   virtual void execute() = 0;
   virtual void envCall() = 0;

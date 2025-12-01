@@ -1,25 +1,26 @@
 #ifndef SIMULATOR_HPP
 #define SIMULATOR_HPP
 
-#include <array>
-#include <bit>
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
 #include <unistd.h>
 
-#include <elfio/elfio.hpp>
+#include "elfio/elfio.hpp"
+#include "spdlog/common.h"
+#include "spdlog/spdlog.h"
 
-#include "isim.hpp"
+#include "exec_env.hpp"
 #include "instruction.hpp"
+#include "isim.hpp"
 #include "memory.hpp"
 #include "register_file.hpp"
-#include "exec_env.hpp"
-
-#include "decoder_helpers.hpp"
-#include "decoder.inc"
 #include "registers.hpp"
+#include "io.hpp"
+
+#include "decoder.inc"
 
 namespace elf = ELFIO;
 
@@ -27,37 +28,40 @@ namespace rv32i_sim {
 
 const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 
-// usage:
-// MODEL_LOG << "important logs" << "hahaha";
-#define MODEL_LOG if (logs_) std::cerr
-
-class RVModel final : IRVModel {
+class RVModel final : public IRVModel {
   MemoryModel mem_;
   RegisterFile regs_;
+  ExecEnv env_;
   uint32_t pc_;
 
-  bool logs_ = false;
+  uint32_t logs_ = 0;
   bool execution_ = false;
   bool is_valid_ = false;
 
 public:
-  RVModel(uint32_t pc_init = 0) : pc_(pc_init) {}
+  RVModel(uint32_t pc = 0) : env_(ExecEnv{}), pc_(pc) {}
   RVModel(const MemoryModel& mem_init, const RegisterFile& regs_init, uint32_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
   RVModel(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
-  RVModel(std::filesystem::path& elf_path) {
+  RVModel(std::filesystem::path& ElfPath, uint32_t Logs = 0)
+    : RVModel(ElfPath, std::make_unique<HostIO>(), Logs) {}
+
+  RVModel(std::filesystem::path& elf_path,
+          std::unique_ptr<IOInterface> IO = std::make_unique<HostIO>(),
+          uint32_t logs = 0) : env_(ExecEnv(std::move(IO))), logs_(logs) {
+    setLogs(logs_);
     elf::elfio elf_reader;
     if (!elf_reader.load(elf_path)) {
-      std::cerr << "ERROR: failed to load ELF " << elf_path << "\n";
+      SPDLOG_ERROR("ERROR: failed to load ELF {}", elf_path.c_str());
       is_valid_ = false;
       return;
     }
 
     uint32_t EntryPoint = elf_reader.get_entry();
-    MODEL_LOG << "Found user entry point at: " << std::hex << EntryPoint << std::dec << '\n';
+    SPDLOG_INFO("Found user entry point at: {:#x}", EntryPoint);
 
     regs_ = RegisterFile();
     mem_ = MemoryModel::fromELF(elf_reader);
@@ -67,8 +71,8 @@ public:
 
     // setting up stack and initial stack frame
     uint32_t sp = mem_.setUpStack();
-    regs_.set(Register::X2, sp); // SP = sp
-    regs_.set(Register::X8, sp); // FP = sp
+    regs_.set(Register::SP, sp); // SP = sp
+    regs_.set(Register::FP, sp); // FP = sp
 
     // preparing execution environment i.e.
     // code which calls main and does ebreak in the end
@@ -113,9 +117,17 @@ public:
   void writeByte(uint32_t addr, uint8_t val) override;
   void writeHalf(uint32_t addr, uint16_t val) override;
   void writeWord(uint32_t addr, uint32_t val) override;
+  void memCopy(uint32_t Addr, const void *Src, uint32_t N) override {
+    mem_.memCopy(Addr, Src, N);
+  }
+  void memCopy(void * Dst, uint32_t Addr, uint32_t N) override {
+    mem_.memCopy(Dst, Addr, N);
+  }
 
   uint32_t getReg(Register reg) const override;
   void setReg(Register reg, uint32_t val) override;
+
+  const IOInterface &io() override { return env_.io(); }
 
   uint32_t setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr);
 
@@ -199,7 +211,7 @@ std::unique_ptr<RVISA::IRVInsn> RVModel::decode(uint32_t insn_code) {
 }
 
 void RVModel::execute() {
-  MODEL_LOG << "DBG: begin execution <pc = " << std::hex << pc_ << std::dec << ">\n";
+  SPDLOG_INFO("begin execution <pc = {:#x}>", pc_);
 
   execution_ = true;
 
@@ -208,7 +220,7 @@ void RVModel::execute() {
     std::unique_ptr<RVISA::IRVInsn> insn = RVISA::decode(insn_code);
     if (!insn) break;
 
-    if (logs_) printInsn(std::cerr, *insn);
+    if (logs_ == 2) printInsn(std::cerr, *insn);
 
     if (insn->getType() == RVISA::RVInsnTypes::UNDEF_TYPE_INSN) {
       break;
@@ -219,75 +231,11 @@ void RVModel::execute() {
     if (!execution_) break;
   }
 
-  MODEL_LOG << "DBG: end execution <pc = " << std::hex << pc_ << std::dec << ">\n";
+  SPDLOG_INFO("end execution <pc = {:#x}>", pc_);
 }
 
 void RVModel::envCall() {
-  uint32_t Syscall = getReg(Register::A7);
-  uint32_t Arg1 = getReg(Register::A0);
-  uint32_t Arg2 = getReg(Register::A1);
-  uint32_t Arg3 = getReg(Register::A2);
-  uint32_t Arg4 = getReg(Register::A3);
-  uint32_t Arg5 = getReg(Register::A4);
-  uint32_t Arg6 = getReg(Register::A5);
-
-  switch (Syscall) {
-    default: {
-      MODEL_LOG << "Encountered unknown ecall: a7 = " << Syscall << "\n";
-      this->exit();
-      break;
-    }
-    case 63 /*read*/: {
-      MODEL_LOG << "ecall \"" << "read" << "\" (a7 = " << Syscall << ")\n";
-      MODEL_LOG << "      a0 = " << Arg1 << "\n"
-                << "      a1 = " << Arg2 << "\n"
-                << "      a2 = " << Arg3 << "\n";
-      uint32_t Fd     = Arg1;
-      uint32_t UsrBuf = Arg2;
-      uint32_t Count  = Arg3;
-
-      if (Fd == 0 /*stdin*/) {
-        uint8_t *Buffer = new uint8_t[Count];
-        uint32_t Res = read(0, Buffer, Count);
-        setReg(Register::A0, Res);
-        mem_.memCopy(UsrBuf, Buffer, Count);
-        delete [] Buffer;
-      } else {
-        MODEL_LOG << "ecall read is supported only for stdin (0), received: " << Fd << "\n";
-      }
-      setPC(getPC() + sizeof(uint32_t));
-      break;
-    }
-    case 64 /*write*/: {
-      MODEL_LOG << "ecall \"" << "write" << "\" (a7 = " << Syscall << ")\n";
-      MODEL_LOG << "      a0 = " << Arg1 << "\n"
-                << "      a1 = " << Arg2 << "\n"
-                << "      a2 = " << Arg3 << "\n";
-
-      uint32_t Fd     = Arg1;
-      uint32_t UsrBuf = Arg2;
-      uint32_t Count  = Arg3;
-
-      if (Fd == 1 || Fd == 2) {
-        uint8_t *Buffer = new uint8_t[Count];
-        mem_.memCopy(Buffer, UsrBuf, Count);
-        uint32_t Res = write(Fd, Buffer, Count);
-        setReg(Register::A0, Res);
-        delete [] Buffer;
-      } else {
-        MODEL_LOG << "ecall write is supported only for stdout (1) and stderr (2), received: " << Fd << "\n";
-      }
-      setPC(getPC() + sizeof(uint32_t));
-      break;
-    }
-    case 93 /*exit*/: {
-      MODEL_LOG << "ecall \"" << "exit" << "\" (a7 = " << Syscall << ")\n";
-      MODEL_LOG << "      a0 = " << Arg1 << "\n";
-      MODEL_LOG << "Exit status = " << (Arg1 & 0xff) << "\n";
-      this->exit();
-      break;
-    }
-  }
+  env_.ecall(static_cast<EESyscall>(getReg(Register::A7)), *this);
 }
 
 // todo return control to exec env
@@ -297,7 +245,16 @@ void RVModel::exit() {
   execution_ = false;
 }
 
-void RVModel::setLogs(int logs) { logs_ = static_cast<bool>(logs); }
+void RVModel::setLogs(int logs) {
+  logs_ = static_cast<bool>(logs);
+  if (logs_ == 0) spdlog::set_level(spdlog::level::err);
+  else if (logs_ == 1) {
+    spdlog::set_level(spdlog::level::err);
+    spdlog::set_level(spdlog::level::critical);
+    spdlog::set_level(spdlog::level::info);
+  }
+
+}
 
 void RVModel::printInsn(std::ostream& out, const RVISA::IRVInsn& insn) {
   out << insn << ' ' << insn.getName() << " <pc = "
@@ -360,8 +317,6 @@ uint32_t RVModel::setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr) {
 
   return EnvAddr + ENV_SEG_SIZE;
 }
-
-#undef MODEL_LOG
 
 } // namespace rv32i_sim
 

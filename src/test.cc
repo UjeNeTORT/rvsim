@@ -4,6 +4,7 @@
 #include <gtest/gtest.h>
 
 #include "sim.hpp"
+#include "io.hpp"
 
 class TestRVModel : public ::testing::Test {
 
@@ -75,7 +76,7 @@ protected:
     std::filesystem::path ansf_path = elf_path;
     ansf_path.replace_extension(".ans");
 
-    model = rv32i_sim::RVModel(elf_path);
+    model = rv32i_sim::RVModel<HostIO>(elf_path);
     if (!model.isValid()) {
       std::cerr << "ERROR: failed to initialize model correctly\n";
       std::cerr << elf_path << '\n';

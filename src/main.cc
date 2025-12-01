@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <iostream>
 #include <filesystem>
 
@@ -10,7 +11,7 @@ namespace po = boost::program_options;
 int main(int argc, char *argv[]) {
 
   bool checkpoints = false;
-  int logs = 0;
+  uint32_t logs = 0;
   uint32_t pc_init = 0;
   std::filesystem::path istate;
   std::filesystem::path ostate;
@@ -49,9 +50,10 @@ int main(int argc, char *argv[]) {
     ("elf", po::value<std::filesystem::path>(&elf_path),
         "run simulator on an ELF file. Discards all the other input sources qualifiers")
 
-    ("logs", po::value<int>(&logs)->default_value(0),
-             "set logs verbosity level (0 - disabled, \n"
-             "                          1 - enabled")
+    ("logs", po::value<uint32_t>(&logs)->default_value(0),
+             "set logs verbosity level (0 - disabled,\n"
+             "                          1 - enabled,\n"
+             "                          2 - debug)\n")
 
     ("checkpoints", po::value<bool>(&checkpoints)->default_value(false),
                     "record checkpoints (after each insn execution "
@@ -79,11 +81,11 @@ int main(int argc, char *argv[]) {
     std::cerr << "Sorry, option --checkpoints is not yet implemented\n";
   }
 
-  rv32i_sim::RVModel model{};
+  rv32i_sim::RVModel model;
 
   if (vm.count("elf")) {
 
-    model = rv32i_sim::RVModel(elf_path);
+    model = rv32i_sim::RVModel(elf_path, logs);
 
   } else if (vm.count("istate")) {
     std::ifstream model_state_file{istate};
@@ -119,7 +121,6 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  model.setLogs(logs);
   model.execute();
 
   if (vm.count("ostate")) {
