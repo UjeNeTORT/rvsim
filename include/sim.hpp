@@ -37,14 +37,14 @@ class RVModel final : public IRVModel {
   bool is_valid_ = false;
 
 public:
-  RVModel(uint32_t pc_init = 0) : pc_(pc_init), env_(ExecEnv{}) {}
+  RVModel(uint32_t pc = 0) : env_(ExecEnv{}), pc_(pc) {}
   RVModel(const MemoryModel& mem_init, const RegisterFile& regs_init, uint32_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
   RVModel(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
-  RVModel(std::filesystem::path& elf_path) : env_(ExecEnv{}), logs_(0) {
+  RVModel(std::filesystem::path& elf_path, uint32_t logs = 0) : env_(ExecEnv{}), logs_(logs) {
     setLogs(logs_);
     elf::elfio elf_reader;
     if (!elf_reader.load(elf_path)) {
@@ -112,6 +112,9 @@ public:
   void writeWord(uint32_t addr, uint32_t val) override;
   void memCopy(uint32_t Addr, const void *Src, uint32_t N) override {
     mem_.memCopy(Addr, Src, N);
+  }
+  void memCopy(void * Dst, uint32_t Addr, uint32_t N) override {
+    mem_.memCopy(Dst, Addr, N);
   }
 
   uint32_t getReg(Register reg) const override;
@@ -208,7 +211,7 @@ void RVModel::execute() {
     std::unique_ptr<RVISA::IRVInsn> insn = RVISA::decode(insn_code);
     if (!insn) break;
 
-    if (logs_) printInsn(std::cerr, *insn);
+    if (logs_ == 1) printInsn(std::cerr, *insn);
 
     if (insn->getType() == RVISA::RVInsnTypes::UNDEF_TYPE_INSN) {
       break;
@@ -223,64 +226,7 @@ void RVModel::execute() {
 }
 
 void RVModel::envCall() {
-  uint32_t Syscall = getReg(Register::A7);
-  uint32_t Arg1 = getReg(Register::A0);
-  uint32_t Arg2 = getReg(Register::A1);
-  uint32_t Arg3 = getReg(Register::A2);
-
-  switch (Syscall) {
-    default: {
-      SPDLOG_CRITICAL("Encountered unknown ecall: a7 = {}", Syscall);
-      this->exit();
-      break;
-    }
-    case 63 /*read*/: {
-      SPDLOG_INFO("ecall \"read\" (a7 = {}, a0 = {}, a1 = {}, a2 = {})",
-        Syscall, Arg1, Arg2, Arg3);
-
-      uint32_t Fd     = Arg1;
-      uint32_t UsrBuf = Arg2;
-      uint32_t Count  = Arg3;
-
-      if (Fd == 0 /*stdin*/) {
-        uint8_t *Buffer = new uint8_t[Count];
-        uint32_t Res = read(0, Buffer, Count);
-        setReg(Register::A0, Res);
-        mem_.memCopy(UsrBuf, Buffer, Count);
-        delete [] Buffer;
-      } else {
-        SPDLOG_ERROR("ecall read is supported only for stdin (0), received: {}", Fd);
-      }
-      setPC(getPC() + sizeof(uint32_t));
-      break;
-    }
-    case 64 /*write*/: {
-      SPDLOG_INFO("ecall \"write\" (a7 = {}, a0 = {}, a1 = {}, a2 = {})",
-        Syscall, Arg1, Arg2, Arg3);
-
-      uint32_t Fd     = Arg1;
-      uint32_t UsrBuf = Arg2;
-      uint32_t Count  = Arg3;
-
-      if (Fd == 1 || Fd == 2) {
-        uint8_t *Buffer = new uint8_t[Count];
-        mem_.memCopy(Buffer, UsrBuf, Count);
-        uint32_t Res = write(Fd, Buffer, Count);
-        setReg(Register::A0, Res);
-        delete [] Buffer;
-      } else {
-        SPDLOG_ERROR("ecall write is supported only for stdout (1) and stderr (2), received: {}", Fd);
-      }
-      setPC(getPC() + sizeof(uint32_t));
-      break;
-    }
-    case 93 /*exit*/: {
-      SPDLOG_INFO("ecall \"exit\" (a7 = {}, a0 = {})",
-        Syscall, Arg1);
-      this->exit();
-      break;
-    }
-  }
+  env_.ecall(static_cast<EESyscall>(getReg(Register::A7)), *this);
 }
 
 // todo return control to exec env

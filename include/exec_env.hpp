@@ -26,9 +26,10 @@ static int ecallRead(IRVModel &Model) {
   SPDLOG_INFO("ecall \"read\" (a0 = {}, a1 = {}, a2 = {})",
     Fd, UsrBuf, Count);
 
+  uint32_t Res = -1;
   if (Fd == 0 /*stdin*/) {
     uint8_t *Buffer = new uint8_t[Count];
-    uint32_t Res = read(0, Buffer, Count);
+    Res = read(0, Buffer, Count);
     Model.setReg(Register::A0, Res);
     Model.memCopy(UsrBuf, Buffer, Count);
     delete [] Buffer;
@@ -36,6 +37,40 @@ static int ecallRead(IRVModel &Model) {
     SPDLOG_ERROR("ecall read is supported only for stdin (0), received: {}", Fd);
   }
   Model.setPC(Model.getPC() + sizeof(uint32_t));
+
+  return Res;
+}
+
+static int ecallWrite(IRVModel &Model) {
+  assert(Model.isValid());
+  uint32_t Fd     = Model.getReg(Register::A0);
+  uint32_t UsrBuf = Model.getReg(Register::A1);
+  uint32_t Count  = Model.getReg(Register::A2);
+
+  SPDLOG_INFO("ecall \"write\" (a0 = {}, a1 = {}, a2 = {})",
+    Fd, UsrBuf, Count);
+
+  uint32_t Res = -1;
+  if (Fd == 1 || Fd == 2) {
+    uint8_t *Buffer = new uint8_t[Count];
+    Model.memCopy(Buffer, UsrBuf, Count);
+    Res = write(Fd, Buffer, Count);
+    Model.setReg(Register::A0, Res);
+    delete [] Buffer;
+  } else {
+    SPDLOG_ERROR("ecall write is supported only for stdout (1) and stderr (2), received: {}", Fd);
+  }
+  Model.setPC(Model.getPC() + sizeof(uint32_t));
+  return Res;
+}
+
+static int ecallExit(IRVModel &Model) {
+  assert(Model.isValid());
+  uint32_t ExitCode = Model.getReg(Register::A0);
+
+  SPDLOG_INFO("ecall \"exit\" (a0 = {})", ExitCode);
+  Model.exit();
+  return ExitCode;
 }
 
 
@@ -55,8 +90,8 @@ class ExecEnv final {
 public:
   ExecEnv() {
     EcallHanders_.registerHandler(EESyscall::READ,  ecallRead);
-    EcallHanders_.registerHandler(EESyscall::WRITE, ecallRead);
-    EcallHanders_.registerHandler(EESyscall::EXIT,  ecallRead);
+    EcallHanders_.registerHandler(EESyscall::WRITE, ecallWrite);
+    EcallHanders_.registerHandler(EESyscall::EXIT,  ecallExit);
   }
 
   void ecall(EESyscall Syscall, IRVModel &Model) {
