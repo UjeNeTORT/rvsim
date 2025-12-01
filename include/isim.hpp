@@ -4,9 +4,10 @@
 #include <cstdint>
 #include <iostream>
 
+#include "exec_env.hpp"
 #include "memory.hpp"
 #include "register_file.hpp"
-#include "spdlog/fmt/bundled/base.h"
+#include "io.hpp"
 
 namespace rv32i_sim {
 
@@ -33,6 +34,7 @@ public:
 
   virtual uint32_t getReg(Register reg) const = 0;
   virtual void setReg(Register reg, uint32_t val) = 0;
+  virtual const IOInterface &io() = 0;
 
   virtual void execute() = 0;
   virtual void envCall() = 0;

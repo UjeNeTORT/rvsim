@@ -16,9 +16,10 @@
 #include "isim.hpp"
 #include "memory.hpp"
 #include "register_file.hpp"
+#include "registers.hpp"
+#include "io.hpp"
 
 #include "decoder.inc"
-#include "registers.hpp"
 
 namespace elf = ELFIO;
 
@@ -48,13 +49,13 @@ public:
     setLogs(logs_);
     elf::elfio elf_reader;
     if (!elf_reader.load(elf_path)) {
-      SPDLOG_ERROR("ERROR: failed to load ELF {}\n", elf_path.c_str());
+      SPDLOG_ERROR("ERROR: failed to load ELF {}", elf_path.c_str());
       is_valid_ = false;
       return;
     }
 
     uint32_t EntryPoint = elf_reader.get_entry();
-    SPDLOG_INFO("Found user entry point at: {:#x}\n", EntryPoint);
+    SPDLOG_INFO("Found user entry point at: {:#x}", EntryPoint);
 
     regs_ = RegisterFile();
     mem_ = MemoryModel::fromELF(elf_reader);
@@ -119,6 +120,8 @@ public:
 
   uint32_t getReg(Register reg) const override;
   void setReg(Register reg, uint32_t val) override;
+
+  const IOInterface &io() override { return env_.io(); }
 
   uint32_t setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr);
 
@@ -211,7 +214,7 @@ void RVModel::execute() {
     std::unique_ptr<RVISA::IRVInsn> insn = RVISA::decode(insn_code);
     if (!insn) break;
 
-    if (logs_ == 1) printInsn(std::cerr, *insn);
+    if (logs_ == 2) printInsn(std::cerr, *insn);
 
     if (insn->getType() == RVISA::RVInsnTypes::UNDEF_TYPE_INSN) {
       break;

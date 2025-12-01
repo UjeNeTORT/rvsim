@@ -2,12 +2,15 @@
 #define EXEC_ENV_HPP
 
 #include <cstdint>
+#include <memory>
+#include <unistd.h>
 #include <unordered_map>
 
 #include "spdlog/common.h"
 #include "spdlog/spdlog.h"
 
 #include "isim.hpp"
+#include "io.hpp"
 
 using namespace rv32i_sim;
 
@@ -29,7 +32,7 @@ static int ecallRead(IRVModel &Model) {
   uint32_t Res = -1;
   if (Fd == 0 /*stdin*/) {
     uint8_t *Buffer = new uint8_t[Count];
-    Res = read(0, Buffer, Count);
+    Res = Model.io().read(0, Buffer, Count);
     Model.setReg(Register::A0, Res);
     Model.memCopy(UsrBuf, Buffer, Count);
     delete [] Buffer;
@@ -54,7 +57,7 @@ static int ecallWrite(IRVModel &Model) {
   if (Fd == 1 || Fd == 2) {
     uint8_t *Buffer = new uint8_t[Count];
     Model.memCopy(Buffer, UsrBuf, Count);
-    Res = write(Fd, Buffer, Count);
+    Res = Model.io().write(Fd, Buffer, Count);
     Model.setReg(Register::A0, Res);
     delete [] Buffer;
   } else {
@@ -73,7 +76,6 @@ static int ecallExit(IRVModel &Model) {
   return ExitCode;
 }
 
-
 class ExecEnv final {
   class EcallHandlersRegistry final {
     using EcallHandler = std::function<int(IRVModel &Model)>;
@@ -86,13 +88,16 @@ class ExecEnv final {
   };
 
   EcallHandlersRegistry EcallHanders_;
+  std::unique_ptr<IOInterface> IO_;
 
 public:
-  ExecEnv() {
+  ExecEnv(IOInterface *IO = new HostIO) : IO_(IO) {
     EcallHanders_.registerHandler(EESyscall::READ,  ecallRead);
     EcallHanders_.registerHandler(EESyscall::WRITE, ecallWrite);
     EcallHanders_.registerHandler(EESyscall::EXIT,  ecallExit);
   }
+
+  IOInterface &io() { return *IO_; }
 
   void ecall(EESyscall Syscall, IRVModel &Model) {
     auto &&Hnd = EcallHanders_.get(Syscall);
