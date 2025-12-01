@@ -4,10 +4,8 @@
 #include <cstdint>
 #include <iostream>
 
-#include "exec_env.hpp"
-#include "memory.hpp"
-#include "register_file.hpp"
 #include "io.hpp"
+#include "registers.hpp"
 
 namespace rv32i_sim {
 
