@@ -49,23 +49,23 @@ public:
   RVModel(std::filesystem::path& ElfPath, uint32_t Logs = 0)
     : RVModel(ElfPath, std::make_unique<HostIO>(), Logs) {}
 
-  RVModel(std::filesystem::path& elf_path,
+  RVModel(std::filesystem::path& ElfPath,
           std::unique_ptr<IOInterface> IO = std::make_unique<HostIO>(),
-          uint32_t logs = 0) : env_(ExecEnv(std::move(IO))), logs_(logs) {
+          uint32_t Logs = 0) : env_(ExecEnv(std::move(IO))), logs_(Logs) {
     setLogs(logs_);
-    elf::elfio elf_reader;
-    if (!elf_reader.load(elf_path)) {
-      SPDLOG_ERROR("ERROR: failed to load ELF {}", elf_path.c_str());
+    elf::elfio ElfReader;
+    if (!ElfReader.load(ElfPath)) {
+      SPDLOG_ERROR("ERROR: failed to load ELF {}", ElfPath.c_str());
       is_valid_ = false;
       return;
     }
 
-    uint32_t EntryPoint = elf_reader.get_entry();
+    uint32_t EntryPoint = ElfReader.get_entry();
     SPDLOG_INFO("Found user entry point at: {:#x}", EntryPoint);
 
     regs_ = RegisterFile();
-    mem_ = MemoryModel::fromELF(elf_reader);
-    auto LastSegment = std::prev(elf_reader.segments.end());
+    mem_ = MemoryModel::fromELF(ElfReader);
+    auto LastSegment = std::prev(ElfReader.segments.end());
     uint32_t EnvAddr = LastSegment->get()->get_virtual_address()
                      + LastSegment->get()->get_memory_size();
 
