@@ -40,12 +40,6 @@ class RVModel final : public IRVModel {
 
 public:
   RVModel(uint32_t pc = 0) : env_(ExecEnv{}), pc_(pc) {}
-  RVModel(const MemoryModel& mem_init, const RegisterFile& regs_init, uint32_t pc_init)
-    : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
-
-  RVModel(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init)
-    : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
-
   RVModel(std::filesystem::path& ElfPath, uint32_t Logs = 0)
     : RVModel(ElfPath, std::make_unique<HostIO>(), Logs) {}
 

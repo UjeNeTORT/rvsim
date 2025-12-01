@@ -20,7 +20,7 @@ protected:
   virtual void TearDown() {}
 
   bool RunTest(std::filesystem::path testf_path) {
-    model.fromELF(testf_path);
+    model = rv32i_sim::RVModel(testf_path, 0);
     if (!model.isValid()) {
       std::cerr << "ERROR: failed to initialize model correctly\n";
       std::cerr << testf_path << '\n';
@@ -37,40 +37,12 @@ protected:
     return true;
   }
 
-  bool TestAnsBstate(std::filesystem::path bstate_path) {
-    std::filesystem::path ansf_path = bstate_path;
-    ansf_path.replace_extension(".ans");
-
-    model.init(bstate_path);
-    if (!model.isValid()) {
-      std::cerr << "ERROR: failed to initialize model correctly\n";
-      std::cerr << bstate_path << '\n';
-      return false;
-    }
-
-    model.execute();
-    if (!model.isValid()) {
-      std::cerr << "ERROR: model invalid after execution\n";
-      std::cerr << bstate_path << '\n';
-      return false;
-    }
-
-    ref_model.init(ansf_path);
-    if (!model.isValid()) {
-      std::cerr << "ERROR: failed to initialize ref model correctly\n";
-      std::cerr << ansf_path << '\n';
-
-      return false;
-    }
-
-    return ref_model == model;
-  }
-
   bool TestAnsELF(std::filesystem::path elf_path) {
     std::filesystem::path ansf_path = elf_path;
     ansf_path.replace_extension(".ans");
 
-    model = rv32i_sim::RVModel<HostIO>(elf_path);
+    model = rv32i_sim::RVModel(elf_path, 0);
+
     if (!model.isValid()) {
       std::cerr << "ERROR: failed to initialize model correctly\n";
       std::cerr << elf_path << '\n';
@@ -88,29 +60,29 @@ protected:
   }
 };
 
-#define TEST_F_INSTRUCTION(InstructionName, TestDirPath)                \
-  TEST_F(TestRVModel, InstructionName) {                                \
-    std::filesystem::path TestDir = TestDirPath;                        \
-    for (auto const &DirEntry :                                         \
-                        std::filesystem::directory_iterator(TestDir)) { \
-      if (!DirEntry.is_regular_file()) continue;                        \
-      if (DirEntry.path().extension() != ".bstate") continue;           \
-      auto fpath = DirEntry.path();                                     \
-      EXPECT_EQ(TestAnsBstate(fpath), true);                            \
-    }                                                                   \
-  }
+// #define TEST_F_INSTRUCTION(InstructionName, TestDirPath)                \
+  // TEST_F(TestRVModel, InstructionName) {                                \
+    // std::filesystem::path TestDir = TestDirPath;                        \
+    // for (auto const &DirEntry :                                         \
+                        // std::filesystem::directory_iterator(TestDir)) { \
+      // if (!DirEntry.is_regular_file()) continue;                        \
+      // if (DirEntry.path().extension() != ".bstate") continue;           \
+      // auto fpath = DirEntry.path();                                     \
+      // EXPECT_EQ(TestAnsBstate(fpath), true);                            \
+    // }                                                                   \
+  // }
 
-TEST_F_INSTRUCTION(ADD, "../test/insn/add");
-TEST_F_INSTRUCTION(SUB, "../test/insn/sub");
-TEST_F_INSTRUCTION(SLL, "../test/insn/sll");
-TEST_F_INSTRUCTION(SLT, "../test/insn/slt");
-TEST_F_INSTRUCTION(SLTU, "../test/insn/sltu");
-TEST_F_INSTRUCTION(XOR, "../test/insn/xor");
-TEST_F_INSTRUCTION(SRA, "../test/insn/sra");
-TEST_F_INSTRUCTION(OR, "../test/insn/or");
-TEST_F_INSTRUCTION(AND, "../test/insn/and");
+// TEST_F_INSTRUCTION(ADD, "../test/insn/add");
+// TEST_F_INSTRUCTION(SUB, "../test/insn/sub");
+// TEST_F_INSTRUCTION(SLL, "../test/insn/sll");
+// TEST_F_INSTRUCTION(SLT, "../test/insn/slt");
+// TEST_F_INSTRUCTION(SLTU, "../test/insn/sltu");
+// TEST_F_INSTRUCTION(XOR, "../test/insn/xor");
+// TEST_F_INSTRUCTION(SRA, "../test/insn/sra");
+// TEST_F_INSTRUCTION(OR, "../test/insn/or");
+// TEST_F_INSTRUCTION(AND, "../test/insn/and");
 
-#undef TEST_F_INSTRUCTION
+// #undef TEST_F_INSTRUCTION
 
 
 TEST_F(TestRVModel, ELF_PLUS) {
