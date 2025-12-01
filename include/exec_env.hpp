@@ -91,7 +91,7 @@ class ExecEnv final {
   std::unique_ptr<IOInterface> IO_;
 
 public:
-  ExecEnv(IOInterface *IO = new HostIO) : IO_(IO) {
+  ExecEnv(std::unique_ptr<IOInterface> IO = std::make_unique<HostIO>()) : IO_(std::move(IO)) {
     EcallHanders_.registerHandler(EESyscall::READ,  ecallRead);
     EcallHanders_.registerHandler(EESyscall::WRITE, ecallWrite);
     EcallHanders_.registerHandler(EESyscall::EXIT,  ecallExit);

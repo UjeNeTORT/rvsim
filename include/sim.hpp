@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <iostream>
+#include <memory>
 #include <string>
 #include <vector>
 #include <unistd.h>
@@ -45,7 +46,12 @@ public:
   RVModel(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
-  RVModel(std::filesystem::path& elf_path, uint32_t logs = 0) : env_(ExecEnv{}), logs_(logs) {
+  RVModel(std::filesystem::path& ElfPath, uint32_t Logs = 0)
+    : RVModel(ElfPath, std::make_unique<HostIO>(), Logs) {}
+
+  RVModel(std::filesystem::path& elf_path,
+          std::unique_ptr<IOInterface> IO = std::make_unique<HostIO>(),
+          uint32_t logs = 0) : env_(ExecEnv(std::move(IO))), logs_(logs) {
     setLogs(logs_);
     elf::elfio elf_reader;
     if (!elf_reader.load(elf_path)) {
