@@ -1,8 +1,6 @@
 #ifndef SIMULATOR_HPP
 #define SIMULATOR_HPP
 
-#include <array>
-#include <bit>
 #include <cstdint>
 #include <iostream>
 #include <string>
@@ -13,13 +11,12 @@
 #include "spdlog/common.h"
 #include "spdlog/spdlog.h"
 
-#include "isim.hpp"
+#include "exec_env.hpp"
 #include "instruction.hpp"
+#include "isim.hpp"
 #include "memory.hpp"
 #include "register_file.hpp"
-#include "exec_env.hpp"
 
-#include "decoder_helpers.hpp"
 #include "decoder.inc"
 #include "registers.hpp"
 
@@ -29,7 +26,7 @@ namespace rv32i_sim {
 
 const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
 
-class RVModel final : IRVModel {
+class RVModel final : public IRVModel {
   MemoryModel mem_;
   RegisterFile regs_;
   ExecEnv env_;
@@ -40,15 +37,15 @@ class RVModel final : IRVModel {
   bool is_valid_ = false;
 
 public:
-  RVModel(uint32_t pc_init = 0) : pc_(pc_init) {}
+  RVModel(uint32_t pc_init = 0) : pc_(pc_init), env_(ExecEnv{}) {}
   RVModel(const MemoryModel& mem_init, const RegisterFile& regs_init, uint32_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
   RVModel(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init)
     : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
 
-  RVModel(std::filesystem::path& elf_path, uint32_t logs = 0) {
-    setLogs(logs);
+  RVModel(std::filesystem::path& elf_path) : env_(ExecEnv{}), logs_(0) {
+    setLogs(logs_);
     elf::elfio elf_reader;
     if (!elf_reader.load(elf_path)) {
       SPDLOG_ERROR("ERROR: failed to load ELF {}\n", elf_path.c_str());
@@ -67,8 +64,8 @@ public:
 
     // setting up stack and initial stack frame
     uint32_t sp = mem_.setUpStack();
-    regs_.set(Register::X2, sp); // SP = sp
-    regs_.set(Register::X8, sp); // FP = sp
+    regs_.set(Register::SP, sp); // SP = sp
+    regs_.set(Register::FP, sp); // FP = sp
 
     // preparing execution environment i.e.
     // code which calls main and does ebreak in the end
@@ -113,6 +110,9 @@ public:
   void writeByte(uint32_t addr, uint8_t val) override;
   void writeHalf(uint32_t addr, uint16_t val) override;
   void writeWord(uint32_t addr, uint32_t val) override;
+  void memCopy(uint32_t Addr, const void *Src, uint32_t N) override {
+    mem_.memCopy(Addr, Src, N);
+  }
 
   uint32_t getReg(Register reg) const override;
   void setReg(Register reg, uint32_t val) override;

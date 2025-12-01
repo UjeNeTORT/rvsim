@@ -1,6 +1,7 @@
 #ifndef ISIM_HPP
 #define ISIM_HPP
 
+#include <cstdint>
 #include <iostream>
 
 #include "memory.hpp"
@@ -22,6 +23,7 @@ public:
   virtual uint8_t readByte(uint32_t addr) = 0;
   virtual uint16_t readHalf(uint32_t addr) = 0;
   virtual uint32_t readWord(uint32_t addr) = 0;
+  virtual void memCopy(uint32_t Addr, const void * Src, uint32_t N) = 0;
 
   virtual void writeByte(uint32_t addr, uint8_t val) = 0;
   virtual void writeHalf(uint32_t addr, uint16_t val) = 0;
