@@ -6,6 +6,7 @@
 
 #include <gtest/gtest.h>
 #include <iterator>
+#include <unistd.h>
 
 #include "sim.hpp"
 #include "io.hpp"
@@ -26,11 +27,42 @@ protected:
     return M_.isValid();
   }
 
+  bool LoadElf(std::filesystem::path &ElfPath, std::vector<uint8_t> &Input) {
+    M_ = rv32i_sim::RVModel(ElfPath, std::unique_ptr<BufferIO>(new BufferIO), 0);
+    std::vector<uint8_t> &ReadBuf = dynamic_cast<BufferIO &>(M_.io())
+                                      .getReadBuf(STDIN_FILENO);
+    ReadBuf = Input;
+    return M_.isValid();
+  }
+
+  // Load elf w/ overwritten stdin
+  void LoadElf(std::filesystem::path &ElfPath, std::filesystem::path InFpath) {
+    std::ifstream InFile(InFpath);
+    ASSERT_EQ(InFile.is_open(), true);
+    std::vector<uint8_t> Input = std::vector<uint8_t>(
+      std::istream_iterator<char>(InFile),
+      std::istream_iterator<char>()
+    );
+
+    ASSERT_EQ(LoadElf(ElfPath, Input), true);
+  }
+
   bool LoadTest(std::filesystem::path &ElfPath) {
-    EXPECT_EQ(LoadElf(ElfPath), true && "Model must be valid after ELF loading");
+    EXPECT_EQ(LoadElf(ElfPath), true);
     std::filesystem::path AnsPath = ElfPath;
     AnsPath.replace_extension(".ans");
-    EXPECT_EQ(std::filesystem::exists(AnsPath), true && "Answer must exist");
+    EXPECT_EQ(std::filesystem::exists(AnsPath), true);
+    AnsPath_ = AnsPath;
+    return true;
+  }
+
+  bool LoadTest(std::filesystem::path &ElfPath, std::filesystem::path &InPath) {
+    EXPECT_EQ(std::filesystem::exists(InPath), true);
+
+    LoadElf(ElfPath, InPath);
+    std::filesystem::path AnsPath = InPath;
+    AnsPath.replace_extension(".ans");
+    EXPECT_EQ(std::filesystem::exists(AnsPath), true);
     AnsPath_ = AnsPath;
     return true;
   }
@@ -55,25 +87,57 @@ protected:
     return true;
   }
 
-  bool TestAnsELF(std::filesystem::path ElfPath) {
-    std::filesystem::path AnsPath = ElfPath;
-    AnsPath.replace_extension(".ans");
+  void TestAnsELF(std::filesystem::path ElfPath) {
+    bool IsInAnsMode = false; // .in <-> .ans mode?
+    const auto &D = ElfPath.parent_path();
+    for (const auto &DE :
+          std::filesystem::directory_iterator(D)) {
+      if(!DE.is_regular_file()) continue;
 
-    M_ = rv32i_sim::RVModel(ElfPath, std::unique_ptr<BufferIO>(new BufferIO), 0);
-    if (!M_.isValid()) {
-      std::cerr << "ERROR: failed to initialize model correctly\n";
-      std::cerr << ElfPath << '\n';
-      return false;
+      // if test is in format .in <-> .ans
+      // then look for .ans for each .in
+      // check that model gives correct answers
+      // and finish test
+
+      if(DE.path().extension() == ".in") {
+        IsInAnsMode = true;
+        auto InPath = DE.path();
+        LoadTest(ElfPath, InPath);
+        std::ifstream AnsF(AnsPath_, std::ios::binary);
+        ASSERT_EQ(AnsF.is_open(), true && "Answer File must open");
+        auto BufAns = std::vector<uint8_t>(
+          std::istreambuf_iterator<char>(AnsF),
+          std::istreambuf_iterator<char>()
+        );
+
+        M_.execute();
+        BufferIO *IO = dynamic_cast<BufferIO *>(&M_.io());
+        ASSERT_NE(IO, nullptr);
+        EXPECT_EQ(IO->getWriteBuf(STDOUT_FILENO), BufAns)
+          << "for input " << InPath;
+      }
     }
+
+    if (IsInAnsMode) return;
+
+    // if test is in format .elf <-> .ans
+    // (i.e. inputs are hardcoded in elf)
+    // then look for .ans for the one .elf
+    // check that model gives correct answer
+    // and finish test
+
+    LoadTest(ElfPath);
+    std::ifstream AnsF(AnsPath_, std::ios::binary);
+    ASSERT_EQ(AnsF.is_open(), true && "Answer File must open");
+    auto BufAns = std::vector<uint8_t>(
+      std::istreambuf_iterator<char>(AnsF),
+      std::istreambuf_iterator<char>()
+    );
 
     M_.execute();
-    if (!M_.isValid()) {
-      std::cerr << "ERROR: model invalid after execution\n";
-      std::cerr << ElfPath << '\n';
-      return false;
-    }
-
-    return M_.isValid(); // todo fixme, should be another criteria
+    BufferIO *IO = dynamic_cast<BufferIO *>(&M_.io());
+    EXPECT_NE(IO, nullptr);
+    EXPECT_EQ(IO->getWriteBuf(STDOUT_FILENO), BufAns);
   }
 
 };
@@ -110,24 +174,19 @@ TEST_F(TestRVModel, PLUS) {
     if (!DirEnt.is_regular_file()) continue;
     if (DirEnt.path().extension() != ".elf") continue;
     auto ElfPath = DirEnt.path();
-    LoadTest(ElfPath);
-    std::ifstream AnsF(AnsPath_, std::ios::binary);
-    EXPECT_EQ(AnsF.is_open(), true && "Answer File must open");
-    auto BufAns = std::vector<uint8_t>(
-      std::istreambuf_iterator<char>(AnsF),
-      std::istreambuf_iterator<char>()
-    );
-
-    M_.execute();
-    BufferIO *IO = dynamic_cast<BufferIO *>(&M_.io());
-    EXPECT_NE(IO, nullptr);
-    EXPECT_EQ(IO->getWriteBuf(STDOUT_FILENO), BufAns);
+    TestAnsELF(ElfPath);
   }
 }
 
 TEST_F(TestRVModel, FACTORIAL) {
-  std::filesystem::path FPath = "../test/elf/factorial.elf";
-  EXPECT_EQ(TestAnsELF(FPath), true);
+  std::filesystem::path TestDir = "../test/elf/factorial";
+  for (auto const &DirEnt :
+                      std::filesystem::directory_iterator(TestDir)) {
+    if (!DirEnt.is_regular_file()) continue;
+    if (DirEnt.path().extension() != ".elf") continue;
+    auto ElfPath = DirEnt.path();
+    TestAnsELF(ElfPath);
+  }
 }
 
 TEST_F(TestRVModel, DISABLED_stress) {
