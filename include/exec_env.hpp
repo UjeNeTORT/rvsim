@@ -9,8 +9,8 @@
 #include "spdlog/common.h"
 #include "spdlog/spdlog.h"
 
-#include "isim.hpp"
 #include "io.hpp"
+#include "isim.hpp"
 
 using namespace rv32i_sim;
 

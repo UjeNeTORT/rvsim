@@ -1,8 +1,7 @@
 #include <cstdint>
-#include <cstdio>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <filesystem>
 
 #include <gtest/gtest.h>
 #include <iterator>
@@ -37,11 +36,11 @@ protected:
 
   // Load elf w/ overwritten stdin
   void LoadElf(std::filesystem::path &ElfPath, std::filesystem::path InFpath) {
-    std::ifstream InFile(InFpath);
+    std::ifstream InFile(InFpath, std::ios::binary);
     ASSERT_EQ(InFile.is_open(), true);
     std::vector<uint8_t> Input = std::vector<uint8_t>(
-      std::istream_iterator<char>(InFile),
-      std::istream_iterator<char>()
+      std::istreambuf_iterator<char>(InFile),
+      std::istreambuf_iterator<char>()
     );
 
     ASSERT_EQ(LoadElf(ElfPath, Input), true);
@@ -142,64 +141,22 @@ protected:
 
 };
 
-// #define TEST_F_INSTRUCTION(InstructionName, TestDirPath)                \
-  // TEST_F(TestRVModel, InstructionName) {                                \
-    // std::filesystem::path TestDir = TestDirPath;                        \
-    // for (auto const &DirEntry :                                         \
-                        // std::filesystem::directory_iterator(TestDir)) { \
-      // if (!DirEntry.is_regular_file()) continue;                        \
-      // if (DirEntry.path().extension() != ".bstate") continue;           \
-      // auto fpath = DirEntry.path();                                     \
-      // EXPECT_EQ(TestAnsBstate(fpath), true);                            \
-    // }                                                                   \
-  // }
-
-// TEST_F_INSTRUCTION(ADD, "../test/insn/add");
-// TEST_F_INSTRUCTION(SUB, "../test/insn/sub");
-// TEST_F_INSTRUCTION(SLL, "../test/insn/sll");
-// TEST_F_INSTRUCTION(SLT, "../test/insn/slt");
-// TEST_F_INSTRUCTION(SLTU, "../test/insn/sltu");
-// TEST_F_INSTRUCTION(XOR, "../test/insn/xor");
-// TEST_F_INSTRUCTION(SRA, "../test/insn/sra");
-// TEST_F_INSTRUCTION(OR, "../test/insn/or");
-// TEST_F_INSTRUCTION(AND, "../test/insn/and");
-
-// #undef TEST_F_INSTRUCTION
-
-
-TEST_F(TestRVModel, PLUS) {
-  std::filesystem::path TestDir = "../test/elf/plus";
-  for (auto const &DirEnt :
-                      std::filesystem::directory_iterator(TestDir)) {
-    if (!DirEnt.is_regular_file()) continue;
-    if (DirEnt.path().extension() != ".elf") continue;
-    auto ElfPath = DirEnt.path();
-    TestAnsELF(ElfPath);
-  }
+#define TEST_F_ELF(TestName, TestDir)                                 \
+TEST_F(TestRVModel, TestName) {                                       \
+  for (auto const &DirEnt :                                           \
+                      std::filesystem::directory_iterator(TestDir)) { \
+    if (!DirEnt.is_regular_file()) continue;                          \
+    if (DirEnt.path().extension() != ".elf") continue;                \
+    auto ElfPath = DirEnt.path();                                     \
+    TestAnsELF(ElfPath);                                              \
+  }                                                                   \
 }
 
-TEST_F(TestRVModel, FACTORIAL) {
-  std::filesystem::path TestDir = "../test/elf/factorial";
-  for (auto const &DirEnt :
-                      std::filesystem::directory_iterator(TestDir)) {
-    if (!DirEnt.is_regular_file()) continue;
-    if (DirEnt.path().extension() != ".elf") continue;
-    auto ElfPath = DirEnt.path();
-    TestAnsELF(ElfPath);
-  }
-}
+TEST_F_ELF(PLUS, "../test/elf/plus");
+TEST_F_ELF(FACTORIAL, "../test/elf/factorial");
+TEST_F_ELF(ECHO, "../test/elf/echo");
 
-TEST_F(TestRVModel, DISABLED_stress) {
-  std::filesystem::path TestDir = "../test/stress";
-  for (auto const &DirEnt :
-                      std::filesystem::recursive_directory_iterator(TestDir)) {
-    if (!DirEnt.is_regular_file()) continue;
-    if (DirEnt.path().extension() != ".bstate") continue;
-    auto FPath = DirEnt.path();
-
-    EXPECT_EQ(RunTest(FPath), true);
-  }
-}
+#undef TEST_F_ELF
 
 int main(int argc, char *argv[]) {
   testing::InitGoogleTest(&argc, argv);

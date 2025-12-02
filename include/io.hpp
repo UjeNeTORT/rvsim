@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
+#include <cstdio>
 #include <cstring>
 #include <unistd.h>
 #include <unordered_map>
@@ -51,10 +52,9 @@ public:
     if (It == InB_.end()) return -1; // no such file descriptor (Fd)
 
     std::vector<uint8_t> &B = It->second;
-    size_t OldSize = B.size();
-    B.resize(OldSize + N);
-    std::memcpy(Data, B.data() + OldSize - N, N);
-    return N;
+    ssize_t Res = N > B.size() ? B.size() : N;
+    std::memcpy(Data, B.data(), Res);
+    return Res;
   }
 
   ssize_t write(int Fd, const void *Data, uint32_t N) override {
