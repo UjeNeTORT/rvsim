@@ -40,32 +40,26 @@ class RVModel final : public IRVModel {
 
 public:
   RVModel(uint32_t pc = 0) : env_(ExecEnv{}), pc_(pc) {}
-  RVModel(const MemoryModel& mem_init, const RegisterFile& regs_init, uint32_t pc_init)
-    : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
-
-  RVModel(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init)
-    : mem_(mem_init), regs_(regs_init), pc_(pc_init) {}
-
   RVModel(std::filesystem::path& ElfPath, uint32_t Logs = 0)
     : RVModel(ElfPath, std::make_unique<HostIO>(), Logs) {}
 
-  RVModel(std::filesystem::path& elf_path,
+  RVModel(std::filesystem::path& ElfPath,
           std::unique_ptr<IOInterface> IO = std::make_unique<HostIO>(),
-          uint32_t logs = 0) : env_(ExecEnv(std::move(IO))), logs_(logs) {
+          uint32_t Logs = 0) : env_(ExecEnv(std::move(IO))), logs_(Logs) {
     setLogs(logs_);
-    elf::elfio elf_reader;
-    if (!elf_reader.load(elf_path)) {
-      SPDLOG_ERROR("ERROR: failed to load ELF {}", elf_path.c_str());
+    elf::elfio ElfReader;
+    if (!ElfReader.load(ElfPath)) {
+      SPDLOG_ERROR("ERROR: failed to load ELF {}", ElfPath.c_str());
       is_valid_ = false;
       return;
     }
 
-    uint32_t EntryPoint = elf_reader.get_entry();
+    uint32_t EntryPoint = ElfReader.get_entry();
     SPDLOG_INFO("Found user entry point at: {:#x}", EntryPoint);
 
     regs_ = RegisterFile();
-    mem_ = MemoryModel::fromELF(elf_reader);
-    auto LastSegment = std::prev(elf_reader.segments.end());
+    mem_ = MemoryModel::fromELF(ElfReader);
+    auto LastSegment = std::prev(ElfReader.segments.end());
     uint32_t EnvAddr = LastSegment->get()->get_virtual_address()
                      + LastSegment->get()->get_memory_size();
 
@@ -81,22 +75,6 @@ public:
 
     is_valid_ = mem_.isValid() && regs_.isValid();
   }
-
-  void init(std::ifstream& model_state_file) override;
-  void init(std::filesystem::path& model_state_path) {
-    std::ifstream bstate_file(model_state_path);
-    if (!bstate_file) {
-      std::cerr << "ERROR: failed to open bstate file " << model_state_path << "\n";
-      is_valid_ = false;
-      return;
-    }
-
-    init(bstate_file);
-  }
-
-  void init(const MemoryModel& mem_init, const RegisterFile& regs_init,
-                                                              uint32_t pc_init) override;
-  void init(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init) override;
 
   bool operator== (const RVModel& other) const;
 
@@ -127,7 +105,7 @@ public:
   uint32_t getReg(Register reg) const override;
   void setReg(Register reg, uint32_t val) override;
 
-  const IOInterface &io() override { return env_.io(); }
+  IOInterface &io() override { return env_.io(); }
 
   uint32_t setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr);
 
@@ -140,46 +118,6 @@ public:
   std::ostream& print(std::ostream& out) override;
   void binaryDump(std::ofstream& fout) override;
 };
-
-void RVModel::init(std::ifstream& model_state_file) {
-  if (!model_state_file) {
-    std::cerr << "ERROR: wrong model state file\n";
-    is_valid_ = false;
-    return;
-  }
-
-  std::string signature(RV32I_MODEL_STATE_SIGNATURE.size(), ' ');
-  model_state_file.read(signature.data(), RV32I_MODEL_STATE_SIGNATURE.size() + 1);
-  if (signature != RV32I_MODEL_STATE_SIGNATURE) {
-    std::cerr << "ERROR: model state file signature mismatch:\n"
-              << "      <" << signature << "> vs <"
-                                            << RV32I_MODEL_STATE_SIGNATURE <<">\n";
-    is_valid_ = false;
-    return;
-  }
-
-  // read pc
-  model_state_file.read(reinterpret_cast<char *>(&pc_), sizeof(uint32_t));
-  assert(pc_ % IALIGN == 0 && "PC at unaligned position");
-
-  // the order of initialization is important (see bstate format)
-  regs_ = RegisterFile::fromBstate(model_state_file);
-  mem_ = MemoryModel::fromBstate(model_state_file);
-
-  is_valid_ = regs_.isValid() && mem_.isValid() && pc_ % IALIGN == 0;
-}
-
-void RVModel::init(const MemoryModel& mem_init, const RegisterFile& regs_init, uint32_t pc_init) {
-  mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
-  assert(pc_ % IALIGN == 0 && "PC at unaligned position");
-  if (pc_ % IALIGN == 0) is_valid_ = true;
-}
-
-void RVModel::init(MemoryModel&& mem_init, RegisterFile&& regs_init, uint32_t pc_init) {
-  mem_ = mem_init; regs_ = regs_init; pc_ = pc_init;
-  assert(pc_ % IALIGN == 0 && "PC at unaligned position");
-  if (pc_ % IALIGN == 0) is_valid_ = true;
-}
 
 bool RVModel::operator== (const RVModel& other) const {
   return pc_ == other.pc_ && regs_ == other.regs_ && mem_ == other.mem_;
@@ -246,9 +184,9 @@ void RVModel::exit() {
 }
 
 void RVModel::setLogs(int logs) {
-  logs_ = static_cast<bool>(logs);
+  logs_ = logs;
   if (logs_ == 0) spdlog::set_level(spdlog::level::err);
-  else if (logs_ == 1) {
+  else if (logs_ == 1 || logs_ == 2) {
     spdlog::set_level(spdlog::level::err);
     spdlog::set_level(spdlog::level::critical);
     spdlog::set_level(spdlog::level::info);

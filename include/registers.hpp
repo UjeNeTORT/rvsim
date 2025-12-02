@@ -1,6 +1,8 @@
 #ifndef REGISTERS_HPP
 #define REGISTERS_HPP
 
+#include <cstdint>
+
 namespace rv32i_sim {
 
 enum class Register : uint32_t {
@@ -41,6 +43,6 @@ enum class Register : uint32_t {
 
 constexpr std::size_t N_REGS = 32; // number of registers
 
-} // rv32i_sim
+} // namespace rv32i_sim
 
 #endif // REGISTERS_HPP
