@@ -39,7 +39,7 @@ public:
   virtual ~IRVModel() = default;
 };
 
-std::ostream& operator<<(std::ostream& out, IRVModel& model) {
+inline std::ostream& operator<<(std::ostream& out, IRVModel& model) {
   model.print(out);
   return out;
 }
