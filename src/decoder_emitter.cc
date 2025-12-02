@@ -376,8 +376,6 @@ void DecoderEmitter::emitTypesEnum(raw_ostream &OS,
 }
 
 void DecoderEmitter::run(raw_ostream &OS) {
-  dump();
-
   emitSourceFileHeader("RV Decoder structures", OS);
 
   OS << "#include <iostream>\n"
