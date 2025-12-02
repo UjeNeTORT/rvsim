@@ -53,7 +53,7 @@ public:
     std::vector<uint8_t> &B = It->second;
     size_t OldSize = B.size();
     B.resize(OldSize + N);
-    std::memcpy(Data, B.data() + OldSize, N);
+    std::memcpy(Data, B.data() + OldSize - N, N);
     return N;
   }
 
