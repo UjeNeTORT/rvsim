@@ -5,6 +5,7 @@
 #include <memory>
 #include <unistd.h>
 #include <unordered_map>
+#include <vector>
 
 #include "spdlog/common.h"
 #include "spdlog/spdlog.h"
@@ -31,11 +32,10 @@ static int ecallRead(IRVModel &Model) {
 
   uint32_t Res = -1;
   if (Fd == 0 /*stdin*/) {
-    uint8_t *Buffer = new uint8_t[Count];
-    Res = Model.io().read(0, Buffer, Count);
+    std::vector<uint8_t> Buffer(Count);
+    Res = Model.io().read(0, Buffer.data(), Count);
     Model.setReg(Register::A0, Res);
-    Model.memCopy(UsrBuf, Buffer, Count);
-    delete [] Buffer;
+    Model.memCopy(UsrBuf, Buffer.data(), Count);
   } else {
     SPDLOG_ERROR("ecall read is supported only for stdin (0), received: {}", Fd);
   }
@@ -55,11 +55,10 @@ static int ecallWrite(IRVModel &Model) {
 
   uint32_t Res = -1;
   if (Fd == 1 || Fd == 2) {
-    uint8_t *Buffer = new uint8_t[Count];
-    Model.memCopy(Buffer, UsrBuf, Count);
-    Res = Model.io().write(Fd, Buffer, Count);
+    std::vector<uint8_t> Buffer(Count);
+    Model.memCopy(Buffer.data(), UsrBuf, Count);
+    Res = Model.io().write(Fd, Buffer.data(), Count);
     Model.setReg(Register::A0, Res);
-    delete [] Buffer;
   } else {
     SPDLOG_ERROR("ecall write is supported only for stdout (1) and stderr (2), received: {}", Fd);
   }
