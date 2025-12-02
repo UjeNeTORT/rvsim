@@ -184,9 +184,9 @@ void RVModel::exit() {
 }
 
 void RVModel::setLogs(int logs) {
-  logs_ = static_cast<bool>(logs);
+  logs_ = logs;
   if (logs_ == 0) spdlog::set_level(spdlog::level::err);
-  else if (logs_ == 1) {
+  else if (logs_ == 1 || logs_ == 2) {
     spdlog::set_level(spdlog::level::err);
     spdlog::set_level(spdlog::level::critical);
     spdlog::set_level(spdlog::level::info);
