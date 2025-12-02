@@ -27,7 +27,7 @@ public:
 
   virtual uint32_t getReg(Register reg) const = 0;
   virtual void setReg(Register reg, uint32_t val) = 0;
-  virtual const IOInterface &io() = 0;
+  virtual IOInterface &io() = 0;
 
   virtual void execute() = 0;
   virtual void envCall() = 0;
