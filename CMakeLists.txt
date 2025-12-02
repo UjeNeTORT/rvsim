@@ -74,7 +74,8 @@ add_library(registers STATIC
 
 add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/main.cc ${GEN_DECODER})
 target_link_libraries(${PROJECT_NAME} segment memory registers decoder_helpers)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_DECODER_DIR})
+target_include_directories(${PROJECT_NAME} PUBLIC ${CMAKE_DECODER_DIR})
+set_target_properties(${PROJECT_NAME} PROPERTIES DEPENDS ${GEN_DECODER})
 add_dependencies(${PROJECT_NAME} decoder_inc)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
@@ -84,3 +85,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(test ${CMAKE_CURRENT_SOURCE_DIR}/test.cc)
 target_link_libraries(test gtest segment memory registers decoder_helpers)
+target_link_libraries(test segment memory registers decoder_helpers)
+target_include_directories(test PUBLIC ${CMAKE_DECODER_DIR})
+set_target_properties(test PROPERTIES DEPENDS ${GEN_DECODER})
+add_dependencies(test decoder_inc)
