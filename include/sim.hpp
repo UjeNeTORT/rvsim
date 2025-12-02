@@ -105,7 +105,7 @@ public:
   uint32_t getReg(Register reg) const override;
   void setReg(Register reg, uint32_t val) override;
 
-  const IOInterface &io() override { return env_.io(); }
+  IOInterface &io() override { return env_.io(); }
 
   uint32_t setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr);
 

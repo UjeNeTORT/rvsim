@@ -1,7 +1,11 @@
+#include <cstdint>
+#include <cstdio>
+#include <fstream>
 #include <iostream>
 #include <filesystem>
 
 #include <gtest/gtest.h>
+#include <iterator>
 
 #include "sim.hpp"
 #include "io.hpp"
@@ -10,16 +14,31 @@ class TestRVModel : public ::testing::Test {
 
 protected:
   std::filesystem::path TestPath_;
+  std::filesystem::path AnsPath_;
   rv32i_sim::RVModel M_;
 
   virtual void SetUp() {
     M_ = rv32i_sim::RVModel{};
   }
 
+  bool LoadElf(std::filesystem::path &ElfPath) {
+    M_ = rv32i_sim::RVModel(ElfPath, std::unique_ptr<BufferIO>(new BufferIO), 0);
+    return M_.isValid();
+  }
+
+  bool LoadTest(std::filesystem::path &ElfPath) {
+    EXPECT_EQ(LoadElf(ElfPath), true && "Model must be valid after ELF loading");
+    std::filesystem::path AnsPath = ElfPath;
+    AnsPath.replace_extension(".ans");
+    EXPECT_EQ(std::filesystem::exists(AnsPath), true && "Answer must exist");
+    AnsPath_ = AnsPath;
+    return true;
+  }
+
   virtual void TearDown() {}
 
   bool RunTest(std::filesystem::path TestPath) {
-    M_ = rv32i_sim::RVModel(TestPath, 0);
+    M_ = rv32i_sim::RVModel(TestPath, std::unique_ptr<BufferIO>(new BufferIO), 0);
     if (!M_.isValid()) {
       std::cerr << "ERROR: failed to initialize model correctly\n";
       std::cerr << TestPath << '\n';
@@ -40,8 +59,7 @@ protected:
     std::filesystem::path AnsPath = ElfPath;
     AnsPath.replace_extension(".ans");
 
-    M_ = rv32i_sim::RVModel(ElfPath, 0);
-
+    M_ = rv32i_sim::RVModel(ElfPath, std::unique_ptr<BufferIO>(new BufferIO), 0);
     if (!M_.isValid()) {
       std::cerr << "ERROR: failed to initialize model correctly\n";
       std::cerr << ElfPath << '\n';
@@ -57,6 +75,7 @@ protected:
 
     return M_.isValid(); // todo fixme, should be another criteria
   }
+
 };
 
 // #define TEST_F_INSTRUCTION(InstructionName, TestDirPath)                \
@@ -84,15 +103,25 @@ protected:
 // #undef TEST_F_INSTRUCTION
 
 
-TEST_F(TestRVModel, ELF_PLUS) {
+TEST_F(TestRVModel, PLUS) {
   std::filesystem::path TestDir = "../test/elf/plus";
   for (auto const &DirEnt :
                       std::filesystem::directory_iterator(TestDir)) {
     if (!DirEnt.is_regular_file()) continue;
     if (DirEnt.path().extension() != ".elf") continue;
-    auto FPath = DirEnt.path();
+    auto ElfPath = DirEnt.path();
+    LoadTest(ElfPath);
+    std::ifstream AnsF(AnsPath_, std::ios::binary);
+    EXPECT_EQ(AnsF.is_open(), true && "Answer File must open");
+    auto BufAns = std::vector<uint8_t>(
+      std::istreambuf_iterator<char>(AnsF),
+      std::istreambuf_iterator<char>()
+    );
 
-    EXPECT_EQ(TestAnsELF(FPath), true);
+    M_.execute();
+    BufferIO *IO = dynamic_cast<BufferIO *>(&M_.io());
+    EXPECT_NE(IO, nullptr);
+    EXPECT_EQ(IO->getWriteBuf(STDOUT_FILENO), BufAns);
   }
 }
 
