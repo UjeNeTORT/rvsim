@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <iostream>
 #include <memory>
-#include <string>
 #include <vector>
 #include <unistd.h>
 
@@ -14,20 +13,17 @@
 
 #include "exec_env.hpp"
 #include "instruction.hpp"
+#include "io.hpp"
 #include "isim.hpp"
 #include "memory.hpp"
 #include "register_file.hpp"
 #include "registers.hpp"
-#include "io.hpp"
 
 #include "decoder.inc"
 
 namespace elf = ELFIO;
 
 namespace rv32i_sim {
-
-const std::string RV32I_MODEL_STATE_SIGNATURE = "RV32I_MDL_STATE";
-
 class RVModel final : public IRVModel {
   MemoryModel mem_;
   RegisterFile regs_;
@@ -116,7 +112,6 @@ public:
   void setLogs(int logs);
 
   std::ostream& print(std::ostream& out) override;
-  void binaryDump(std::ofstream& fout) override;
 };
 
 bool RVModel::operator== (const RVModel& other) const {
@@ -204,19 +199,6 @@ std::ostream& RVModel::print(std::ostream& out) {
   regs_.print(out);
   mem_.print(out);
   return out;
-}
-
-void RVModel::binaryDump(std::ofstream& fout) {
-  if (!fout) {
-    std::cerr << "ERROR: wrong fout\n";
-    return;
-  }
-
-  fout.write(RV32I_MODEL_STATE_SIGNATURE.c_str(),
-             RV32I_MODEL_STATE_SIGNATURE.size() + 1);
-  fout.write(reinterpret_cast<char *>(&pc_), sizeof(uint32_t));
-  regs_.binaryDump(fout);
-  mem_.binaryDump(fout);
 }
 
 uint32_t RVModel::getReg(Register reg) const {

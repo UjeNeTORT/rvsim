@@ -2,13 +2,11 @@
 #define MEMORY_HPP
 
 #include <cassert>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
-#include <fstream>
 #include <filesystem>
 #include <iostream>
-#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -31,8 +29,6 @@ const uint32_t IALIGN = 4;
 
 constexpr uint8_t STACK_CANARY_BYTE = 0xcc;
 constexpr uint8_t ENV_CODE_BYTE = 0xee;
-
-const std::string RV32I_MEMORY_STATE_SIGNATURE = "RV32I_MEM_STATE";
 
 enum class Endianness { LITTLE, BIG, }; // big endian have not been supported yet
 enum class ELFError : uint8_t {
@@ -68,9 +64,6 @@ public:
 
   static MemoryModel fromELF(elf::elfio& elf_reader);
   static MemoryModel fromELF(std::filesystem::path& elf_path);
-  static MemoryModel fromBstate(std::filesystem::path& mem_path);
-  static MemoryModel fromBstate(std::ifstream& mem_file);
-
 private:
   // if page does not exist - allocate, else - do nothing
   uint32_t preparePage(uint32_t Addr);
@@ -121,7 +114,6 @@ public:
   void writeHalf(uint32_t Addr, uint16_t Val);
   void writeWord(uint32_t Addr, uint32_t Val);
 
-  void binaryDump(std::ofstream& fout) const;
   std::ostream& print(std::ostream& out) const;
   std::ostream& printSegments(std::ostream& out) const;
 
@@ -184,6 +176,6 @@ public:
 
 std::ostream& operator<<(std::ostream& out, MemoryModel& memory);
 
-} // rv32i_sim
+} // namespace rv32i_sim
 
 #endif // MEMORY_HPP

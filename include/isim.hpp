@@ -34,7 +34,6 @@ public:
   virtual void exit() = 0;
 
   virtual std::ostream& print(std::ostream& out) = 0;
-  virtual void binaryDump(std::ofstream& fout) = 0;
 
   virtual ~IRVModel() = default;
 };

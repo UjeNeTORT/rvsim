@@ -3,7 +3,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <fstream>
 #include <filesystem>
 #include <iostream>
 #include <vector>
@@ -13,16 +12,6 @@
 namespace elf = ELFIO;
 
 namespace {
-
-uint32_t fileBytesLeft(std::ifstream& file) {
-  if (!file) { return 0; }
-  uint32_t curr_pos = file.tellg();
-  file.seekg(0, std::ios::end);
-  uint32_t end_pos = file.tellg();
-  file.seekg(curr_pos, std::ios::beg);
-
-  return end_pos - curr_pos;
-}
 
 /// @brief resize vector to make its size % align == 0
 /// @return number of new elements inserted
@@ -121,49 +110,6 @@ MemoryModel MemoryModel::fromELF(std::filesystem::path& elf_path) {
   if(checkELF(elf_reader) != ELFError::OK) { return MemoryModel(false); }
 
   return MemoryModel::fromELF(elf_reader);
-}
-
-MemoryModel MemoryModel::fromBstate(std::filesystem::path& mem_path) {
-  std::ifstream mem_file(mem_path);
-  if (!mem_file) {
-    std::cerr << "ERROR: failed to open " << mem_path << "\n";
-    return MemoryModel(false);
-  }
-
-  return MemoryModel::fromBstate(mem_file);
-}
-
-MemoryModel MemoryModel::fromBstate(std::ifstream& MemFile) {
-  if (!MemFile) {
-    std::cerr << "ERROR: wrong memory file\n";
-    return MemoryModel(false);
-  }
-
-  std::string Signature(RV32I_MEMORY_STATE_SIGNATURE.size(), ' ');
-  MemFile.read(Signature.data(), RV32I_MEMORY_STATE_SIGNATURE.size() + 1);
-
-  if (Signature != RV32I_MEMORY_STATE_SIGNATURE) {
-    std::cerr << "ERROR: mem state file signature mismatch:\n"
-              << "<" << Signature << "> vs <" << RV32I_MEMORY_STATE_SIGNATURE <<">\n";
-    return MemoryModel(false);
-  }
-
-  // everything after the signature is the memory dump
-  uint32_t MemorySize = fileBytesLeft(MemFile);
-
-  // std::vector<uint8_t> memory(memory_size);
-  // mem_file.read(std::bit_cast<char *>(memory.data()), file_size);
-  // memory_size = alignAs(memory, DEFAULT_ALIGN);
-
-  MemoryModel MemM(true);
-
-  // bstate format memory consists of a single segment
-  // which is RWX. This is done to not overload format with
-  // unnessessary data, as bstate is mostly used for testing and
-  // debugging.
-  MemM.pushSegment(Segment(0, MemorySize, RIGHTS_R | RIGHTS_W | RIGHTS_X, DEFAULT_ALIGN));
-
-  return MemM;
 }
 
 uint32_t MemoryModel::preparePage(uint32_t Addr) {
@@ -321,15 +267,6 @@ void MemoryModel::writeWord(uint32_t Addr, uint32_t Val) {
   set<uint32_t>(Addr, Val);
 }
 
-void MemoryModel::binaryDump(std::ofstream& fout) const {
-  fout.write(RV32I_MEMORY_STATE_SIGNATURE.c_str(),
-              RV32I_MEMORY_STATE_SIGNATURE.size() + 1);
-  // reinterpret:  uint8_t * -> char *, and add const
-  #if 0
-    fout.write(reinterpret_cast<const char *>(mem_.data()), mem_.size());
-  #endif
-}
-
 std::ostream& MemoryModel::print(std::ostream& out) const {
   out << "Memory[" << mem_.size() << "] (examine with binaryDump)\n";
   // todo more verbose
@@ -354,4 +291,4 @@ std::ostream& operator<<(std::ostream& out, MemoryModel& memory) {
   return out;
 }
 
-} // rv32i_sim
+} // namespace rv32i_sim
