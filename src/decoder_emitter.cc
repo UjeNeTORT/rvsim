@@ -195,8 +195,8 @@ namespace {
 class DecoderEmitter final {
   const RecordKeeper &RK_;
 
-  ListInit *getEncodingFields(const Record *InsnDef) const;
-  ListInit *getEncodingValues(const Record *InsnDef) const;
+  const ListInit *getEncodingFields(const Record *InsnDef) const;
+  const ListInit *getEncodingValues(const Record *InsnDef) const;
   uint32_t  formEncodingFields(const Record * const Def,
                                std::vector<EncodingField> &EncFields,
                                uint32_t &RawEncoding) const;
@@ -213,7 +213,7 @@ public:
 };
 }
 
-ListInit *DecoderEmitter::getEncodingFields(const Record *InsnDef) const {
+const ListInit *DecoderEmitter::getEncodingFields(const Record *InsnDef) const {
   if (!InsnDef) return nullptr;
 
   const RecordVal *EncF = InsnDef->getValue("EncFields");
@@ -240,12 +240,12 @@ ListInit *DecoderEmitter::getEncodingFields(const Record *InsnDef) const {
     return nullptr;
   }
 
-  Init *EncFInit = EncF->getValue();
+  const Init *EncFInit = EncF->getValue();
 
   return dyn_cast<ListInit>(EncFInit);
 }
 
-ListInit *DecoderEmitter::getEncodingValues(const Record *InsnDef) const {
+const ListInit *DecoderEmitter::getEncodingValues(const Record *InsnDef) const {
   if (!InsnDef) return nullptr;
 
   const RecordVal *EncV = InsnDef->getValue("EncValues");
@@ -272,7 +272,7 @@ ListInit *DecoderEmitter::getEncodingValues(const Record *InsnDef) const {
     return nullptr;
   }
 
-  Init *EncVInit = EncV->getValue();
+  const Init *EncVInit = EncV->getValue();
 
   return dyn_cast<ListInit>(EncVInit);
 }
@@ -282,8 +282,8 @@ uint32_t DecoderEmitter::formEncodingFields(const Record * const Def,
                                             uint32_t &RawEncoding) const {
   assert(EncFields.empty());
 
-  ListInit *TGEncodingFields = getEncodingFields(Def);
-  ListInit *TGEncodingValues = getEncodingValues(Def);
+  const ListInit *TGEncodingFields = getEncodingFields(Def);
+  const ListInit *TGEncodingValues = getEncodingValues(Def);
   if (!TGEncodingFields) {
     PrintError(Def->getLoc(), "EncFields is not a ListInit!");
     return 0;
@@ -304,7 +304,7 @@ uint32_t DecoderEmitter::formEncodingFields(const Record * const Def,
 
     std::string EncName = (*TGEncodingFieldInit)->getAsString();
 
-    DefInit *TGEncodingField = dyn_cast<DefInit>(*TGEncodingFieldInit);
+    const DefInit *TGEncodingField = dyn_cast<DefInit>(*TGEncodingFieldInit);
     if (!TGEncodingField || !TGEncodingField->getDef()->isSubClassOf("RVEncodingField")) {
       PrintError(Def->getLoc(), "Encoding must be of type RVEncodingField");
       return 0;
@@ -327,7 +327,7 @@ uint32_t DecoderEmitter::formEncodingFields(const Record * const Def,
       continue;
     }
 
-    IntInit *TGEncodingValue = dyn_cast<IntInit>(*TGEncodingValueInit);
+    const IntInit *TGEncodingValue = dyn_cast<IntInit>(*TGEncodingValueInit);
     uint32_t EncValCode = TGEncodingValue->getValue();
 
     RawEncoding |= EncValCode << LSBPos;

@@ -6,16 +6,8 @@
 # set -x
 set -e
 
-BUILD_DIR="build_sh"
-INSTALL_PREFIX="Release"
-
-if [[ $# -ge "1" ]]; then
-  BUILD_DIR="$1"
-fi
-
-if [[ $# == "2" ]]; then
-  INSTALL_PREFIX="$2"
-fi
+BUILD_DIR="${1:-build_sh}"
+INSTALL_PREFIX="${2:-Release}"
 
 echo "# directory: $BUILD_DIR" 1>&2
 echo "# install pref: $INSTALL_PREFIX" 1>&2
@@ -23,7 +15,10 @@ echo "# install pref: $INSTALL_PREFIX" 1>&2
 rm -rvf $BUILD_DIR
 mkdir $BUILD_DIR && cd $BUILD_DIR
 
-cmake .. -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX
+cmake .. -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX \
+         -DCMAKE_CXX_COMPILER=clang++-21        \
+         -DCMAKE_CXX_STANDART=20                \
+         -DCMAKE_CXX_STANDART_REQUIRED=ON
 
 wait
 

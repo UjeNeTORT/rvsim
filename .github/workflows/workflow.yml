@@ -5,21 +5,25 @@ on:
     branches:
     - main
     - interpreter
-    - dev
   pull_request:
     branches:
     - main
     - interpreter
-    - dev
 
 jobs:
   test_model:
     runs-on: ubuntu-22.04
     steps:
+    - name: install LLVM 21
+      run: |
+        wget https://apt.llvm.org/llvm.sh
+        chmod +x llvm.sh
+        sudo ./llvm.sh 21
+        sudo apt update
     - name: install prerequisites
       run: |
         sudo apt update
-        sudo apt install cmake ninja-build build-essential llvm libgtest-dev libboost-all-dev
+        sudo apt install clang-21 libllvm21 cmake ninja-build build-essential libgtest-dev libboost-all-dev
       shell: bash
 
     - name: checkout
@@ -30,64 +34,53 @@ jobs:
         git submodule update --init --recursive
       shell: bash
 
-    - name: build
+    - name: build release
       run: |
-        ./build.sh build_sh Release
-        cd build_sh
+        mkdir build_sh_release && cd build_sh_release
+        cmake .. -G Ninja -DCMAKE_CXX_COMPILER=clang++-21 \
+                 -DCMAKE_CXX_STANDARD=20 \
+                 -DCMAKE_BUILD_TYPE=Release \
+                 -DLLVM_DIR=/usr/lib/llvm-21/cmake
+        ninja
       shell: bash
 
-    - name: test_add
-      run: ./test --gtest_filter=TestRVModel.ADD
-      working-directory: build_sh
+    - name: build debug
+      run: |
+        mkdir build_sh_debug && cd build_sh_debug
+        cmake .. -G Ninja -DCMAKE_CXX_COMPILER=clang++-21 \
+                 -DCMAKE_CXX_STANDARD=20 \
+                 -DCMAKE_BUILD_TYPE=Debug \
+                 -DLLVM_DIR=/usr/lib/llvm-21/cmake
+        ninja
       shell: bash
 
-    - name: test_sub
-      run: ./test --gtest_filter=TestRVModel.SUB
-      working-directory: build_sh
+    - name: test_plus
+      run: ./test --gtest_filter=TestRVModel.PLUS
+      working-directory: build_sh_release
       shell: bash
 
-    - name: test_sll
-      run: ./test --gtest_filter=TestRVModel.SLL
-      working-directory: build_sh
+    - name: test_factorial
+      run: ./test --gtest_filter=TestRVModel.FACTORIAL
+      working-directory: build_sh_release
       shell: bash
 
-    - name: test_slt
-      run: ./test --gtest_filter=TestRVModel.SLT
-      working-directory: build_sh
+    - name: test_echo
+      run: ./test --gtest_filter=TestRVModel.ECHO
+      working-directory: build_sh_release
       shell: bash
 
-    - name: test_sltu
-      run: ./test --gtest_filter=TestRVModel.SLTU
-      working-directory: build_sh
+    - name: test_plus_dbg
+      run: ./test --gtest_filter=TestRVModel.PLUS
+      working-directory: build_sh_debug
       shell: bash
 
-    - name: test_xor
-      run: ./test --gtest_filter=TestRVModel.XOR
-      working-directory: build_sh
+    - name: test_factorial_dbg
+      run: ./test --gtest_filter=TestRVModel.FACTORIAL
+      working-directory: build_sh_debug
       shell: bash
 
-    - name: test_sra
-      run: ./test --gtest_filter=TestRVModel.SRA
-      working-directory: build_sh
-      shell: bash
-
-    - name: test_or
-      run: ./test --gtest_filter=TestRVModel.OR
-      working-directory: build_sh
-      shell: bash
-
-    - name: test_and
-      run: ./test --gtest_filter=TestRVModel.AND
-      working-directory: build_sh
-      shell: bash
-
-    - name: test_elf
-      run: ./test --gtest_filter=TestRVModel.ELF_FILE
-      working-directory: build_sh
-      shell: bash
-
-    - name: test_stress
-      run: ./test --gtest_filter=TestRVModel.stress
-      working-directory: build_sh
+    - name: test_echo_dbg
+      run: ./test --gtest_filter=TestRVModel.ECHO
+      working-directory: build_sh_debug
       shell: bash
 
