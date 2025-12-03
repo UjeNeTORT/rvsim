@@ -33,18 +33,29 @@ multiclass RVOpcodes {
   def LOAD   : RVOpcode<0b0000011, "LOAD">;
   def STORE  : RVOpcode<0b0100011, "STORE">;
   def SYSTEM : RVOpcode<0b1110011, "SYSTEM">;
+  def LD_FP  : RVOpcode<0b0000111, "LOAD-FP">;
+  def ST_FP  : RVOpcode<0b0000111, "STORE-FP">;
+  def FP     : RVOpcode<0b1010011, "FP">;
+  def FMADD  : RVOpcode<0b1000011, "FMADD">;
+  def FMSUB  : RVOpcode<0b1000111, "FSUB">;
+  def FNMADD : RVOpcode<0b1001111, "FNMADD">;
+  def FNMSUB : RVOpcode<0b1001011, "FNMSUB">;
 }
 
 defm OPC_ : RVOpcodes;
 
- // instruction encoding fields
+// instruction encoding fields
 def ENC_OPC       : RVEncF< 0,  6, "opcode">;
 def ENC_RD        : RVEncF< 7, 11, "rd">;
 def ENC_RS1       : RVEncF<15, 19, "rs1">;
 def ENC_RS2       : RVEncF<20, 24, "rs2">;
+def ENC_RS3       : RVEncF<27, 31, "rs3">;
+def ENC_RM        : RVEncF<12, 14, "rm">;
 def ENC_FUNCT3    : RVEncF<12, 14, "funct3">;
+def ENC_FUNCT5    : RVEncF<27, 31, "funct5">;
 def ENC_FUNCT7    : RVEncF<25, 31, "funct7">;
 def ENC_FUNCT12   : RVEncF<20, 31, "funct12">;
+def ENC_FMT       : RVEncF<25, 27, "fmt">;
 def ENC_IMM_11_0  : RVEncF<20, 31, "imm[11:0]">;
 def ENC_IMM_11_5  : RVEncF<25, 31, "imm[11:5]">;
 def ENC_SHAMT_4_0 : RVEncF<20, 24, "shamt[4:0]">;

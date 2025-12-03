@@ -133,6 +133,13 @@ class RVInsnSTORE<list<int> encvalues, string name, code execcode>
   let EncValues = encvalues;
 }
 
+class RVInsnF<list<int> encvalues, string name, code execcode>
+  : RVInsn<[ENC_FUNCT5, ENC_FMT, ENC_RS2, ENC_RS1, ENC_RM, ENC_RD, ENC_OPC],
+            name, execcode> {
+  let Type = "F";
+  let EncValues = encvalues;
+}
+
 class RVInsnSystemBase<string name, code execcode>
   : RVInsn<[ENC_FUNCT12,
             ENC_RS1,

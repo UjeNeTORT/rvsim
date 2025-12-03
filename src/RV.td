@@ -275,6 +275,66 @@ def SW : RVInsnSTORE<[?, ?, ?, !cast<int>(0b010), ?, OPC_STORE.Val], "sw",
   !strconcat(STORExecutePrefix,
   "Model.writeWord(MemAddr, Op2 & 0xffffffff);\n\t\t", IncPC)>;
 
+def FLW : RVInsnLOAD<[?, ?, !cast<int>(0b010), ?, OPC_LD_FP.Val], "flw",
+  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+def FSW : RVInsnSTORE<[?, ?, ?, !cast<int>(0b010), ?, OPC_ST_FP.Val], "fsw",
+  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+
+def FADD : RVInsnF<[!cast<int>(0b00000), !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FP.Val], "fadd.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FSUB : RVInsnF<[!cast<int>(0b00001), !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FP.Val], "fsub.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FMUL : RVInsnF<[!cast<int>(0b00010), !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FP.Val], "fmul.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FDIV : RVInsnF<[!cast<int>(0b00011), !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FP.Val], "fdiv.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FMIN : RVInsnF<[!cast<int>(0b00101), !cast<int>(0b00), ?, ?, !cast<int>(0b000), ?, OPC_FP.Val], "fmin.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FMAX : RVInsnF<[!cast<int>(0b00101), !cast<int>(0b00), ?, ?, !cast<int>(0b001), ?, OPC_FP.Val], "fmax.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+
+def FSQRT : RVInsnF<[!cast<int>(0b01011), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b111), ?, OPC_FP.Val], "fsqrt.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FCLASS : RVInsnF<[!cast<int>(0b11100), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b001), ?, OPC_FP.Val], "fclass.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+
+def FMV_X_W : RVInsnF<[!cast<int>(0b11100), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b000), ?, OPC_FP.Val], "fmv.x.w",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FMV_W_X : RVInsnF<[!cast<int>(0b11110), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b000), ?, OPC_FP.Val], "fmv.w.x",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+
+def FCMP_LE : RVInsnF<[!cast<int>(0b10100), !cast<int>(0b00), ?, ?, !cast<int>(0b000), ?, OPC_FP.Val], "fle.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FCMP_LT : RVInsnF<[!cast<int>(0b10100), !cast<int>(0b00), ?, ?, !cast<int>(0b001), ?, OPC_FP.Val], "flt.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FCMP_EQ : RVInsnF<[!cast<int>(0b10100), !cast<int>(0b00), ?, ?, !cast<int>(0b010), ?, OPC_FP.Val], "feq.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+
+def FSGNJ  : RVInsnF<[!cast<int>(0b0010), !cast<int>(0b00), ?, ?, !cast<int>(0b000), ?, OPC_FP.Val], "fsgnj.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FSGNJN : RVInsnF<[!cast<int>(0b0010), !cast<int>(0b00), ?, ?, !cast<int>(0b001), ?, OPC_FP.Val], "fsgnjn.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FSGNJX : RVInsnF<[!cast<int>(0b0010), !cast<int>(0b00), ?, ?, !cast<int>(0b010), ?, OPC_FP.Val], "fsgnjx.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+
+def FMADD : RVInsnF<[?, !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FMADD.Val], "fmadd.s",
+  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+def FMSUB : RVInsnF<[?, !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FMSUB.Val], "fmsub.s",
+  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+def FNMADD : RVInsnF<[?, !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FNMADD.Val], "fnmadd.s",
+  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+def FNMSUB : RVInsnF<[?, !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FNMSUB.Val], "fnmsub.s",
+  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+
+def FCVT_W_S  : RVInsnF<[!cast<int>(0b11000), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b111), ?, OPC_FP.Val], "fcvt.w.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FCVT_WU_S : RVInsnF<[!cast<int>(0b11000), !cast<int>(0b00), !cast<int>(0b00001), ?, !cast<int>(0b111), ?, OPC_FP.Val], "fcvt.wu.s",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FCVT_S_W  : RVInsnF<[!cast<int>(0b11010), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b111), ?, OPC_FP.Val], "fcvt.s.w",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+def FCVT_S_WU : RVInsnF<[!cast<int>(0b11010), !cast<int>(0b00), !cast<int>(0b00001), ?, !cast<int>(0b111), ?, OPC_FP.Val], "fcvt.s.wu",
+  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+
 def EBREAK : RVInsnI<[!cast<int>(0b000000000001), // funct12
                       !cast<int>(0b00000),        // rs1
                       !cast<int>(0b000),          // funct3
