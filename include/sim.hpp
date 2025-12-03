@@ -98,8 +98,11 @@ public:
     mem_.memCopy(Dst, Addr, N);
   }
 
-  uint32_t getReg(Register reg) const override;
-  void setReg(Register reg, uint32_t val) override;
+  uint32_t getReg(Register reg) const override { return regs_.get(reg); }
+  void     setReg(Register reg, uint32_t val) override { regs_.set(reg, val); }
+
+  float getReg(FPRegister reg) const override { return regs_.getFp(reg); }
+  void  setReg(FPRegister reg, float val) override { regs_.setFp(reg, val); }
 
   IOInterface &io() override { return env_.io(); }
 
@@ -199,14 +202,6 @@ std::ostream& RVModel::print(std::ostream& out) {
   regs_.print(out);
   mem_.print(out);
   return out;
-}
-
-uint32_t RVModel::getReg(Register reg) const {
-  return regs_.get(reg);
-}
-
-void RVModel::setReg(Register reg, uint32_t val) {
-  regs_.set(reg, val);
 }
 
 uint32_t RVModel::setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr) {

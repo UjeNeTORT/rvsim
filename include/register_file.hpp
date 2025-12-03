@@ -11,12 +11,13 @@
 namespace rv32i_sim {
 
 class RegisterFile final {
-  std::vector<uint32_t> regs_ = std::vector<uint32_t>(N_REGS);
+  std::vector<uint32_t> intRegs_ = std::vector<uint32_t>(N_REGS);
+  std::vector<float> fpRegs_ = std::vector<float>(N_FPREGS);
   bool is_valid_ = false;
 
 public:
   RegisterFile(bool valid = true);
-  RegisterFile(std::vector<uint32_t> regs, bool valid = true);
+  RegisterFile(std::vector<uint32_t> intRegs, std::vector<float> fpRegs, bool valid = true);
 
   // return current validity
   bool isValid() const;
@@ -27,15 +28,17 @@ public:
   bool operator==(const RegisterFile &other) const;
 
   void set(Register reg, int32_t val);
+  void setFp(FPRegister reg, float val);
+
   uint32_t get(Register reg) const;
+  float getFp(FPRegister reg) const;
 
   std::ostream &print(std::ostream &out);
 };
 
-bool isRegValid(Register reg);
-
 std::ostream &operator<<(std::ostream &out, RegisterFile &rf);
 std::ostream &operator<<(std::ostream &out, Register reg);
+std::ostream &operator<<(std::ostream &out, FPRegister reg);
 
 } // namespace rv32i_sim
 

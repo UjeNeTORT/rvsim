@@ -41,7 +41,45 @@ enum class Register : uint32_t {
   INVALID = 0xFF,
 };
 
-constexpr std::size_t N_REGS = 32; // number of registers
+const std::size_t N_REGS = 32; // number of registers
+
+enum class FPRegister : uint32_t {
+  F0  = 0,  FT0 = 0,
+  F1  = 1,  FT1 = 1,
+  F2  = 2,  FT2 = 2,
+  F3  = 3,  FT3 = 3,
+  F4  = 4,  FT4 = 4,
+  F5  = 5,  FT5 = 5,
+  F6  = 6,  FT6 = 6,
+  F7  = 7,  FT7 = 7,
+  F8  = 8,  FS0 = 8,
+  F9  = 9,  FS1 = 9,
+  F10 = 10, FA0 = 10,
+  F11 = 11, FA1 = 11,
+  F12 = 12, FA2 = 12,
+  F13 = 13, FA3 = 13,
+  F14 = 14, FA4 = 14,
+  F15 = 15, FA5 = 15,
+  F16 = 16, FA6 = 16,
+  F17 = 17, FA7 = 17,
+  F18 = 18, FS2 = 18,
+  F19 = 19, FS3 = 19,
+  F20 = 20, FS4 = 20,
+  F21 = 21, FS5 = 21,
+  F22 = 22, FS6 = 22,
+  F23 = 23, FS7 = 23,
+  F24 = 24, FS8 = 24,
+  F25 = 25, FS9 = 25,
+  F26 = 26, FS10 = 26,
+  F27 = 27, FS11 = 27,
+  F28 = 24, FT8 = 28,
+  F29 = 25, FT9 = 29,
+  F30 = 26, FT10 = 30,
+  F31 = 27, FT11 = 31,
+  INVALID = 0xFF,
+};
+
+const std::size_t N_FPREGS = 32; // number of fp registers
 
 } // namespace rv32i_sim
 

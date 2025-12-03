@@ -1,19 +1,27 @@
 #include "register_file.hpp"
 
 #include <cassert>
+#include <cstdint>
 #include <iostream>
 #include <vector>
 
 namespace rv32i_sim {
 
 RegisterFile::RegisterFile(bool valid) : is_valid_(valid) {}
-RegisterFile::RegisterFile(std::vector<uint32_t> regs, bool valid) :
-                                              regs_(regs), is_valid_(valid) {
-  if (regs.size() != N_REGS) {
-    std::cerr << "WARNING: initial regs state has " << regs.size()
+RegisterFile::RegisterFile(std::vector<uint32_t> intRegs, std::vector<float> fpRegs, bool valid) :
+                                              intRegs_(intRegs), fpRegs_(fpRegs), is_valid_(valid) {
+  if (intRegs.size() != N_REGS) {
+    std::cerr << "WARNING: initial regs state has " << intRegs.size()
               << " vs " << N_REGS <<" needed, others will be set to zero\n";
 
-    regs_.resize(N_REGS);
+    intRegs_.resize(N_REGS);
+  }
+
+  if (fpRegs.size() != N_FPREGS) {
+    std::cerr << "WARNING: initial fp regs state has " << fpRegs.size()
+              << " vs " << N_FPREGS <<" needed, others will be set to zero\n";
+
+    fpRegs_.resize(N_FPREGS);
   }
 }
 
@@ -23,30 +31,43 @@ bool RegisterFile::isValid() const { return is_valid_; }
 bool RegisterFile::validate() {
   if (!is_valid_) return false;
 
-  is_valid_ = regs_[0] == 0;
+  is_valid_ = intRegs_[0] == 0;
   return is_valid_;
 }
 
 
 bool RegisterFile::operator==(const RegisterFile& other) const {
-  return regs_ == other.regs_;
+  return intRegs_ == other.intRegs_
+      && fpRegs_ == other.fpRegs_;
 }
 
 void RegisterFile::set(Register reg, int32_t val) {
   if (reg == Register::X0) return;
 
-  regs_[static_cast<uint8_t>(reg)] = val;
+  intRegs_[static_cast<uint8_t>(reg)] = val;
+}
+
+void RegisterFile::setFp(FPRegister reg, float val) {
+  fpRegs_[static_cast<uint8_t>(reg)] = val;
 }
 
 uint32_t RegisterFile::get(Register reg) const {
-  assert(static_cast<uint32_t>(regs_[0]) == 0 && "Register X0 not zero");
+  assert(static_cast<uint32_t>(intRegs_[0]) == 0 && "Register X0 not zero");
 
-  return regs_[static_cast<uint8_t>(reg)];
+  return intRegs_[static_cast<uint8_t>(reg)];
+}
+
+float RegisterFile::getFp(FPRegister reg) const {
+  return fpRegs_[static_cast<uint8_t>(reg)];
 }
 
 std::ostream& RegisterFile::print(std::ostream& out) {
   for (int i = 0; i != N_REGS; ++i)
-    out << "X" << i << " = " << std::hex << regs_[i] << '\n' << std::dec;
+    out << "X" << i << " = " << std::hex << intRegs_[i] << '\n' << std::dec;
+
+  for (int i = 0; i != N_FPREGS; ++i)
+    out << "F" << i << " = " << std::hex << fpRegs_[i]
+                             << std::dec << "(" << fpRegs_[i] << ")\n";
 
   return out;
 }
@@ -56,11 +77,12 @@ std::ostream& operator<<(std::ostream& out, RegisterFile& rf) {
   return out;
 }
 
-bool isRegValid(Register reg) {
-  return (Register::X0 <= reg) && (reg <= Register::X31);
+std::ostream& operator<< (std::ostream& out, Register reg) {
+  out << static_cast<uint8_t>(reg);
+  return out;
 }
 
-std::ostream& operator<< (std::ostream& out, Register reg) {
+std::ostream& operator<< (std::ostream& out, FPRegister reg) {
   out << static_cast<uint8_t>(reg);
   return out;
 }
