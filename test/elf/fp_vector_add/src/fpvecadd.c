@@ -1,3 +1,5 @@
+// riscv64-unknown-elf-gcc -march=rv32imf_zbb -mabi=ilp32 src/fpvecadd.c ../api.o -I ../src/ -nostdlib -mno-relax -o fpvecadd.elf
+//
 #include "api.h"
 static const unsigned N_INPUTS = 7;
 static const volatile float INPUTS[][7] = {
@@ -17,5 +19,6 @@ int main() {
   }
 
   write(1, (const char *) Results, sizeof(Results));
+  write(1, "\n", 1);
   return 0;
 }

@@ -34,7 +34,7 @@ multiclass RVOpcodes {
   def STORE  : RVOpcode<0b0100011, "STORE">;
   def SYSTEM : RVOpcode<0b1110011, "SYSTEM">;
   def LD_FP  : RVOpcode<0b0000111, "LOAD-FP">;
-  def ST_FP  : RVOpcode<0b0000111, "STORE-FP">;
+  def ST_FP  : RVOpcode<0b0100111, "STORE-FP">;
   def FP     : RVOpcode<0b1010011, "FP">;
   def FMADD  : RVOpcode<0b1000011, "FMADD">;
   def FMSUB  : RVOpcode<0b1000111, "FSUB">;
