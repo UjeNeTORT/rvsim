@@ -155,6 +155,7 @@ TEST_F(TestRVModel, TestName) {                                       \
 TEST_F_ELF(PLUS, "../test/elf/plus");
 TEST_F_ELF(FACTORIAL, "../test/elf/factorial");
 TEST_F_ELF(ECHO, "../test/elf/echo");
+TEST_F_ELF(FPADD, "../test/elf/fp_vector_add");
 
 #undef TEST_F_ELF
 
