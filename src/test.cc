@@ -156,6 +156,7 @@ TEST_F_ELF(PLUS, "../test/elf/plus");
 TEST_F_ELF(FACTORIAL, "../test/elf/factorial");
 TEST_F_ELF(ECHO, "../test/elf/echo");
 TEST_F_ELF(FPADD, "../test/elf/fp_vector_add");
+TEST_F_ELF(BITWISE, "../test/elf/bitwise");
 
 #undef TEST_F_ELF
 
