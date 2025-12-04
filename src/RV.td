@@ -329,11 +329,18 @@ def FCMP_EQ : RVInsnF<[!cast<int>(0b10100), !cast<int>(0b00), ?, ?, !cast<int>(0
   !strconcat(FExecutePrefix, "Model.setReg(xRd, Op1 == Op2);\n\t\t", IncPC)>;
 
 def FSGNJ  : RVInsnF<[!cast<int>(0b0010), !cast<int>(0b00), ?, ?, !cast<int>(0b000), ?, OPC_FP.Val], "fsgnj.s",
-  !strconcat(FExecutePrefix, "abort();", IncPC)>;
+  !strconcat(FExecutePrefix, "uint32_t SOp2 = std::bit_cast<uint32_t>(Op2) & (1 << 31);\n\t\t"
+                             "uint32_t EMOp1 = std::bit_cast<uint32_t>(Op1) & ~(1 << 31);\n\t\t"
+                             "Model.setReg(Rd, std::bit_cast<float>(SOp2 | EMOp1));\n\t\t", IncPC)>;
 def FSGNJN : RVInsnF<[!cast<int>(0b0010), !cast<int>(0b00), ?, ?, !cast<int>(0b001), ?, OPC_FP.Val], "fsgnjn.s",
-  !strconcat(FExecutePrefix, "abort();", IncPC)>;
+  !strconcat(FExecutePrefix, "uint32_t NotSOp2 = (std::bit_cast<uint32_t>(Op2) & (1 << 31)) ^ (1 << 31);\n\t\t"
+                             "uint32_t EMOp1 = std::bit_cast<uint32_t>(Op1) & ~(1 << 31);\n\t\t"
+                             "Model.setReg(Rd, std::bit_cast<float>(NotSOp2 | EMOp1));\n\t\t", IncPC)>;
 def FSGNJX : RVInsnF<[!cast<int>(0b0010), !cast<int>(0b00), ?, ?, !cast<int>(0b010), ?, OPC_FP.Val], "fsgnjx.s",
-  !strconcat(FExecutePrefix, "abort();", IncPC)>;
+  !strconcat(FExecutePrefix, "uint32_t SOp2 = std::bit_cast<uint32_t>(Op2) & (1 << 31);\n\t\t"
+                             "uint32_t SOp1 = std::bit_cast<uint32_t>(Op1) & (1 << 31);\n\t\t"
+                             "uint32_t EMOp1 = std::bit_cast<uint32_t>(Op1) & ~(1 << 31);\n\t\t"
+                             "Model.setReg(Rd, std::bit_cast<float>((SOp2 ^ SOp1) | EMOp1));\n\t\t", IncPC)>;
 
 def FMADD : RVInsnF<[?, !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FMADD.Val], "fmadd.s",
   !strconcat(IExecutePrefix, "abort();", IncPC)>;
