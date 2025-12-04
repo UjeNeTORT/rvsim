@@ -69,6 +69,17 @@ jobs:
       working-directory: build_sh_release
       shell: bash
 
+    - name: test_fpadd
+      run: ./test --gtest_filter=TestRVModel.FPADD
+      working-directory: build_sh_release
+      shell: bash
+
+    - name: test_bitwise
+      run: ./test --gtest_filter=TestRVModel.BITWISE
+      working-directory: build_sh_release
+      shell: bash
+
+
     - name: test_plus_dbg
       run: ./test --gtest_filter=TestRVModel.PLUS
       working-directory: build_sh_debug
@@ -84,3 +95,12 @@ jobs:
       working-directory: build_sh_debug
       shell: bash
 
+    - name: test_fpadd_dbg
+      run: ./test --gtest_filter=TestRVModel.FPADD
+      working-directory: build_sh_debug
+      shell: bash
+
+    - name: test_bitwise_dbg
+      run: ./test --gtest_filter=TestRVModel.BITWISE
+      working-directory: build_sh_debug
+      shell: bash
