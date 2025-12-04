@@ -1,4 +1,4 @@
-// riscv64-unknown-elf-gcc -march=rv32im -mabi=ilp32 src/factorial.c ../api.o -I ../src/ -nostdlib -mno-relax -o factorial.elf
+// riscv64-unknown-elf-gcc -march=rv32imf_zbb -mabi=ilp32 src/echo.c ../api.o -I ../src/ -nostdlib -mno-relax -o echo.elf
 
 #include "api.h"
 
