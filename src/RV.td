@@ -14,11 +14,11 @@ defvar RExecutePrefix =
 
 defvar IExecutePrefix =
   "uint32_t Imm = getOperand(0);\n\t\t"
-  "int32_t SImm = sign_extend_12_to_32(getOperand(0));\n\t\t"
+  "int32_t SImm = sign_extend_12_to_32(Imm);\n\t\t"
   "Sim::Register Rs1 = static_cast<Sim::Register>(getOperand(1));\n\t\t"
   "Sim::Register Rd  = static_cast<Sim::Register>(getOperand(2));\n\t\t"
   "uint32_t Op1 = Model.getReg(Rs1);\n\t\t"
-  "(void)Imm; (void)SImm; (void)Rd; (void)Op1;\n\t\t";
+  "(void)SImm; (void)Rd; (void)Op1;\n\t\t";
 
 defvar UExecutePrefix =
   "uint32_t Imm = getOperand(0);\n\t\t"
@@ -51,7 +51,7 @@ defvar STORExecutePrefix =
   "uint32_t Op2 = Model.getReg(Rs2);\n\t\t"
   "int32_t SImm = sign_extend_12_to_32(Imm);\n\t\t"
   "uint32_t MemAddr = Op1 + SImm;\n\t\t"
-  "(void) MemAddr;\n\t\t";
+  "(void) MemAddr; (void) Op2;\n\t\t";
 
 //                                FUNCT7 RS2 RS1           FUNCT3  RD      OPCODE | asmstr
 def ADD  : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b000), ?, OPC_OP.Val], "add",
@@ -276,27 +276,39 @@ def SW : RVInsnSTORE<[?, ?, ?, !cast<int>(0b010), ?, OPC_STORE.Val], "sw",
   "Model.writeWord(MemAddr, Op2 & 0xffffffff);\n\t\t", IncPC)>;
 
 def FLW : RVInsnLOAD<[?, ?, !cast<int>(0b010), ?, OPC_LD_FP.Val], "flw",
-  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+  !strconcat(LOADExecutePrefix, "Model.setReg(static_cast<Sim::FPRegister>(getOperand(2)), "
+                                "std::bit_cast<float>(Model.readWord(MemAddr)));\n\t\t", IncPC)>;
 def FSW : RVInsnSTORE<[?, ?, ?, !cast<int>(0b010), ?, OPC_ST_FP.Val], "fsw",
-  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+  !strconcat(STORExecutePrefix, "float FOp2 = Model.getReg(static_cast<Sim::FPRegister>(getOperand(2)));\n\t\t"
+                                "Model.writeWord(MemAddr, std::bit_cast<uint32_t>(FOp2));\n\t\t", IncPC)>;
+
+defvar FExecutePrefix = "auto Rs2 = static_cast<Sim::FPRegister>(getOperand(0));\n\t\t"
+                        "auto Rs1 = static_cast<Sim::FPRegister>(getOperand(1));\n\t\t"
+                        "auto Rd  = static_cast<Sim::FPRegister>(getOperand(2));\n\t\t"
+                        "float Op1 = Model.getReg(Rs1);\n\t\t"
+                        "float Op2 = Model.getReg(Rs2);\n\t\t";
 
 def FADD : RVInsnF<[!cast<int>(0b00000), !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FP.Val], "fadd.s",
-  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+  !strconcat(FExecutePrefix, "Model.setReg(Rd, Op1 + Op2);\n\t\t", IncPC)>;
 def FSUB : RVInsnF<[!cast<int>(0b00001), !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FP.Val], "fsub.s",
-  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+  !strconcat(FExecutePrefix, "Model.setReg(Rd, Op1 - Op2);\n\t\t", IncPC)>;
 def FMUL : RVInsnF<[!cast<int>(0b00010), !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FP.Val], "fmul.s",
-  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+  !strconcat(FExecutePrefix, "Model.setReg(Rd, Op1 * Op2);\n\t\t", IncPC)>;
 def FDIV : RVInsnF<[!cast<int>(0b00011), !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FP.Val], "fdiv.s",
-  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+  !strconcat(FExecutePrefix, "Model.setReg(Rd, Op1 / Op2);\n\t\t", IncPC)>;
 def FMIN : RVInsnF<[!cast<int>(0b00101), !cast<int>(0b00), ?, ?, !cast<int>(0b000), ?, OPC_FP.Val], "fmin.s",
-  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+  !strconcat(FExecutePrefix, "Model.setReg(Rd, Op1 < Op2 ? Op1 : Op2);\n\t\t", IncPC)>;
 def FMAX : RVInsnF<[!cast<int>(0b00101), !cast<int>(0b00), ?, ?, !cast<int>(0b001), ?, OPC_FP.Val], "fmax.s",
-  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+  !strconcat(FExecutePrefix, "Model.setReg(Rd, Op1 > Op2 ? Op1 : Op2);\n\t\t", IncPC)>;
 
 def FSQRT : RVInsnF<[!cast<int>(0b01011), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b111), ?, OPC_FP.Val], "fsqrt.s",
-  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+  !strconcat("float Op = Model.getReg(static_cast<Sim::FPRegister>(getOperand(0)));\n\t\t"
+             "Sim::FPRegister FRd = static_cast<Sim::FPRegister>(getOperand(1));\n\t\t"
+             "Model.setReg(FRd, std::sqrt(Op));\n\t\t", IncPC)>;
 def FCLASS : RVInsnF<[!cast<int>(0b11100), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b001), ?, OPC_FP.Val], "fclass.s",
-  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+  !strconcat("float Op = Model.getReg(static_cast<Sim::FPRegister>(getOperand(0)));\n\t\t"
+             "Sim::FPRegister Rd = static_cast<Sim::FPRegister>(getOperand(1));\n\t\t"
+             "Model.setReg(Rd, classifyS(Op));\n\t\t", IncPC)>;
 
 def FMV_X_W : RVInsnF<[!cast<int>(0b11100), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b000), ?, OPC_FP.Val], "fmv.x.w",
   !strconcat(RExecutePrefix, "abort();", IncPC)>;

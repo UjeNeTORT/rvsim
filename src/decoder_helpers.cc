@@ -1,11 +1,19 @@
 #include <bit>
 #include <cassert>
+#include <cmath>
 #include <cstdint>
+#include <cfloat>
 #include <string>
 #include <tuple>
 #include <vector>
 
 #include "decoder_helpers.hpp"
+
+static void setBit(uint32_t &Val, uint32_t Pos, bool Pred) {
+  if (Pred) Val |= Pred << Pos; // set
+  else Val &= ~(1 << Pos); // unset
+  return;
+}
 
 namespace RVDecoder {
 int32_t sign_extend_8_to_32(uint8_t val) {
@@ -84,6 +92,34 @@ uint32_t getSTOREImm(std::vector<std::pair<uint32_t, std::string>> Encods) {
   uint32_t Imm = (Encods[0].first & 0x7f) << 5;
   Imm |= Encods[3].first & 0x1f;
   return Imm;
+}
+
+uint32_t classifyS(float Op) {
+  uint32_t Res = 0;
+  switch(std::fpclassify(Op)) {
+    case FP_INFINITE:
+      setBit(Res, 0, Op < 0); // -inf
+      setBit(Res, 7, Op > 0); // +inf
+      break;
+    case FP_NORMAL:
+      setBit(Res, 1, Op < 0); // neg normal
+      setBit(Res, 6, Op > 0); // pos normal
+      break;
+    case FP_SUBNORMAL:
+      setBit(Res, 2, Op < 0); // neg subnormal
+      setBit(Res, 5, Op > 0); // pos subnormal
+      break;
+    case FP_ZERO:
+      setBit(Res, 3, Op < 0); // -0
+      setBit(Res, 4, Op > 0); // +0
+      break;
+    case FP_NAN:
+      setBit(Res, 8, 1); // signaling NaN
+      setBit(Res, 9, 1); // quiet NaN
+      break;
+    default: break;
+  }
+  return Res;
 }
 
 } // namespace RVDecoder

@@ -382,6 +382,7 @@ void DecoderEmitter::run(raw_ostream &OS) {
      << "#include <bit>\n"
      << "#include <bitset>\n"
      << "#include <cstdint>\n"
+     << "#include <cmath>\n"
      << "#include <memory>\n"
      << "#include <vector>\n"
      << "#include <iomanip>\n"
