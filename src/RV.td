@@ -307,13 +307,17 @@ def FSQRT : RVInsnF<[!cast<int>(0b01011), !cast<int>(0b00), !cast<int>(0b00000),
              "Model.setReg(FRd, std::sqrt(Op));\n\t\t", IncPC)>;
 def FCLASS : RVInsnF<[!cast<int>(0b11100), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b001), ?, OPC_FP.Val], "fclass.s",
   !strconcat("float Op = Model.getReg(static_cast<Sim::FPRegister>(getOperand(0)));\n\t\t"
-             "Sim::FPRegister Rd = static_cast<Sim::FPRegister>(getOperand(1));\n\t\t"
+             "Sim::Register Rd = static_cast<Sim::Register>(getOperand(1));\n\t\t"
              "Model.setReg(Rd, classifyS(Op));\n\t\t", IncPC)>;
 
 def FMV_X_W : RVInsnF<[!cast<int>(0b11100), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b000), ?, OPC_FP.Val], "fmv.x.w",
-  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+  !strconcat("float Op = Model.getReg(static_cast<Sim::FPRegister>(getOperand(0)));\n\t\t"
+             "Sim::Register Rd = static_cast<Sim::Register>(getOperand(1));\n\t\t"
+             "Model.setReg(Rd, std::bit_cast<uint32_t>(Op)));\n\t\t", IncPC)>;
 def FMV_W_X : RVInsnF<[!cast<int>(0b11110), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b000), ?, OPC_FP.Val], "fmv.w.x",
-  !strconcat(RExecutePrefix, "abort();", IncPC)>;
+  !strconcat("uint32_t Op = Model.getReg(static_cast<Sim::Register>(getOperand(0)));\n\t\t"
+             "Sim::FPRegister Rd = static_cast<Sim::FPRegister>(getOperand(1));\n\t\t"
+             "Model.setReg(Rd, std::bit_cast<float>(Op));\n\t\t", IncPC)>;
 
 def FCMP_LE : RVInsnF<[!cast<int>(0b10100), !cast<int>(0b00), ?, ?, !cast<int>(0b000), ?, OPC_FP.Val], "fle.s",
   !strconcat(RExecutePrefix, "abort();", IncPC)>;
