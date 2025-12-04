@@ -13,6 +13,8 @@ for the list of prereqs.
 
 ```bash
 git clone https://github.com/UjeNeTORT/rvsim
+cd rvsim
+git submodule update --init --recursive
 ```
 
 ### 2. Build the project
