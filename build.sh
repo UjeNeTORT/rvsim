@@ -16,9 +16,7 @@ rm -rvf $BUILD_DIR
 mkdir $BUILD_DIR && cd $BUILD_DIR
 
 cmake .. -DCMAKE_INSTALL_PREFIX=$INSTALL_PREFIX \
-         -DCMAKE_CXX_COMPILER=clang++-21        \
-         -DCMAKE_CXX_STANDART=20                \
-         -DCMAKE_CXX_STANDART_REQUIRED=ON
+         -DCMAKE_CXX_COMPILER=clang++
 
 wait
 
