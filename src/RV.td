@@ -342,14 +342,24 @@ def FSGNJX : RVInsnF<[!cast<int>(0b0010), !cast<int>(0b00), ?, ?, !cast<int>(0b0
                              "uint32_t EMOp1 = std::bit_cast<uint32_t>(Op1) & ~(1 << 31);\n\t\t"
                              "Model.setReg(Rd, std::bit_cast<float>((SOp2 ^ SOp1) | EMOp1));\n\t\t", IncPC)>;
 
+defvar F4ExecutePrefix = "auto Rs3 = static_cast<Sim::FPRegister>(getOperand(0));\n\t\t"
+                         "auto Rs2 = static_cast<Sim::FPRegister>(getOperand(1));\n\t\t"
+                         "auto Rs1 = static_cast<Sim::FPRegister>(getOperand(2));\n\t\t"
+                         "auto Rd  = static_cast<Sim::FPRegister>(getOperand(3));\n\t\t"
+                         "auto xRd = static_cast<Sim::Register>(getOperand(3));\n\t\t"
+                         "float Op1 = Model.getReg(Rs1);\n\t\t"
+                         "float Op2 = Model.getReg(Rs2);\n\t\t"
+                         "float Op3 = Model.getReg(Rs3);\n\t\t"
+                         "(void) Rd; (void) xRd; (void) Op1; (void) Op2; (void) Op3;\n\t\t";
+
 def FMADD : RVInsnF<[?, !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FMADD.Val], "fmadd.s",
-  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+  !strconcat(F4ExecutePrefix, "Model.setReg(Rd, Op1 * Op2 + Op3);\n\t\t", IncPC)>;
 def FMSUB : RVInsnF<[?, !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FMSUB.Val], "fmsub.s",
-  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+  !strconcat(F4ExecutePrefix, "Model.setReg(Rd, Op1 * Op2 - Op3);\n\t\t", IncPC)>;
 def FNMADD : RVInsnF<[?, !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FNMADD.Val], "fnmadd.s",
-  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+  !strconcat(F4ExecutePrefix, "Model.setReg(Rd, -Op1 * Op2 - Op3);\n\t\t", IncPC)>;
 def FNMSUB : RVInsnF<[?, !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FNMSUB.Val], "fnmsub.s",
-  !strconcat(IExecutePrefix, "abort();", IncPC)>;
+  !strconcat(F4ExecutePrefix, "Model.setReg(Rd, -Op1 * Op2 + Op3);\n\t\t", IncPC)>;
 
 def FCVT_W_S  : RVInsnF<[!cast<int>(0b11000), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b111), ?, OPC_FP.Val], "fcvt.w.s",
   !strconcat(RExecutePrefix, "abort();", IncPC)>;
