@@ -2,46 +2,39 @@
 #include <iostream>
 #include <filesystem>
 
-#include <boost/program_options.hpp>
+#include <cxxopts.hpp>
 
 #include "sim.hpp"
-
-namespace po = boost::program_options;
 
 int main(int argc, char *argv[]) {
   uint32_t logs = 0;
   uint32_t pc_init = 0;
   std::filesystem::path elf_path;
 
-  po::options_description optns_desc{"Possible options"};
-  optns_desc.add_options()
-    ("help", "print help message")
+  cxxopts::Options options("rv32isim", "RISC-V RV32I functional simulator");
 
-    ("pc", po::value<uint32_t>(&pc_init), "initial pc")
-
-    ("elf", po::value<std::filesystem::path>(&elf_path),
-        "run simulator on an ELF file")
-
-    ("logs", po::value<uint32_t>(&logs)->default_value(0),
-             "set logs verbosity level (0 - disabled,\n"
-             "                          1 - enabled,\n"
-             "                          2 - debug)\n")
+  options.add_options()
+      ("h,help", "print help message")
+      ("pc",     "initial pc",
+                  cxxopts::value<uint32_t>(pc_init))
+      ("elf",    "run simulator on an ELF file",
+                  cxxopts::value<std::filesystem::path>(elf_path))
+      ("logs",   "set logs verbosity level (0-2)",
+                  cxxopts::value<uint32_t>(logs)->default_value("0"))
   ;
 
-  po::variables_map vm;
-  po::store(po::parse_command_line(argc, argv, optns_desc), vm);
-  po::notify(vm);
+  auto result = options.parse(argc, argv);
 
-  if (vm.count("help")) {
-    std::cout << optns_desc << '\n';
+  if (result.count("help")) {
+    std::cout << options.help() << '\n';
     return 0;
   }
   rv32i_sim::RVModel model;
 
-  if (vm.count("elf")) {
+  if (result.count("elf")) {
     model = rv32i_sim::RVModel(elf_path, logs);
   }
-  if (vm.count("pc")) {
+  if (result.count("pc")) {
     std::cerr << "Warning: overriding entry point pc = "
               << model.getPC() << "with " << pc_init << '\n';
     model.setPC(pc_init);
