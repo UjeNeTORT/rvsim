@@ -9,8 +9,6 @@
 namespace po = boost::program_options;
 
 int main(int argc, char *argv[]) {
-
-  bool checkpoints = false;
   uint32_t logs = 0;
   uint32_t pc_init = 0;
   std::filesystem::path elf_path;
@@ -22,16 +20,12 @@ int main(int argc, char *argv[]) {
     ("pc", po::value<uint32_t>(&pc_init), "initial pc")
 
     ("elf", po::value<std::filesystem::path>(&elf_path),
-        "run simulator on an ELF file. Discards all the other input sources qualifiers")
+        "run simulator on an ELF file")
 
     ("logs", po::value<uint32_t>(&logs)->default_value(0),
              "set logs verbosity level (0 - disabled,\n"
              "                          1 - enabled,\n"
              "                          2 - debug)\n")
-
-    ("checkpoints", po::value<bool>(&checkpoints)->default_value(false),
-                    "record checkpoints (after each insn execution "
-                    "do a mega dump of full sim state) - not yet supported")
   ;
 
   po::variables_map vm;
@@ -42,10 +36,6 @@ int main(int argc, char *argv[]) {
     std::cout << optns_desc << '\n';
     return 0;
   }
-  if (checkpoints) {
-    std::cerr << "Sorry, option --checkpoints is not yet implemented\n";
-  }
-
   rv32i_sim::RVModel model;
 
   if (vm.count("elf")) {
