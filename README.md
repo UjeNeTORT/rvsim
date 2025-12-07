@@ -12,9 +12,8 @@ for the list of prereqs.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/UjeNeTORT/rvsim
+git clone https://github.com/UjeNeTORT/rvsim --recursive
 cd rvsim
-git submodule update --init --recursive
 ```
 
 ### 2. Pull docker image
@@ -26,7 +25,7 @@ docker pull ujenetort/rv32_interpreter:latest
 ### 3. Build the project
 
 ```bash
-docker run --rm -it -v $(pwd):/rv32 rv32_interpreter:latest bash
+docker run --rm -it -v $(pwd):/rv32 ujenetort/rv32_interpreter:latest bash
 ```
 
 ### 4. Test (optional)
