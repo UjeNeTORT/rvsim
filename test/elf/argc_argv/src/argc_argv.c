@@ -1,4 +1,7 @@
 // riscv64-unknown-elf-gcc -march=rv32imf_zbb -mabi=ilp32 src/argc_argv.c ../api.o -I ../src/ -nostdlib -mno-relax -o argc_argv.elf
+
+#include "api.h"
+
 static int atoi(const char* str) {
   while ( ' ' == *str || '\t' == *str ) {
     ++str;
@@ -30,5 +33,7 @@ int main(int argc, char* argv[])
     *ptr = 666;
   }
 
-  return atoi(argv[1]);
+  unsigned res = atoi(argv[1]);
+  write(1, (char *)&res, sizeof(unsigned));
+  return res;
 }
