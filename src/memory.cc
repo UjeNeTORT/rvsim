@@ -139,9 +139,16 @@ uint32_t MemoryModel::setUpStack(uint32_t StackSize) {
 uint32_t MemoryModel::setUpStack(const std::vector<std::string> &ProgArgv, uint32_t StackSize) {
   assert(StackSize < MAX_STACK_SIZE && "Stack size is too big!");
 
-  // argv data is below the stack, reserve space for it
-  // as big as size of all strings including \0
-  uint32_t ArgvSize = getSumStrLen(ProgArgv);
+  // argv pointers are located right below the stack
+  // the extra argv[argc] = 0 is added in the end
+  uint32_t ArgvAddrSize = (ProgArgv.size() + 1) * sizeof(uint32_t);
+
+  // argv data is below the argv pointers, its size equals
+  // to the size of all strings including \0
+  uint32_t ArgvDataSize = getSumStrLen(ProgArgv);
+
+  // size of everything related to argv below the stack
+  uint32_t ArgvSize = ArgvAddrSize + ArgvDataSize;
 
   // stack is located in the end of the address space
   // and is protected by canary segments from both sides
@@ -166,22 +173,32 @@ uint32_t MemoryModel::setUpStack(const std::vector<std::string> &ProgArgv, uint3
   segments_.push_back(ArgvData);
   segments_.push_back(CanaryEnd);
 
-  // if ProgArgv is empty, write 0 as argc
+  // argc (if ProgArgv is empty, argc == 0)
   writeWord(StackVaddr - sizeof(uint32_t), ProgArgv.size());
   writeArgv(StackVaddr, ProgArgv);
 
   return StackVaddr - sizeof(uint32_t); // sp
 }
 
-// returns number of written characters
+// returns number of written characters (addresses + data)
 uint32_t MemoryModel::writeArgv(uint32_t ArgvAddr, const std::vector<std::string> &ArgvVec) {
+  assert(!ArgvVec.empty() && "ArgvVec must not be empty");
+  uint32_t NArgvAddr = ArgvVec.size() + 1; // +1 for argv[argc]=0
+  uint32_t ArgvDataAddr = ArgvAddr + NArgvAddr * sizeof(uint32_t);
   uint32_t Written = 0;
-  for (const auto &S: ArgvVec) {
+  for (uint32_t CurrArgv = 0; CurrArgv != ArgvVec.size(); ++CurrArgv) {
+    const std::string &S = ArgvVec[CurrArgv];
+    // argv[i] data
+    memCopy(ArgvDataAddr + Written, S.c_str(), S.size() + 1 /*for \0*/);
+    // argv[i] addr
+    writeWord(ArgvAddr + CurrArgv * sizeof(uint32_t), ArgvDataAddr + Written);
+
     Written += S.size() + 1;
-    memCopy(ArgvAddr, S.c_str(), S.size() + 1 /*for \0*/);
   }
 
-  return Written;
+  writeWord(ArgvAddr + ArgvVec.size() * sizeof(uint32_t), 0);
+
+  return ArgvDataAddr + Written - ArgvAddr;
 }
 
 
