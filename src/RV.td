@@ -90,17 +90,23 @@ def MULHSU: RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b010), ?, OPC_OP.V
                              "(static_cast<int64_t>(static_cast<int32_t>(Op1)) * "
                              "static_cast<uint64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t", IncPC)>;
 def DIV  : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b100), ?, OPC_OP.Val], "div",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<int32_t>(Op1) / "
-                             "std::bit_cast<int32_t>(Op2)) & 0xffff'ffff);\n\t\t", IncPC)>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op2 == 0 ? 0xFFFFFFFFu"
+                             ": (static_cast<int32_t>(Op1) == INT32_MIN "
+                             "&& static_cast<int32_t>(Op2) == -1)"
+                             "? static_cast<uint32_t>(INT32_MIN)"
+                             ": static_cast<uint32_t>(static_cast<int32_t>(Op1) "
+                             "/ static_cast<int32_t>(Op2)));\n\t\t", IncPC)>;
 def DIVU : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b101), ?, OPC_OP.Val], "divu",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<uint32_t>(Op1) / "
-                             "std::bit_cast<uint32_t>(Op2)) & 0xffff'ffff);\n\t\t", IncPC)>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op2 == 0 ? 0xffff'ffffu"
+                             " : static_cast<uint32_t>(Op1) / static_cast<uint32_t>(Op2));\n\t\t", IncPC)>;
 def REM  : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b110), ?, OPC_OP.Val], "rem",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<int32_t>(Op1) % "
-                             "std::bit_cast<int32_t>(Op2)) & 0xffff'ffff);\n\t\t", IncPC)>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op2 == 0 ? Op1 "
+                             ": (static_cast<int32_t>(Op1) == INT32_MIN "
+                             "&& static_cast<int32_t>(Op2) == -1) ? 0u "
+                             ": static_cast<uint32_t>(static_cast<int32_t>(Op1) "
+                             "% static_cast<int32_t>(Op2)));\n\t\t", IncPC)>;
 def REMU : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b111), ?, OPC_OP.Val], "remu",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<uint32_t>(Op1) % "
-                             "std::bit_cast<uint32_t>(Op2)) & 0xffff'ffff);\n\t\t", IncPC)>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, Op2 == 0 ? Op1 : static_cast<uint32_t>(Op1 % Op2));\n\t\t", IncPC)>;
 
 def ANDN : RVInsnR<[!cast<int>(0b0100000), ?, ?, !cast<int>(0b111), ?, OPC_OP.Val], "andn",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 & ~Op2);\n\t\t")>;
