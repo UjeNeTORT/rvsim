@@ -1,6 +1,7 @@
 #ifndef SIMULATOR_HPP
 #define SIMULATOR_HPP
 
+#include <algorithm>
 #include <cstdint>
 #include <iostream>
 #include <memory>
@@ -37,15 +38,26 @@ class RVModel final : public IRVModel {
 public:
   RVModel(uint32_t pc = 0) : env_(ExecEnv{}), pc_(pc) {}
   RVModel(std::filesystem::path& ElfPath, uint32_t Logs = 0)
-    : RVModel(ElfPath, std::make_unique<HostIO>(), Logs) {}
+    : RVModel(std::vector<std::string>{ElfPath}, std::make_unique<HostIO>(), Logs) {}
+  RVModel(const std::vector<std::string> &ProgArgv, uint32_t Logs = 0)
+    : RVModel(ProgArgv, std::make_unique<HostIO>(), Logs) {}
 
   RVModel(std::filesystem::path& ElfPath,
           std::unique_ptr<IOInterface> IO = std::make_unique<HostIO>(),
+          uint32_t Logs = 0)
+    : RVModel(std::vector<std::string>{ElfPath}, std::move(IO), Logs) {}
+
+  RVModel(const std::vector<std::string> &ProgArgv,
+          std::unique_ptr<IOInterface> IO = std::make_unique<HostIO>(),
           uint32_t Logs = 0) : env_(ExecEnv(std::move(IO))), logs_(Logs) {
+    assert(!ProgArgv.empty() && "ProgArgv must not be empty");
+    std::filesystem::path ElfPath(ProgArgv[0]);
+
     setLogs(logs_);
+
     elf::elfio ElfReader;
     if (!ElfReader.load(ElfPath)) {
-      SPDLOG_ERROR("ERROR: failed to load ELF {}", ElfPath.c_str());
+      SPDLOG_ERROR("ERROR: failed to load ELF \"{}\"", ElfPath.c_str());
       is_valid_ = false;
       return;
     }
@@ -60,7 +72,7 @@ public:
                      + LastSegment->get()->get_memory_size();
 
     // setting up stack and initial stack frame
-    uint32_t sp = mem_.setUpStack();
+    uint32_t sp = mem_.setUpStack(ProgArgv);
     regs_.set(Register::SP, sp); // SP = sp
     regs_.set(Register::FP, sp); // FP = sp
 

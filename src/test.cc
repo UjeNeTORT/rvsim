@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 #include <iterator>
+#include <memory>
 #include <unistd.h>
 
 #include "sim.hpp"
@@ -69,7 +70,7 @@ protected:
   virtual void TearDown() {}
 
   bool RunTest(std::filesystem::path TestPath) {
-    M_ = rv32i_sim::RVModel(TestPath, std::unique_ptr<BufferIO>(new BufferIO), 0);
+    M_ = rv32i_sim::RVModel(TestPath, std::make_unique<BufferIO>());
     if (!M_.isValid()) {
       std::cerr << "ERROR: failed to initialize model correctly\n";
       std::cerr << TestPath << '\n';

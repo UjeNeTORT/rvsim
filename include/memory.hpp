@@ -67,6 +67,7 @@ public:
 private:
   // if page does not exist - allocate, else - do nothing
   uint32_t preparePage(uint32_t Addr);
+  uint32_t writeArgv(uint32_t ArgvAddr, const std::vector<std::string> &ArgvVec);
 
 public:
   // @note does not guarantee that the page exists
@@ -75,6 +76,8 @@ public:
   // sets up stack segment of size = stack_size with canary at the top
   // returns address where initial sp is placed - the bottom of the segment
   uint32_t setUpStack(uint32_t StkSize = DEFAULT_STACK_SIZE);
+  uint32_t setUpStack(const std::vector<std::string> &ProgArgv,
+                      uint32_t StkSize = DEFAULT_STACK_SIZE);
   uint32_t setUpEnvironment(uint32_t MainPC);
 
   /// @brief create a segment and push at the end of memory
