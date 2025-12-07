@@ -79,13 +79,15 @@ def AND  : RVInsnR<[!cast<int>(0b0000000), ?, ?, !cast<int>(0b111), ?, OPC_OP.Va
 def MUL  : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b000), ?, OPC_OP.Val], "mul",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, (Op1 * Op2) & 0xffff'ffff);\n\t\t", IncPC)>;
 def MULH : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b001), ?, OPC_OP.Val], "mulh",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, ((static_cast<int64_t>(Op1) * "
-                             "static_cast<int64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t", IncPC)>;
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, static_cast<uint32_t>("
+                             "(static_cast<int64_t>(static_cast<int32_t>(Op1)) * "
+                             "static_cast<int64_t>(static_cast<int32_t>(Op2))) >> 32) & 0xffff'ffff);\n\t\t", IncPC)>;
 def MULHU: RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b011), ?, OPC_OP.Val], "mulhu",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, ((static_cast<uint64_t>(Op1) * "
                              "static_cast<uint64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t", IncPC)>;
 def MULHSU: RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b010), ?, OPC_OP.Val], "mulhsu",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, ((static_cast<int64_t>(Op1) * "
+  !strconcat(RExecutePrefix, "Model.setReg(Rd, static_cast<uint32_t>("
+                             "(static_cast<int64_t>(static_cast<int32_t>(Op1)) * "
                              "static_cast<uint64_t>(Op2)) >> 32) & 0xffff'ffff);\n\t\t", IncPC)>;
 def DIV  : RVInsnR<[!cast<int>(0b0000001), ?, ?, !cast<int>(0b100), ?, OPC_OP.Val], "div",
   !strconcat(RExecutePrefix, "Model.setReg(Rd, (std::bit_cast<int32_t>(Op1) / "
