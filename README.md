@@ -17,27 +17,26 @@ cd rvsim
 git submodule update --init --recursive
 ```
 
-### 2. Build the project
+### 2. Pull docker image
 
-... using script
 ```bash
-cd rvsim
-chmod +x build.sh
-./build.sh build_sh clang Release
+docker pull ujenetort/rv32_interpreter:latest
 ```
 
-*You can also build manually following the steps from the script if you need something specific*
-
-### 3. Test everything (optional)
+### 3. Build the project
 
 ```bash
-cd build_sh
+docker run --rm -it -v $(pwd):/rv32 rv32_interpreter:latest bash
+```
+
+### 4. Test (optional)
+
+```bash
+cd build
 ./test
 ```
 
-### 4. Run simulator on some examples
+### 5. Run simulator on some examples
 
 ```bash
 ./rvsim --elf ../test/elf/echo/echo.elf
-
-Simulator reads ELF using [ELFIO library](https://github.com/serge1/ELFIO).
