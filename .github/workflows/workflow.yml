@@ -76,33 +76,8 @@ jobs:
     - name: Fix permissions
       run: chmod +x build_debug/test
 
-    - name: test_plus_dbg
-      run: ./test --gtest_filter=TestRVModel.PLUS
-      working-directory: build_debug
-      shell: bash
-
-    - name: test_factorial_dbg
-      run: ./test --gtest_filter=TestRVModel.FACTORIAL
-      working-directory: build_debug
-      shell: bash
-
-    - name: test_echo_dbg
-      run: ./test --gtest_filter=TestRVModel.ECHO
-      working-directory: build_debug
-      shell: bash
-
-    - name: test_fpadd_dbg
-      run: ./test --gtest_filter=TestRVModel.FPADD
-      working-directory: build_debug
-      shell: bash
-
-    - name: test_bitwise_dbg
-      run: ./test --gtest_filter=TestRVModel.BITWISE
-      working-directory: build_debug
-      shell: bash
-
-    - name: test_argv_dbg
-      run: ./test --gtest_filter=TestRVModel.ARGV
+    - name: test_dbg
+      run: ./test
       working-directory: build_debug
       shell: bash
 
@@ -125,32 +100,7 @@ jobs:
     - name: Fix permissions
       run: chmod +x build_release/test
 
-    - name: test_plus
-      run: ./test --gtest_filter=TestRVModel.PLUS
-      working-directory: build_release
-      shell: bash
-
-    - name: test_factorial
-      run: ./test --gtest_filter=TestRVModel.FACTORIAL
-      working-directory: build_release
-      shell: bash
-
-    - name: test_echo
-      run: ./test --gtest_filter=TestRVModel.ECHO
-      working-directory: build_release
-      shell: bash
-
-    - name: test_fpadd
-      run: ./test --gtest_filter=TestRVModel.FPADD
-      working-directory: build_release
-      shell: bash
-
-    - name: test_bitwise
-      run: ./test --gtest_filter=TestRVModel.BITWISE
-      working-directory: build_release
-      shell: bash
-
-    - name: test_argv
-      run: ./test --gtest_filter=TestRVModel.ARGV
+    - name: test_release
+      run: ./test
       working-directory: build_release
       shell: bash
