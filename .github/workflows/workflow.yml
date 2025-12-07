@@ -11,32 +11,21 @@ on:
     - interpreter
 
 jobs:
-  test_model:
-    runs-on: ubuntu-22.04
-    steps:
-    - name: install LLVM 21
-      run: |
-        wget https://apt.llvm.org/llvm.sh
-        chmod +x llvm.sh
-        sudo ./llvm.sh 21
-        sudo apt update
-    - name: install prerequisites
-      run: |
-        sudo apt update
-        sudo apt install clang-21 libllvm21 cmake ninja-build build-essential libgtest-dev libboost-all-dev
-      shell: bash
+  build:
+    runs-on: ubuntu-24.04
 
+    container:
+      image: ujenetort/rv32_interpreter:latest
+
+    steps:
     - name: checkout
       uses: actions/checkout@v4
-
-    - name: update submodule
-      run: |
-        git submodule update --init --recursive
-      shell: bash
+      with:
+        submodules: recursive
 
     - name: build release
       run: |
-        mkdir build_sh_release && cd build_sh_release
+        mkdir build_release && cd build_release
         cmake .. -G Ninja -DCMAKE_CXX_COMPILER=clang++-21 \
                  -DCMAKE_CXX_STANDARD=20 \
                  -DCMAKE_BUILD_TYPE=Release \
@@ -46,7 +35,7 @@ jobs:
 
     - name: build debug
       run: |
-        mkdir build_sh_debug && cd build_sh_debug
+        mkdir build_debug && cd build_debug
         cmake .. -G Ninja -DCMAKE_CXX_COMPILER=clang++-21 \
                  -DCMAKE_CXX_STANDARD=20 \
                  -DCMAKE_BUILD_TYPE=Debug \
@@ -54,63 +43,114 @@ jobs:
         ninja
       shell: bash
 
-    - name: test_plus
-      run: ./test --gtest_filter=TestRVModel.PLUS
-      working-directory: build_sh_release
-      shell: bash
+    - name: upload build debug artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: interpreter_build_debug
+        path: build_debug/
+        retention-days: 1
 
-    - name: test_factorial
-      run: ./test --gtest_filter=TestRVModel.FACTORIAL
-      working-directory: build_sh_release
-      shell: bash
+    - name: upload build release artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: interpreter_build_release
+        path: build_release/
+        retention-days: 1
 
-    - name: test_echo
-      run: ./test --gtest_filter=TestRVModel.ECHO
-      working-directory: build_sh_release
-      shell: bash
+  test_debug:
+    runs-on: ubuntu-24.04
+    needs: build
 
-    - name: test_fpadd
-      run: ./test --gtest_filter=TestRVModel.FPADD
-      working-directory: build_sh_release
-      shell: bash
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
 
-    - name: test_bitwise
-      run: ./test --gtest_filter=TestRVModel.BITWISE
-      working-directory: build_sh_release
-      shell: bash
+    - name: download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: interpreter_build_debug
+        path: build_debug/
 
-    - name: test_argv
-      run: ./test --gtest_filter=TestRVModel.ARGV
-      working-directory: build_sh_release
-      shell: bash
-
+    - name: Fix permissions
+      run: chmod +x build_debug/test
 
     - name: test_plus_dbg
       run: ./test --gtest_filter=TestRVModel.PLUS
-      working-directory: build_sh_debug
+      working-directory: build_debug
       shell: bash
 
     - name: test_factorial_dbg
       run: ./test --gtest_filter=TestRVModel.FACTORIAL
-      working-directory: build_sh_debug
+      working-directory: build_debug
       shell: bash
 
     - name: test_echo_dbg
       run: ./test --gtest_filter=TestRVModel.ECHO
-      working-directory: build_sh_debug
+      working-directory: build_debug
       shell: bash
 
     - name: test_fpadd_dbg
       run: ./test --gtest_filter=TestRVModel.FPADD
-      working-directory: build_sh_debug
+      working-directory: build_debug
       shell: bash
 
     - name: test_bitwise_dbg
       run: ./test --gtest_filter=TestRVModel.BITWISE
-      working-directory: build_sh_debug
+      working-directory: build_debug
       shell: bash
 
     - name: test_argv_dbg
       run: ./test --gtest_filter=TestRVModel.ARGV
-      working-directory: build_sh_debug
+      working-directory: build_debug
+      shell: bash
+
+  test_release:
+    runs-on: ubuntu-24.04
+    needs: build
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: interpreter_build_release
+        path: build_release/
+
+    - name: Fix permissions
+      run: chmod +x build_release/test
+
+    - name: test_plus
+      run: ./test --gtest_filter=TestRVModel.PLUS
+      working-directory: build_release
+      shell: bash
+
+    - name: test_factorial
+      run: ./test --gtest_filter=TestRVModel.FACTORIAL
+      working-directory: build_release
+      shell: bash
+
+    - name: test_echo
+      run: ./test --gtest_filter=TestRVModel.ECHO
+      working-directory: build_release
+      shell: bash
+
+    - name: test_fpadd
+      run: ./test --gtest_filter=TestRVModel.FPADD
+      working-directory: build_release
+      shell: bash
+
+    - name: test_bitwise
+      run: ./test --gtest_filter=TestRVModel.BITWISE
+      working-directory: build_release
+      shell: bash
+
+    - name: test_argv
+      run: ./test --gtest_filter=TestRVModel.ARGV
+      working-directory: build_release
       shell: bash
