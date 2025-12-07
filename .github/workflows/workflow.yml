@@ -79,6 +79,11 @@ jobs:
       working-directory: build_sh_release
       shell: bash
 
+    - name: test_argv
+      run: ./test --gtest_filter=TestRVModel.ARGV
+      working-directory: build_sh_release
+      shell: bash
+
 
     - name: test_plus_dbg
       run: ./test --gtest_filter=TestRVModel.PLUS
@@ -102,5 +107,10 @@ jobs:
 
     - name: test_bitwise_dbg
       run: ./test --gtest_filter=TestRVModel.BITWISE
+      working-directory: build_sh_debug
+      shell: bash
+
+    - name: test_argv_dbg
+      run: ./test --gtest_filter=TestRVModel.ARGV
       working-directory: build_sh_debug
       shell: bash

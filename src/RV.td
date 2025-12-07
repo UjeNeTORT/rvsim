@@ -109,7 +109,7 @@ def XNOR : RVInsnR<[!cast<int>(0b0100000), ?, ?, !cast<int>(0b100), ?, OPC_OP.Va
 
 def CLZ  : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00000), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "clz",
   !strconcat(RExecutePrefix, "uint32_t Res = -1u;\n\t\t"
-                             "for (uint32_t Bit = 31; Bit >= 0; --Bit) {\n\t\t"
+                             "for (int32_t Bit = 31; Bit >= 0; --Bit) {\n\t\t"
                              "  if (Op1 >> Bit & 1u) {\n\t\t"
                              "    Res = Bit;\n\t\t"
                              "    break;\n\t\t"
@@ -164,8 +164,8 @@ def RORI : RVInsnR<[!cast<int>(0b0110000), ?, ?, !cast<int>(0b101), ?, OPC_OP_IM
 def ORC_B : RVInsnI<[!cast<int>(0b001010000111), ?, !cast<int>(0b101), ?, OPC_OP_IMM.Val], "orc.b",
   !strconcat(IExecutePrefix, "uint32_t Output = 0;\n\t\t"
                              "for (uint32_t i = 0; i < 32; i += 8) {\n\t\t"
-                             "  Output = (Op1 >> i) & 0xff ? Output & ~(0xff << i)\n\t\t"
-                             "                             : Output |= (0xff << i);\n\t\t"
+                             "  Output |= ((Op1 >> i) & 0xff) ? (0xff << i)\n\t\t"
+                             "                                : 0;\n\t\t"
                              "}\n\t\t"
                              "Model.setReg(Rd, Output);", IncPC)>;
 def REV8 : RVInsnI<[!cast<int>(0b011010011000), ?, !cast<int>(0b101), ?, OPC_OP_IMM.Val], "rev8",

@@ -24,6 +24,13 @@ uint32_t alignAs(std::vector<T>& vec, uint32_t align) {
   vec.resize(new_size);
   return new_size;
 }
+
+uint32_t getSumStrLen(const std::vector<std::string> &StrVec) {
+  uint32_t SumStrLen = 0;
+  for (const auto &S : StrVec) SumStrLen += S.size() + 1;
+  return SumStrLen;
+}
+
 } // namespace
 namespace rv32i_sim {
 
@@ -123,29 +130,77 @@ uint32_t MemoryModel::getPageAddr(uint32_t Addr) const {
   return Addr & ~0xFFF; // nullify an offset within the page
 }
 
+uint32_t MemoryModel::setUpStack(uint32_t StackSize) {
+  return setUpStack(std::vector<std::string>{}, StackSize);
+}
+
 // sets up stack segment of size = StackSize with canaries
 // returns address where initial sp is placed - the bottom of the segment
-uint32_t MemoryModel::setUpStack(uint32_t StackSize) {
+uint32_t MemoryModel::setUpStack(const std::vector<std::string> &ProgArgv, uint32_t StackSize) {
   assert(StackSize < MAX_STACK_SIZE && "Stack size is too big!");
+
+  // argv pointers are located right below the stack
+  // the extra argv[argc] = 0 is added in the end
+  uint32_t ArgvAddrSize = (ProgArgv.size() + 1) * sizeof(uint32_t);
+
+  // argv data is below the argv pointers, its size equals
+  // to the size of all strings including \0
+  uint32_t ArgvDataSize = getSumStrLen(ProgArgv);
+
+  // size of everything related to argv below the stack
+  uint32_t ArgvSize = ArgvAddrSize + ArgvDataSize;
 
   // stack is located in the end of the address space
   // and is protected by canary segments from both sides
+
+  // guard page addr
   uint32_t CanaryTopVaddr = DEFAULT_STACK_ADDR;
-  uint32_t StackVaddr = CanaryTopVaddr + DEFAULT_CANARY_SIZE;
+  // guard page end address
+  uint32_t StackTopVaddr = CanaryTopVaddr + DEFAULT_CANARY_SIZE;
 
-  memSet(CanaryTopVaddr,         STACK_CANARY_BYTE, DEFAULT_CANARY_SIZE);
-  memSet(StackVaddr + StackSize, STACK_CANARY_BYTE, DEFAULT_CANARY_SIZE);
+  uint32_t StackVaddr = StackTopVaddr + StackSize;
 
-  Segment CanaryStart { CanaryTopVaddr,         DEFAULT_CANARY_SIZE, 0 };
-  Segment Stack       { StackVaddr,             StackSize,           RIGHTS_R | RIGHTS_W };
-  Segment CanaryEnd   { StackVaddr + StackSize, DEFAULT_CANARY_SIZE, 0 };
+  memSet(CanaryTopVaddr,        STACK_CANARY_BYTE, DEFAULT_CANARY_SIZE);
+  memSet(StackVaddr + ArgvSize, STACK_CANARY_BYTE, DEFAULT_CANARY_SIZE);
+
+  Segment CanaryStart { CanaryTopVaddr,        DEFAULT_CANARY_SIZE, 0 };
+  Segment Stack       { StackTopVaddr,         StackSize,           RIGHTS_R | RIGHTS_W };
+  Segment ArgvData    { StackVaddr,            ArgvSize,            RIGHTS_R | RIGHTS_W };
+  Segment CanaryEnd   { StackVaddr + ArgvSize, DEFAULT_CANARY_SIZE, 0 };
 
   segments_.push_back(CanaryStart);
   segments_.push_back(Stack);
+  segments_.push_back(ArgvData);
   segments_.push_back(CanaryEnd);
 
-  return StackVaddr + StackSize - sizeof(uint32_t); // sp
+  // argc (if ProgArgv is empty, argc == 0)
+  writeWord(StackVaddr - sizeof(uint32_t), ProgArgv.size());
+  writeArgv(StackVaddr, ProgArgv);
+
+  return StackVaddr - sizeof(uint32_t); // sp
 }
+
+// returns number of written characters (addresses + data)
+uint32_t MemoryModel::writeArgv(uint32_t ArgvAddr, const std::vector<std::string> &ArgvVec) {
+  assert(!ArgvVec.empty() && "ArgvVec must not be empty");
+  uint32_t NArgvAddr = ArgvVec.size() + 1; // +1 for argv[argc]=0
+  uint32_t ArgvDataAddr = ArgvAddr + NArgvAddr * sizeof(uint32_t);
+  uint32_t Written = 0;
+  for (uint32_t CurrArgv = 0; CurrArgv != ArgvVec.size(); ++CurrArgv) {
+    const std::string &S = ArgvVec[CurrArgv];
+    // argv[i] data
+    memCopy(ArgvDataAddr + Written, S.c_str(), S.size() + 1 /*for \0*/);
+    // argv[i] addr
+    writeWord(ArgvAddr + CurrArgv * sizeof(uint32_t), ArgvDataAddr + Written);
+
+    Written += S.size() + 1;
+  }
+
+  writeWord(ArgvAddr + ArgvVec.size() * sizeof(uint32_t), 0);
+
+  return ArgvDataAddr + Written - ArgvAddr;
+}
+
 
 uint32_t MemoryModel::pushSegment(Segment Seg) {
   uint32_t MaxAddr = Seg.getVaddr() + Seg.getSize();

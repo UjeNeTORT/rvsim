@@ -2,66 +2,59 @@
 #include <iostream>
 #include <filesystem>
 
-#include <boost/program_options.hpp>
+#include <cxxopts.hpp>
+#include <vector>
 
 #include "sim.hpp"
 
-namespace po = boost::program_options;
-
 int main(int argc, char *argv[]) {
-
-  bool checkpoints = false;
   uint32_t logs = 0;
   uint32_t pc_init = 0;
-  std::filesystem::path elf_path;
 
-  po::options_description optns_desc{"Possible options"};
-  optns_desc.add_options()
-    ("help", "print help message")
+  cxxopts::Options options("rv32isim", "RISC-V RV32I functional simulator");
 
-    ("pc", po::value<uint32_t>(&pc_init), "initial pc")
-
-    ("elf", po::value<std::filesystem::path>(&elf_path),
-        "run simulator on an ELF file. Discards all the other input sources qualifiers")
-
-    ("logs", po::value<uint32_t>(&logs)->default_value(0),
-             "set logs verbosity level (0 - disabled,\n"
-             "                          1 - enabled,\n"
-             "                          2 - debug)\n")
-
-    ("checkpoints", po::value<bool>(&checkpoints)->default_value(false),
-                    "record checkpoints (after each insn execution "
-                    "do a mega dump of full sim state) - not yet supported")
+  options.add_options()
+      ("h,help", "print help message")
+      ("pc",     "initial pc",
+                  cxxopts::value<uint32_t>(pc_init))
+      ("argv",    "argv of elf to run",
+                  cxxopts::value<std::vector<std::string>>())
+      ("logs",   "set logs verbosity level (0-2)",
+                  cxxopts::value<uint32_t>(logs)->default_value("0"))
   ;
 
-  po::variables_map vm;
-  po::store(po::parse_command_line(argc, argv, optns_desc), vm);
-  po::notify(vm);
+  options.parse_positional({"argv"});
+  auto result = options.parse(argc, argv);
 
-  if (vm.count("help")) {
-    std::cout << optns_desc << '\n';
+  if (result.count("help")) {
+    std::cout << options.help() << '\n';
     return 0;
   }
-  if (checkpoints) {
-    std::cerr << "Sorry, option --checkpoints is not yet implemented\n";
+
+
+  std::vector<std::string> ProgArgv = result["argv"].as<std::vector<std::string>>();
+  // for (auto &s : ProgArgv) std::cout << s << "\n";
+
+  if (ProgArgv.empty()) {
+    std::cout << "No input elf provided, cannot execute\n";
+    std::cout << options.help() << '\n';
+    return 0;
   }
 
-  rv32i_sim::RVModel model;
+  rv32i_sim::RVModel Model(ProgArgv, logs);
 
-  if (vm.count("elf")) {
-    model = rv32i_sim::RVModel(elf_path, logs);
-  }
-  if (vm.count("pc")) {
+  if (result.count("pc")) {
     std::cerr << "Warning: overriding entry point pc = "
-              << model.getPC() << "with " << pc_init << '\n';
-    model.setPC(pc_init);
+              << Model.getPC() << "with " << pc_init << '\n';
+    Model.setPC(pc_init);
   }
-  if (!model.isValid()) {
+
+  if (!Model.isValid()) {
     std::cerr << "Error: model invalid, cannot execute\n";
     return 1;
   }
 
-  model.execute();
+  Model.execute();
 
   return 0;
 }

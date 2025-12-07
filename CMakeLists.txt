@@ -15,13 +15,12 @@ set (CMAKE_CXX_FLAGS "-fdiagnostics-color=always")
 set (CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(LLVM REQUIRED CONFIG)
-find_package(Boost COMPONENTS program_options REQUIRED)
 find_library(GTEST_LIBRARY NAMES gtest gtest_main)
-include_directories(${Boost_INCLUDE_DIR})
 
 set (CMAKE_CURRENT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/src)
 set (CMAKE_DECODER_DIR        ${CMAKE_BINARY_DIR}/decoder)
 set (GEN_DECODER              ${CMAKE_DECODER_DIR}/decoder.inc)
+set (CXXOPTS_DIR              ${CMAKE_SOURCE_DIR}/cxxopts/include)
 
 ## create generated decoder dir
 #file(MAKE_DIRECTORY "${CMAKE_DECODER_DIR}")
@@ -79,13 +78,12 @@ set_target_properties(${PROJECT_NAME} PROPERTIES DEPENDS ${GEN_DECODER})
 add_dependencies(${PROJECT_NAME} decoder_inc)
 
 target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
-target_link_libraries(${PROJECT_NAME} Boost::program_options)
+target_include_directories(${PROJECT_NAME} PRIVATE ${CXXOPTS_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
 add_executable(test ${CMAKE_CURRENT_SOURCE_DIR}/test.cc)
 target_link_libraries(test gtest segment memory registers decoder_helpers)
-target_link_libraries(test segment memory registers decoder_helpers)
 target_include_directories(test PUBLIC ${CMAKE_DECODER_DIR})
 set_target_properties(test PROPERTIES DEPENDS ${GEN_DECODER})
 add_dependencies(test decoder_inc)
