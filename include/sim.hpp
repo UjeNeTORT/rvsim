@@ -37,12 +37,12 @@ class RVModel final : public IRVModel {
 
 public:
   RVModel(uint32_t pc = 0) : env_(ExecEnv{}), pc_(pc) {}
-  RVModel(std::filesystem::path& ElfPath, uint32_t Logs = 0)
+  RVModel(const std::filesystem::path& ElfPath, uint32_t Logs = 0)
     : RVModel(std::vector<std::string>{ElfPath}, std::make_unique<HostIO>(), Logs) {}
   RVModel(const std::vector<std::string> &ProgArgv, uint32_t Logs = 0)
     : RVModel(ProgArgv, std::make_unique<HostIO>(), Logs) {}
 
-  RVModel(std::filesystem::path& ElfPath,
+  RVModel(const std::filesystem::path& ElfPath,
           std::unique_ptr<IOInterface> IO = std::make_unique<HostIO>(),
           uint32_t Logs = 0)
     : RVModel(std::vector<std::string>{ElfPath}, std::move(IO), Logs) {}

@@ -22,12 +22,12 @@ protected:
     M_ = rv32i_sim::RVModel{};
   }
 
-  bool LoadElf(std::filesystem::path &ElfPath) {
+  bool LoadElf(const std::filesystem::path &ElfPath) {
     M_ = rv32i_sim::RVModel(ElfPath, std::unique_ptr<BufferIO>(new BufferIO), 0);
     return M_.isValid();
   }
 
-  bool LoadElf(std::filesystem::path &ElfPath, std::vector<uint8_t> &Input) {
+  bool LoadElf(const std::filesystem::path &ElfPath, std::vector<uint8_t> &Input) {
     M_ = rv32i_sim::RVModel(ElfPath, std::unique_ptr<BufferIO>(new BufferIO), 0);
     std::vector<uint8_t> &ReadBuf = dynamic_cast<BufferIO &>(M_.io())
                                       .getReadBuf(STDIN_FILENO);
@@ -35,8 +35,18 @@ protected:
     return M_.isValid();
   }
 
+  bool LoadArgvElf(const std::filesystem::path &ElfPath,
+                   const std::vector<std::string> &ArgvVec) {
+    assert(!ArgvVec.empty() && "ArgvVec must not be empty");
+    assert(ArgvVec[0] == ElfPath);
+
+    M_ = rv32i_sim::RVModel(ArgvVec, std::unique_ptr<BufferIO>(new BufferIO), 0);
+    return M_.isValid();
+  }
+
   // Load elf w/ overwritten stdin
-  void LoadElf(std::filesystem::path &ElfPath, std::filesystem::path InFpath) {
+  void LoadElf(const std::filesystem::path &ElfPath,
+               const std::filesystem::path &InFpath) {
     std::ifstream InFile(InFpath, std::ios::binary);
     ASSERT_EQ(InFile.is_open(), true);
     std::vector<uint8_t> Input = std::vector<uint8_t>(
@@ -47,9 +57,34 @@ protected:
     ASSERT_EQ(LoadElf(ElfPath, Input), true);
   }
 
+  // Load elf w/ argv parameters
+  void LoadArgvElf(const std::filesystem::path &ElfPath,
+                   const std::filesystem::path &ArgvInFpath) {
+    std::ifstream ArgvInFile(ArgvInFpath, std::ios::binary);
+    ASSERT_EQ(ArgvInFile.is_open(), true);
+    std::vector<std::string> ArgvVec;
+    ArgvVec.push_back(ElfPath);
+    std::string S;
+    while (ArgvInFile >> S) ArgvVec.push_back(S);
+
+    ASSERT_EQ(LoadArgvElf(ElfPath, ArgvVec), true);
+  }
+
   bool LoadTest(std::filesystem::path &ElfPath) {
     EXPECT_EQ(LoadElf(ElfPath), true);
     std::filesystem::path AnsPath = ElfPath;
+    AnsPath.replace_extension(".ans");
+    EXPECT_EQ(std::filesystem::exists(AnsPath), true);
+    AnsPath_ = AnsPath;
+    return true;
+  }
+
+  bool LoadArgvTest(const std::filesystem::path &ElfPath,
+                    const std::filesystem::path &ArgvInPath) {
+    EXPECT_EQ(std::filesystem::exists(ArgvInPath), true);
+
+    LoadArgvElf(ElfPath, ArgvInPath);
+    std::filesystem::path AnsPath = ArgvInPath;
     AnsPath.replace_extension(".ans");
     EXPECT_EQ(std::filesystem::exists(AnsPath), true);
     AnsPath_ = AnsPath;
@@ -115,6 +150,23 @@ protected:
         ASSERT_NE(IO, nullptr);
         EXPECT_EQ(IO->getWriteBuf(STDOUT_FILENO), BufAns)
           << "for input " << InPath;
+      } else if (DE.path().extension() == ".argvin") {
+        IsInAnsMode = true;
+        auto ArgvInPath = DE.path();
+        LoadArgvTest(ElfPath, ArgvInPath);
+        std::ifstream AnsF(AnsPath_, std::ios::binary);
+        ASSERT_EQ(AnsF.is_open(), true && "Answer File must open");
+        auto BufAns = std::vector<uint8_t>(
+          std::istreambuf_iterator<char>(AnsF),
+          std::istreambuf_iterator<char>()
+        );
+
+        M_.execute();
+        BufferIO *IO = dynamic_cast<BufferIO *>(&M_.io());
+        ASSERT_NE(IO, nullptr);
+        EXPECT_EQ(IO->getWriteBuf(STDOUT_FILENO), BufAns)
+          << "for input " << ArgvInPath;
+
       }
     }
 
@@ -139,7 +191,6 @@ protected:
     EXPECT_NE(IO, nullptr);
     EXPECT_EQ(IO->getWriteBuf(STDOUT_FILENO), BufAns);
   }
-
 };
 
 #define TEST_F_ELF(TestName, TestDir)                                 \
@@ -158,6 +209,7 @@ TEST_F_ELF(FACTORIAL, "../test/elf/factorial");
 TEST_F_ELF(ECHO, "../test/elf/echo");
 TEST_F_ELF(FPADD, "../test/elf/fp_vector_add");
 TEST_F_ELF(BITWISE, "../test/elf/bitwise");
+TEST_F_ELF(ARGV,    "../test/elf/argc_argv");
 
 #undef TEST_F_ELF
 
