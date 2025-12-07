@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
 
 
   std::vector<std::string> ProgArgv = result["argv"].as<std::vector<std::string>>();
-  for (auto &s : ProgArgv) std::cout << s << "\n";
+  // for (auto &s : ProgArgv) std::cout << s << "\n";
 
   if (ProgArgv.empty()) {
     std::cout << "No input elf provided, cannot execute\n";
