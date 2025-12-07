@@ -105,7 +105,7 @@ protected:
   virtual void TearDown() {}
 
   bool RunTest(std::filesystem::path TestPath) {
-    M_ = rv32i_sim::RVModel(TestPath, std::make_unique<BufferIO>());
+    M_ = rv32i_sim::RVModel(TestPath, std::make_unique<BufferIO>(), 0);
     if (!M_.isValid()) {
       std::cerr << "ERROR: failed to initialize model correctly\n";
       std::cerr << TestPath << '\n';
@@ -204,13 +204,15 @@ TEST_F(TestRVModel, TestName) {                                       \
   }                                                                   \
 }
 
-// TEST_F_ELF(PLUS, "../test/elf/plus");
-// TEST_F_ELF(FACTORIAL, "../test/elf/factorial");
-// TEST_F_ELF(ECHO, "../test/elf/echo");
-// TEST_F_ELF(FPADD, "../test/elf/fp_vector_add");
-// TEST_F_ELF(BITWISE, "../test/elf/bitwise");
-// TEST_F_ELF(ARGV,    "../test/elf/argc_argv");
+TEST_F_ELF(PLUS, "../test/elf/plus");
+TEST_F_ELF(FACTORIAL, "../test/elf/factorial");
+TEST_F_ELF(ECHO, "../test/elf/echo");
+TEST_F_ELF(FPADD, "../test/elf/fp_vector_add");
+TEST_F_ELF(BITWISE, "../test/elf/bitwise");
+TEST_F_ELF(ARGV,    "../test/elf/argc_argv");
 TEST_F_ELF(MUL,    "../test/insn_DISABLED/mul");
+TEST_F_ELF(DIV_REM_UNSIGNED,    "../test/insn_DISABLED/div_unsigned");
+TEST_F_ELF(DIV_REM_SIGNED,    "../test/insn_DISABLED/div_signed");
 
 #undef TEST_F_ELF
 
