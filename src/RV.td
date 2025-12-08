@@ -314,7 +314,8 @@ def FSUB : RVInsnF<[!cast<int>(0b00001), !cast<int>(0b00), ?, ?, !cast<int>(0b11
 def FMUL : RVInsnF<[!cast<int>(0b00010), !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FP.Val], "fmul.s",
   !strconcat(FExecutePrefix, "Model.setReg(Rd, Op1 * Op2);\n\t\t", IncPC)>;
 def FDIV : RVInsnF<[!cast<int>(0b00011), !cast<int>(0b00), ?, ?, !cast<int>(0b111), ?, OPC_FP.Val], "fdiv.s",
-  !strconcat(FExecutePrefix, "Model.setReg(Rd, Op1 / Op2);\n\t\t", IncPC)>;
+  !strconcat(FExecutePrefix, "Model.setReg(Rd, Op2 == 0.0f ? Op1 == 0.0f ? std::numeric_limits<float>::quiet_NaN() : Op1 > 0 ? "
+                             "std::numeric_limits<float>::infinity() : -std::numeric_limits<float>::infinity() : Op1 / Op2);\n\t\t", IncPC)>;
 def FMIN : RVInsnF<[!cast<int>(0b00101), !cast<int>(0b00), ?, ?, !cast<int>(0b000), ?, OPC_FP.Val], "fmin.s",
   !strconcat(FExecutePrefix, "Model.setReg(Rd, Op1 < Op2 ? Op1 : Op2);\n\t\t", IncPC)>;
 def FMAX : RVInsnF<[!cast<int>(0b00101), !cast<int>(0b00), ?, ?, !cast<int>(0b001), ?, OPC_FP.Val], "fmax.s",
