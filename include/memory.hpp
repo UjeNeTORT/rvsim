@@ -19,8 +19,8 @@ namespace rv32i_sim {
 namespace elf = ELFIO;
 
 const     uint32_t DEFAULT_ADDR_SPACE = 0xffff'ffffU;
-const     uint32_t DEFAULT_STACK_ADDR = 0x7fff'0000U;
-constexpr uint32_t DEFAULT_STACK_SIZE = 4096U;
+const     uint32_t DEFAULT_STACK_ADDR = 0x2b2a'9ac0U;
+constexpr uint32_t DEFAULT_STACK_SIZE = 0x1000;
 const     uint32_t DEFAULT_ENV_ADDR = 0x7fff'f000U;
 constexpr uint32_t ENV_SEG_SIZE = 64U;
 constexpr uint32_t DEFAULT_CANARY_SIZE = 256U;
