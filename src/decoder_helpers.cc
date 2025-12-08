@@ -122,4 +122,30 @@ uint32_t classifyS(float Op) {
   return Res;
 }
 
+float floatDivide(float Op1, float Op2) {
+  float result = 0.0f;
+  if (std::isnan(Op1) || std::isnan(Op2)) {
+      result = std::numeric_limits<float>::quiet_NaN();
+  } else if (std::isinf(Op1) && std::isinf(Op2)) {
+      result = std::numeric_limits<float>::quiet_NaN();
+  } else if (Op2 == 0.0f) {
+      if (Op1 == 0.0f) {
+          result = std::numeric_limits<float>::quiet_NaN();
+      } else {
+          bool sign = std::signbit(Op1) ^ std::signbit(Op2);
+          result = std::copysign(std::numeric_limits<float>::infinity(), sign ? -1.0f : 1.0f);
+      }
+  } else if (std::isinf(Op1)) {
+      bool sign = std::signbit(Op1) ^ std::signbit(Op2);
+      result = std::copysign(std::numeric_limits<float>::infinity(), sign ? -1.0f : 1.0f);
+  } else if (std::isinf(Op2)) {
+      bool sign = std::signbit(Op1) ^ std::signbit(Op2);
+      result = std::copysign(0.0f, sign ? -1.0f : 1.0f);
+  } else {
+      result = Op1 / Op2;
+  }
+
+  return result;
+}
+
 } // namespace RVDecoder

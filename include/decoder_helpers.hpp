@@ -21,5 +21,6 @@ std::tuple<uint32_t, uint32_t, uint32_t> getBArgs(std::vector<std::pair<uint32_t
 uint32_t getSTOREImm(std::vector<std::pair<uint32_t, std::string>> Encods);
 
 uint32_t classifyS(float Op);
+float floatDivide(float Op1, float Op2);
 
 } // namespace RVDecoder
