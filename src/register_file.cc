@@ -1,9 +1,12 @@
 #include "register_file.hpp"
 
+#include <bit>
 #include <cassert>
 #include <cstdint>
 #include <iostream>
 #include <vector>
+
+#include "spdlog/spdlog.h"
 
 namespace rv32i_sim {
 
@@ -44,21 +47,32 @@ bool RegisterFile::operator==(const RegisterFile& other) const {
 void RegisterFile::set(Register reg, int32_t val) {
   if (reg == Register::X0) return;
 
+  SPDLOG_INFO("set x[{}] <- {} ({:#x})",
+    static_cast<uint8_t>(reg), val, std::bit_cast<uint32_t>(val));
   intRegs_[static_cast<uint8_t>(reg)] = val;
 }
 
 void RegisterFile::setFp(FPRegister reg, float val) {
+  SPDLOG_INFO("set f[{}] <- {} ({:#x})",
+    static_cast<uint8_t>(reg), val, std::bit_cast<uint32_t>(val));
   fpRegs_[static_cast<uint8_t>(reg)] = val;
 }
 
 uint32_t RegisterFile::get(Register reg) const {
   assert(static_cast<uint32_t>(intRegs_[0]) == 0 && "Register X0 not zero");
 
-  return intRegs_[static_cast<uint8_t>(reg)];
+  uint32_t Res = intRegs_[static_cast<uint8_t>(reg)];
+  SPDLOG_INFO("get x[{}] -> {} ({:#x})",
+    static_cast<uint8_t>(reg), Res, Res);
+
+  return Res;
 }
 
 float RegisterFile::getFp(FPRegister reg) const {
-  return fpRegs_[static_cast<uint8_t>(reg)];
+  float Res = fpRegs_[static_cast<uint8_t>(reg)];
+  SPDLOG_INFO("get f[{}] -> {} ({:#x})",
+    static_cast<uint8_t>(reg), Res, std::bit_cast<uint32_t>(Res));
+  return Res;
 }
 
 std::ostream& RegisterFile::print(std::ostream& out) {
