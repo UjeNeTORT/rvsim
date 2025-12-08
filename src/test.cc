@@ -221,6 +221,7 @@ TEST_F_ELF(FMV_W_X,   "../test/insn_DISABLED/fmv_w_x");
 TEST_F_ELF(FCVT_W_S,  "../test/insn_DISABLED/fcvt_w_s");
 TEST_F_ELF(FCVT_WU_S, "../test/insn_DISABLED/fcvt_wu_s");
 TEST_F_ELF(SUM_FADD,  "../test/insn_DISABLED/sum_fadd");
+TEST_F_ELF(FIB,       "../test/elf/fib");
 
 #undef TEST_F_ELF
 

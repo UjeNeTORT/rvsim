@@ -266,33 +266,28 @@ uint8_t &MemoryModel::operator[](uint32_t Addr) {
 }
 
 uint8_t MemoryModel::readByte(uint32_t Addr) {
-  assert(checkRights(Addr, RIGHTS_R) && "No rights to read");
   return get<uint8_t>(Addr);
 }
 
 uint16_t MemoryModel::readHalf(uint32_t Addr) {
-  assert(checkRights(Addr, RIGHTS_R) && "No rights to read");
+  assert(Addr % sizeof(uint16_t) == 0 && "Address not aligned");
   return get<uint16_t>(Addr);
 }
 
 uint32_t MemoryModel::readWord(uint32_t Addr) {
-  assert(checkRights(Addr, RIGHTS_R) && "No rights to read");
   assert(Addr % sizeof(uint32_t) == 0 && "Address not aligned");
   return get<uint32_t>(Addr);
 }
 
 void MemoryModel::writeByte(uint32_t Addr, uint8_t Val) {
-  assert(checkRights(Addr, RIGHTS_W) && "No rights to write");
   set<uint8_t>(Addr, Val);
 }
 
 void MemoryModel::writeHalf(uint32_t Addr, uint16_t Val) {
-  assert(checkRights(Addr, RIGHTS_W) && "No rights to write");
   set<uint16_t>(Addr, Val);
 }
 
 void MemoryModel::writeWord(uint32_t Addr, uint32_t Val) {
-  assert(checkRights(Addr, RIGHTS_W) && "No rights to write");
   set<uint32_t>(Addr, Val);
 }
 
