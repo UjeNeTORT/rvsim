@@ -224,38 +224,6 @@ bool MemoryModel::isValid() const {
   return is_valid_;
 }
 
-// comparison is so complicated to deal with the cases of vectors with
-// non-meaningful zeros in the end
-bool MemoryModel::operator==(const MemoryModel& other) const {
-  // bool mem_eq = mem_ == other.mem_;
-  // if (!mem_eq) {
-    // std::size_t size = mem_.size();
-    // std::size_t other_size = other.mem_.size();
-
-    // if (size < other_size) {
-      // mem_eq = std::equal(mem_.begin(), mem_.end(), other.mem_.begin());
-
-      // for (unsigned i = size; i < other_size; i++) {
-        // if (other.mem_[i] != 0x00) return false;
-      // }
-
-      // mem_eq = true;
-    // } else if (size > other_size) {
-      // mem_eq = std::equal(other.mem_.begin(), other.mem_.end(), mem_.begin());
-
-      // for (unsigned i = size; i < other_size; i++) {
-        // if (mem_[i] != 0x00) return false;
-      // }
-
-      // mem_eq = true;
-    // }
-  // }
-
-  // todo maybe i can improve this
-  // return endian_ == other.endian_ && mem_eq;
-  return endian_ == other.endian_;
-}
-
 void MemoryModel::memCopy(uint32_t Addr, const void *Src, uint32_t N) {
   const uint8_t *CSrc = reinterpret_cast<const uint8_t *>(Src);
   for (size_t Idx = 0; Idx != N; ++Addr, ++Idx)

@@ -130,7 +130,7 @@ public:
 };
 
 bool RVModel::operator== (const RVModel& other) const {
-  return pc_ == other.pc_ && regs_ == other.regs_ && mem_ == other.mem_;
+  return pc_ == other.pc_ && regs_ == other.regs_;
 }
 
 uint32_t RVModel::getPC() const {
