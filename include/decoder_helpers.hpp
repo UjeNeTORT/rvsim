@@ -23,4 +23,9 @@ uint32_t getSTOREImm(std::vector<std::pair<uint32_t, std::string>> Encods);
 uint32_t classifyS(float Op);
 float floatDivide(float Op1, float Op2);
 
+int32_t fcvt_w_s(float f);
+uint32_t fcvt_wu_s(float f);
+float fcvt_s_w(int32_t i);
+float fcvt_s_wu(uint32_t u);
+
 } // namespace RVDecoder

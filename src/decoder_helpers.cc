@@ -148,4 +148,52 @@ float floatDivide(float Op1, float Op2) {
   return result;
 }
 
+int32_t fcvt_w_s(float f) {
+  int32_t result = 0;
+  if (std::isnan(f) || f == std::numeric_limits<float>::infinity()) {
+      result = std::numeric_limits<int32_t>::max();
+  } else if (f == -std::numeric_limits<float>::infinity()) {
+      result = std::numeric_limits<int32_t>::min();
+  } else {
+      long double r = std::nearbyint(static_cast<long double>(f)); // RNE
+      if (r > std::numeric_limits<int32_t>::max()) {
+          result = std::numeric_limits<int32_t>::max();
+      } else if (r < std::numeric_limits<int32_t>::min()) {
+          result = std::numeric_limits<int32_t>::min();
+      } else {
+          result = static_cast<int32_t>(r);
+      }
+  }
+
+  return static_cast<uint32_t>(result);
+}
+
+uint32_t fcvt_wu_s(float f) {
+  uint32_t result = 0;
+  if (std::isnan(f) || f == std::numeric_limits<float>::infinity()) {
+      result = std::numeric_limits<uint32_t>::max();
+  } else if (f == -std::numeric_limits<float>::infinity()) {
+      result = 0u;
+  } else {
+      long double r = std::nearbyint(static_cast<long double>(f));
+      if (r < 0.0L) {
+          result = 0u;
+      } else if (r > static_cast<long double>(std::numeric_limits<uint32_t>::max())) {
+          result = std::numeric_limits<uint32_t>::max();
+      } else {
+          result = static_cast<uint32_t>(r);
+      }
+  }
+
+  return result;
+}
+
+float fcvt_s_w(int32_t i) {
+  return static_cast<float>(i);
+}
+
+float fcvt_s_wu(uint32_t u) {
+  return static_cast<float>(u);
+}
+
 } // namespace RVDecoder
