@@ -10,7 +10,8 @@ RUN wget https://apt.llvm.org/llvm.sh
 RUN chmod +x llvm.sh
 RUN ./llvm.sh 21
 
-RUN apt-get update && apt-get install -y llvm-21-dev clang-21
+RUN apt-get update && \
+    apt-get install -y llvm-21-dev clang-21 gcc-riscv64-unknown-elf
 
 ENV CC=clang-21
 ENV CXX=clang++-21
