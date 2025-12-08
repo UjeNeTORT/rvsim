@@ -388,12 +388,12 @@ def FCVT_WU_S : RVInsnF<[!cast<int>(0b11000), !cast<int>(0b00), !cast<int>(0b000
              "Model.setReg(Rd, fcvt_wu_s(Op));\n\t\t", IncPC)>;
 def FCVT_S_W  : RVInsnF<[!cast<int>(0b11010), !cast<int>(0b00), !cast<int>(0b00000), ?, !cast<int>(0b111), ?, OPC_FP.Val], "fcvt.s.w",
   !strconcat("int32_t Op = Model.getReg(static_cast<Sim::Register>(getOperand(0)));\n\t\t"
-             "Sim::Register Rd = static_cast<Sim::Register>(getOperand(1));\n\t\t"
-             "Model.setReg(Rd, fcvt_s_w(Op));\n\t\t", IncPC)>;
+             "Sim::FPRegister Fd = static_cast<Sim::FPRegister>(getOperand(1));\n\t\t"
+             "Model.setReg(Fd, fcvt_s_w(Op));\n\t\t", IncPC)>;
 def FCVT_S_WU : RVInsnF<[!cast<int>(0b11010), !cast<int>(0b00), !cast<int>(0b00001), ?, !cast<int>(0b111), ?, OPC_FP.Val], "fcvt.s.wu",
   !strconcat("uint32_t Op = Model.getReg(static_cast<Sim::Register>(getOperand(0)));\n\t\t"
-             "Sim::Register Rd = static_cast<Sim::Register>(getOperand(1));\n\t\t"
-             "Model.setReg(Rd, fcvt_s_wu(Op));\n\t\t", IncPC)>;
+             "Sim::FPRegister Fd = static_cast<Sim::FPRegister>(getOperand(1));\n\t\t"
+             "Model.setReg(Fd, fcvt_s_wu(Op));\n\t\t", IncPC)>;
 
 def EBREAK : RVInsnI<[!cast<int>(0b000000000001), // funct12
                       !cast<int>(0b00000),        // rs1
