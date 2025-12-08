@@ -296,8 +296,8 @@ def FLW : RVInsnLOAD<[?, ?, !cast<int>(0b010), ?, OPC_LD_FP.Val], "flw",
   !strconcat(LOADExecutePrefix, "Model.setReg(static_cast<Sim::FPRegister>(getOperand(2)), "
                                 "std::bit_cast<float>(Model.readWord(MemAddr)));\n\t\t", IncPC)>;
 def FSW : RVInsnSTORE<[?, ?, ?, !cast<int>(0b010), ?, OPC_ST_FP.Val], "fsw",
-  !strconcat(STORExecutePrefix, "float FOp2 = Model.getReg(static_cast<Sim::FPRegister>(getOperand(2)));\n\t\t"
-                                "Model.writeWord(MemAddr, std::bit_cast<uint32_t>(FOp2));\n\t\t", IncPC)>;
+  !strconcat(STORExecutePrefix, "float FOp = Model.getReg(static_cast<Sim::FPRegister>(getOperand(1)));\n\t\t"
+                                "Model.writeWord(MemAddr, std::bit_cast<uint32_t>(FOp));\n\t\t", IncPC)>;
 
 defvar FExecutePrefix = "auto Rs2 = static_cast<Sim::FPRegister>(getOperand(0));\n\t\t"
                         "auto Rs1 = static_cast<Sim::FPRegister>(getOperand(1));\n\t\t"
