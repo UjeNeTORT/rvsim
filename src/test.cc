@@ -216,6 +216,8 @@ TEST_F_ELF(DIV_REM_SIGNED,   "../test/insn_DISABLED/div_signed");
 TEST_F_ELF(LD_ST,     "../test/insn_DISABLED/ld_st");
 TEST_F_ELF(FADD,      "../test/insn_DISABLED/fadd");
 TEST_F_ELF(FDIV,      "../test/insn_DISABLED/fdiv");
+TEST_F_ELF(FMV_X_W,   "../test/insn_DISABLED/fmv_x_w");
+TEST_F_ELF(FMV_W_X,   "../test/insn_DISABLED/fmv_w_x");
 
 
 
