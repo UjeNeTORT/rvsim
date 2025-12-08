@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <cfloat>
+#include <spdlog/spdlog.h>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -165,7 +166,12 @@ int32_t fcvt_w_s(float f) {
       }
   }
 
-  return static_cast<uint32_t>(result);
+  result = static_cast<int32_t>(result);
+
+  SPDLOG_INFO("converting float {} ({:#x}) -> int32_t {} ({:#x}) ",
+    f, std::bit_cast<uint32_t>(f), result, result);
+
+  return result;
 }
 
 uint32_t fcvt_wu_s(float f) {
@@ -185,15 +191,23 @@ uint32_t fcvt_wu_s(float f) {
       }
   }
 
+  SPDLOG_INFO("converting float {} ({:#x}) -> uint32_t {} ({:#x}) ",
+    f, std::bit_cast<uint32_t>(f), result, result);
   return result;
 }
 
 float fcvt_s_w(int32_t i) {
-  return static_cast<float>(i);
+  float f = static_cast<float>(i);
+  SPDLOG_INFO("converting int32 {} -> float {} ({:#x})",
+    i, f, std::bit_cast<uint32_t>(f));
+  return f;
 }
 
 float fcvt_s_wu(uint32_t u) {
-  return static_cast<float>(u);
+  float f = static_cast<float>(u);
+  SPDLOG_INFO("converting uint32 {} -> float {} ({:#x})",
+    u, f, std::bit_cast<uint32_t>(f));
+  return f;
 }
 
 } // namespace RVDecoder
