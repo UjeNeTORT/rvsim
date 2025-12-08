@@ -153,11 +153,20 @@ def MINU : RVInsnR<[!cast<int>(0b0000101), ?, ?, !cast<int>(0b101), ?, OPC_OP.Va
   !strconcat(RExecutePrefix, "Model.setReg(Rd, Op1 < Op2 ? Op1 : Op2);\n\t\t", IncPC)>;
 
 def SEXT_B : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00100), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "sext.b",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, sign_extend_8_to_32(Op1));\n\t\t", IncPC)>;
+  !strconcat("Sim::Register Rs = static_cast<Sim::Register>(getOperand(0));\n\t\t"
+             "Sim::Register Rd = static_cast<Sim::Register>(getOperand(1));\n\t\t"
+             "uint32_t Op = Model.getReg(Rs);\n\t\t"
+             "Model.setReg(Rd, sign_extend_8_to_32(Op));\n\t\t", IncPC)>;
 def SEXT_H : RVInsnR<[!cast<int>(0b0110000), !cast<int>(0b00101), ?, !cast<int>(0b001), ?, OPC_OP_IMM.Val], "sext.h",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, sign_extend_16_to_32(Op1));\n\t\t", IncPC)>;
+  !strconcat("Sim::Register Rs = static_cast<Sim::Register>(getOperand(0));\n\t\t"
+             "Sim::Register Rd = static_cast<Sim::Register>(getOperand(1));\n\t\t"
+             "uint32_t Op = Model.getReg(Rs);\n\t\t"
+             "Model.setReg(Rd, sign_extend_16_to_32(Op));\n\t\t", IncPC)>;
 def ZEXT_H : RVInsnR<[!cast<int>(0b0000100), !cast<int>(0b00000), ?, !cast<int>(0b100), ?, OPC_OP.Val], "zext.h",
-  !strconcat(RExecutePrefix, "Model.setReg(Rd, zero_extend_16_to_32(Op1));\n\t\t", IncPC)>;
+  !strconcat("Sim::Register Rs = static_cast<Sim::Register>(getOperand(0));\n\t\t"
+             "Sim::Register Rd = static_cast<Sim::Register>(getOperand(1));\n\t\t"
+             "uint32_t Op = Model.getReg(Rs);\n\t\t"
+             "Model.setReg(Rd, zero_extend_16_to_32(Op));\n\t\t", IncPC)>;
 
 def ROL  : RVInsnR<[!cast<int>(0b0110000), ?, ?, !cast<int>(0b001), ?, OPC_OP.Val], "rol",
   !strconcat(RExecutePrefix, "uint32_t Shamt = Op2 & 0x1f;\n\t\t"
