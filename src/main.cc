@@ -54,7 +54,5 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  Model.execute();
-
-  return 0;
+  return Model.execute();
 }

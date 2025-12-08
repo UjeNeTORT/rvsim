@@ -120,9 +120,9 @@ public:
 
   uint32_t setUpEnvironment(uint32_t MainPC, uint32_t EnvAddr);
 
-  void execute() override;
+  uint32_t execute() override;
   void envCall() override;
-  void exit() override;
+  uint32_t exit() override;
 
   void setLogs(int logs);
 
@@ -158,7 +158,7 @@ std::unique_ptr<RVISA::IRVInsn> RVModel::decode(uint32_t insn_code) {
   return RVISA::decode(insn_code);
 }
 
-void RVModel::execute() {
+uint32_t RVModel::execute() {
   SPDLOG_INFO("begin execution <pc = {:#x}>", pc_);
 
   execution_ = true;
@@ -178,8 +178,10 @@ void RVModel::execute() {
 
     if (!execution_) break;
   }
-
-  SPDLOG_INFO("end execution <pc = {:#x}>", pc_);
+  uint32_t ExitCode = getReg(Register::A0);
+  SPDLOG_INFO("end execution, exit code = {}, <pc = {:#x}>",
+    ExitCode, pc_);
+  return ExitCode; // exit code
 }
 
 void RVModel::envCall() {
@@ -189,8 +191,9 @@ void RVModel::envCall() {
 // todo return control to exec env
 // todo rename
 // todo make possible step by step debugging
-void RVModel::exit() {
+uint32_t RVModel::exit() {
   execution_ = false;
+  return getReg(Register::A0);
 }
 
 void RVModel::setLogs(int logs) {

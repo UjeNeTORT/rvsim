@@ -68,10 +68,9 @@ static int ecallWrite(IRVModel &Model) {
 
 static int ecallExit(IRVModel &Model) {
   assert(Model.isValid());
-  uint32_t ExitCode = Model.getReg(Register::A0);
 
+  uint32_t ExitCode = Model.exit();
   SPDLOG_INFO("ecall \"exit\" (a0 = {})", ExitCode);
-  Model.exit();
   return ExitCode;
 }
 

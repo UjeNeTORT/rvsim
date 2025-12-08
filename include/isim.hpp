@@ -31,9 +31,9 @@ public:
   virtual void setReg(FPRegister reg, float val) = 0;
   virtual IOInterface &io() = 0;
 
-  virtual void execute() = 0;
+  virtual uint32_t execute() = 0;
   virtual void envCall() = 0;
-  virtual void exit() = 0;
+  virtual uint32_t exit() = 0;
 
   virtual std::ostream& print(std::ostream& out) = 0;
 

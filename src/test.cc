@@ -213,6 +213,8 @@ TEST_F_ELF(ARGV,    "../test/elf/argc_argv");
 TEST_F_ELF(MUL,    "../test/insn_DISABLED/mul");
 TEST_F_ELF(DIV_REM_UNSIGNED,    "../test/insn_DISABLED/div_unsigned");
 TEST_F_ELF(DIV_REM_SIGNED,    "../test/insn_DISABLED/div_signed");
+TEST_F_ELF(LD_ST,    "../test/insn_DISABLED/ld_st");
+
 
 #undef TEST_F_ELF
 
