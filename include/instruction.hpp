@@ -3,7 +3,7 @@
 
 #include <bitset>
 #include <cassert>
-#include <variant>
+#include <cstdint>
 
 class IRVModel;
 
@@ -41,6 +41,6 @@ std::ostream &operator<<(std::ostream &Out, const IRVInsn &Insn) {
   return Out;
 }
 
-} // RVISA
+} // namespace RVISA
 
 #endif // INSTRUCTION_HPP
