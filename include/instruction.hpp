@@ -18,7 +18,7 @@ public:
 	virtual std::string getName() const = 0;
 
 	// @returns index of the pushed operand
-	virtual uint32_t addOperand(uint32_t OpVal, std::string Name) = 0;
+	virtual void setOperand(uint32_t OpIdx, uint32_t OpVal, std::string Name) = 0;
 	virtual uint32_t getOperand(uint32_t OpIdx) const = 0;
 	virtual uint32_t nOperands() const = 0;
 
@@ -31,7 +31,7 @@ public:
 	virtual uint32_t encode(std::vector<uint32_t> Operands) = 0;
 
 	// @brief update instruction by encoding different operands
-	virtual uint32_t encode(uint32_t NewOpcode) = 0;
+	virtual void encode(uint32_t NewOpcode) = 0;
 
 	virtual void execute(rv32i_sim::IRVModel &Model) const = 0;
 	virtual void print(std::ostream &Out) const = 0;

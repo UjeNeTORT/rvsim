@@ -116,11 +116,8 @@ public:
     // constructors
     OS << "\t" << Name_ << "() : " << Name_ << "(RawEncoding_) {} // w/a to assign some operands even for default constructed insn;\n\n";
     OS << "\t" << Name_ << "(uint32_t Opcode) : Opcode_(Opcode) {\n";
-    for (uint32_t OpIdx = 0, NOps = nOperands(); OpIdx != NOps; ++OpIdx)
-      OS << "\t\t""addOperand((Opcode & " << getOperandMask(OpIdx)
-         << ") >> " << getOperandMaskLSB(OpIdx) << ", "
-         << "\""   << getOperandName(OpIdx) << "\""
-         << ");\n";
+    OS << "\t\t" << "Operands_.resize(" << nOperands() << ");\n";
+    OS << "\t\t" << "encode_(Opcode);\n";
     OS << "\t}\n\n";
 
     // opcode
@@ -141,16 +138,17 @@ public:
        << "\t}\n\n";
 
     // operand functions
-    OS << "\t" << "// returns index of the pushed operand\n";
-    OS << "\t" << "uint32_t addOperand(uint32_t OpVal, std::string Name) override {\n"
-       << "\t\t" << "Operands_.push_back(std::pair<uint32_t, std::string>(OpVal, Name));\n"
-       << "\t\t" << "return Operands_.size() - 1;\n"
+    OS << "\t" << "// sets the operand\n";
+    OS << "\t" << "void setOperand(uint32_t OpIdx, uint32_t OpVal, std::string Name) override {\n"
+       << "\t\t" << "assert(OpIdx < " << nOperands() << ");\n"
+       << "\t\t" << "Operands_[OpIdx].first = OpVal;\n"
+       << "\t\t" << "Operands_[OpIdx].second = Name;\n"
        << "\t" << "}\n\n";
     OS << "\t" << "uint32_t getOperand(uint32_t OpIdx) const override {\n"
        << "\t\t" << "return Operands_[OpIdx].first;\n"
        << "\t" << "}\n\n";
     OS << "\t" << "uint32_t nOperands() const override {\n"
-       << "\t\t" << "return Operands_.size();\n"
+       << "\t\t" << "return " << nOperands() << ";\n"
        << "\t" << "}\n\n";
 
     // encode
@@ -174,11 +172,23 @@ public:
     OS << "\t" << "}\n\n";
 
     // encode (new Opcode)
+    OS << "private:\n";
     OS << "\t" << "// encode\n";
-	  OS << "\t" << "uint32_t encode(uint32_t NewOpcode) override {\n\t\t";
+	  OS << "\t" << "void encode_(uint32_t NewOpcode) {\n\t\t";
 	  OS << "\t" << "assert((Opcode_ & getTypeMask()) == (NewOpcode & getTypeMask()));\n\t\t";
-    OS << "*this = " << getName() << "(NewOpcode);\n\t\t";
-    OS << "return Opcode_;\n\t";
+    for (uint32_t OpIdx = 0, NOps = nOperands(); OpIdx != NOps; ++OpIdx)
+      OS << "\t\t""setOperand(" << OpIdx << ", (NewOpcode & " << getOperandMask(OpIdx)
+         << ") >> " << getOperandMaskLSB(OpIdx) << ", "
+         << "\""   << getOperandName(OpIdx) << "\""
+         << ");\n\t";
+    OS << "Opcode_ = NewOpcode;\n";
+    OS << "}\n\n";
+
+    // encode (new Opcode)
+    OS << "public:\n";
+    OS << "\t" << "// encode\n";
+	  OS << "\t" << "void encode(uint32_t NewOpcode) override {\n\t\t";
+	  OS << "\t" << "encode_(NewOpcode);\n";
     OS << "}\n\n";
 
     // execute
