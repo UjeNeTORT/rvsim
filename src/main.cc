@@ -1,6 +1,5 @@
 #include <cstdint>
 #include <iostream>
-#include <filesystem>
 
 #include <cxxopts.hpp>
 #include <vector>

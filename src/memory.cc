@@ -245,7 +245,7 @@ T MemoryModel::get(uint32_t Addr) {
   uint32_t PageAddr = preparePage(Addr);
   uint32_t Offset   = Addr - PageAddr;
   T Val = mem_[PageAddr].get<T>(Offset);
-  SPDLOG_INFO("get {:#x} <- mem[{:#x}]; // page: {:#x} offset: {:#x}",
+  SPDLOG_DEBUG("get {:#x} <- mem[{:#x}]; // page: {:#x} offset: {:#x}",
                 Val, Addr, PageAddr, Offset);
   return Val;
 }
@@ -255,7 +255,7 @@ void MemoryModel::set(uint32_t Addr, T Val) {
   uint32_t PageAddr = preparePage(Addr);
   uint32_t Offset   = Addr - PageAddr;
   mem_[PageAddr].set<T>(Offset, Val);
-  SPDLOG_INFO("Set mem[{:#x}] = {:#x}; // page: {:#x} offset: {:#x}",
+  SPDLOG_DEBUG("Set mem[{:#x}] = {:#x}; // page: {:#x} offset: {:#x}",
                 Addr, Val, PageAddr, Offset);
 }
 
