@@ -27,7 +27,7 @@ namespace elf = ELFIO;
 
 namespace rv32i_sim {
 class RVModel final : public IRVModel {
-  std::unique_ptr<IDecoder> decoder_ = std::make_unique<RVISA::NaiveDecoder>();
+  std::unique_ptr<IDecoder> decoder_ = std::make_unique<RVISA::Decoder>();
   MemoryModel mem_;
   RegisterFile regs_;
   ExecEnv env_;
@@ -166,7 +166,7 @@ uint32_t RVModel::execute() {
   execution_ = true;
 
   while (execution_ && is_valid_) {
-    uint32_t insn_code = mem_.readWord(pc_); // fetch
+    uint32_t insn_code = mem_.readWord(pc_);
     std::shared_ptr<RVISA::IRVInsn> Insn = decode(insn_code);
     if (!Insn) break;
 

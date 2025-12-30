@@ -30,6 +30,9 @@ public:
 	// @returns freshly encoded instruction
 	virtual uint32_t encode(std::vector<uint32_t> Operands) = 0;
 
+	// @brief update instruction by encoding different operands
+	virtual uint32_t encode(uint32_t NewOpcode) = 0;
+
 	virtual void execute(rv32i_sim::IRVModel &Model) const = 0;
 	virtual void print(std::ostream &Out) const = 0;
 

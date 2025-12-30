@@ -7,6 +7,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <bitset>
+#include <cstdint>
 #include <set>
 
 using namespace llvm;
@@ -172,6 +173,14 @@ public:
     OS << "\t\t" << "return Opcode_;\n";
     OS << "\t" << "}\n\n";
 
+    // encode (new Opcode)
+    OS << "\t" << "// encode\n";
+	  OS << "\t" << "uint32_t encode(uint32_t NewOpcode) override {\n\t\t";
+	  OS << "\t" << "assert((Opcode_ & getTypeMask()) == (NewOpcode & getTypeMask()));\n\t\t";
+    OS << "*this = " << getName() << "(NewOpcode);\n\t\t";
+    OS << "return Opcode_;\n\t";
+    OS << "}\n\n";
+
     // execute
     OS << "\t" << "void execute(rv32i_sim::IRVModel &Model) const override {\n"
        << "\t\t" << ExecuteCode_ << '\n'
@@ -201,9 +210,7 @@ class DecoderEmitter final {
                                std::vector<EncodingField> &EncFields,
                                uint32_t &RawEncoding) const;
 
-  // static void emitDecoderFunc(raw_ostream &OS,
-  //                             const std::vector<InstructionInfo> &InsnInfos);
-  static void emitNaiveDecoderFunc(raw_ostream &OS,
+  static void emitDecoder(raw_ostream &OS,
                               const std::vector<InstructionInfo> &InsnInfos);
   static void emitTypesEnum(raw_ostream &OS,
                             const std::vector<InstructionInfo> &InsnInfos);
@@ -344,23 +351,35 @@ uint32_t DecoderEmitter::formEncodingFields(const Record * const Def,
   return EncodingMask;
 }
 
-void DecoderEmitter::emitNaiveDecoderFunc(raw_ostream &OS,
-                                     const std::vector<InstructionInfo> &InsnInfos) {
-  OS << "class NaiveDecoder : public IDecoder {\n\t"
-     << "std::shared_ptr<IRVInsn> decode(uint32_t Opcode) override {\n\t";
-  for (auto &II : InsnInfos) {
-    OS << "\t""if (uint32_t RawOpcode = "
-                        "Opcode & " << II.getName()  << "::getTypeMask()) {\n\t"
-       << "\t\t""if (RawOpcode == 0b" << std::bitset<32>(II.getRawEncoding()).to_string() << ") {\n\t";
-    OS << "\t\t\t""return std::make_shared<" << II.getName() << ">(Opcode);\n\t"
-      << "\t\t""}\n\t"
-      << "\t""}\n\t";
+void DecoderEmitter::emitDecoder(raw_ostream &OS,
+                                 const std::vector<InstructionInfo> &InsnInfos) {
+  OS << "class Decoder : public IDecoder {\n\t";
+  OS << "std::unordered_map<uint64_t, std::shared_ptr<IRVInsn>> Insns_;\n";
+  OS << "public:\n\t";
+
+  OS << "Decoder() {\n\t\t";
+  for (auto &II: InsnInfos) {
+    OS << "Insns_[((uint64_t)" << II.getTypeMask() << " << 32) | "
+                    << II.getRawEncoding() << "] = std::make_shared<"
+                    << II.getName() << ">();\n\t\t";
   }
 
-  OS << "\t""std::cerr << \"Fatal - failed to decode [\" << std::hex << std::showbase "
-                      "<< Opcode << std::dec << \"]\\n\\n\";\n\t";
-  OS << "\t""return nullptr;\n\t";
-  OS << "} // decode()\n\t";
+  OS << "}\n\t";
+
+  OS << "std::shared_ptr<IRVInsn> decode(uint32_t Opcode) override {\n\t\t";
+
+  std::set<uint32_t> UniqueMasks;
+  for (auto &II: InsnInfos) UniqueMasks.insert(II.getTypeMask());
+
+  OS << "auto ";
+  for (auto &M : UniqueMasks) {
+    OS << "It = Insns_.find(((uint64_t)" << M << " << 32) | " << "(Opcode & " << M << "));\n\t\t";
+    OS << "if (It != Insns_.end()) { It->second->encode(Opcode); return It->second; }\n\n\t\t";
+  }
+
+  OS << "return nullptr;\n\t";
+
+  OS << "} // decode()\n";
 
   OS << "};\n";
   return;
@@ -445,7 +464,7 @@ void DecoderEmitter::run(raw_ostream &OS) {
     OS << '\n';
   }
 
-  emitNaiveDecoderFunc(OS, InsnInfos);
+  emitDecoder(OS, InsnInfos);
 
   OS << "} // RVISA\n";
 }
