@@ -55,14 +55,14 @@ std::vector<uint32_t> createJalArgs(uint32_t Offset, uint32_t Rd) {
   return Res;
 }
 
-std::pair<uint32_t, uint32_t> getJalArgs(std::vector<std::pair<uint32_t, std::string>> Encods) {
+std::pair<uint32_t, uint32_t> getJalArgs(std::vector<uint32_t> Encods) {
   assert(Encods.size() == 5);
   uint32_t Offset = 0;
-  Offset |= Encods[1].first << 1;
-  Offset |= Encods[2].first << 11;
-  Offset |= Encods[3].first << 12;
-  Offset |= Encods[0].first << 20;
-  return std::pair<uint32_t, uint32_t>(Offset, Encods[4].first);
+  Offset |= Encods[1] << 1;
+  Offset |= Encods[2] << 11;
+  Offset |= Encods[3] << 12;
+  Offset |= Encods[0] << 20;
+  return std::pair<uint32_t, uint32_t>(Offset, Encods[4]);
 }
 
 std::vector<uint32_t> createBArgs(uint32_t Imm, uint32_t Rs2, uint32_t Rs1) {
@@ -76,22 +76,22 @@ std::vector<uint32_t> createBArgs(uint32_t Imm, uint32_t Rs2, uint32_t Rs1) {
   return Res;
 }
 
-std::tuple<uint32_t, uint32_t, uint32_t> getBArgs(std::vector<std::pair<uint32_t, std::string>> Encods) {
+std::tuple<uint32_t, uint32_t, uint32_t> getBArgs(std::vector<uint32_t> Encods) {
   assert(Encods.size() == 6);
   uint32_t Imm = 0;
-  Imm |= (Encods[0].first & 1) << 12;
-  Imm |= (Encods[1].first & 0x3f) << 5;
-  Imm |= (Encods[4].first & 0xf) << 1;
-  Imm |= (Encods[5].first & 1) << 11;
+  Imm |= (Encods[0] & 1) << 12;
+  Imm |= (Encods[1] & 0x3f) << 5;
+  Imm |= (Encods[4] & 0xf) << 1;
+  Imm |= (Encods[5] & 1) << 11;
   return std::tuple<uint32_t, uint32_t, uint32_t>(
-    Imm, Encods[2].first /*Rs2*/, Encods[3].first /*Rs1*/
+    Imm, Encods[2] /*Rs2*/, Encods[3] /*Rs1*/
   );
 }
 
-uint32_t getSTOREImm(std::vector<std::pair<uint32_t, std::string>> Encods) {
+uint32_t getSTOREImm(std::vector<uint32_t> Encods) {
   assert(Encods.size() == 4);
-  uint32_t Imm = (Encods[0].first & 0x7f) << 5;
-  Imm |= Encods[3].first & 0x1f;
+  uint32_t Imm = (Encods[0] & 0x7f) << 5;
+  Imm |= Encods[3] & 0x1f;
   return Imm;
 }
 

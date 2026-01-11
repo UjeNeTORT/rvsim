@@ -7,6 +7,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include <bitset>
+#include <cstdint>
 #include <set>
 
 using namespace llvm;
@@ -108,18 +109,15 @@ public:
     OS << "\t" << "uint32_t Opcode_ = RawEncoding_; // fully encoded instruction\n";
     OS << "\t" << "std::string AsmStr_ = \"" << AsmStr_ << "\";\n";
 
-    OS << "\t" << "std::vector<std::pair<uint32_t, std::string>> Operands_;\n\n";
+    OS << "\t" << "std::vector<uint32_t> Operands_;\n\n";
 
     OS << "public:\n";
 
     // constructors
     OS << "\t" << Name_ << "() : " << Name_ << "(RawEncoding_) {} // w/a to assign some operands even for default constructed insn;\n\n";
     OS << "\t" << Name_ << "(uint32_t Opcode) : Opcode_(Opcode) {\n";
-    for (uint32_t OpIdx = 0, NOps = nOperands(); OpIdx != NOps; ++OpIdx)
-      OS << "\t\t\t""addOperand((Opcode & " << getOperandMask(OpIdx)
-         << ") >> " << getOperandMaskLSB(OpIdx) << ", "
-         << "\""   << getOperandName(OpIdx) << "\""
-         << ");\n";
+    OS << "\t\t" << "Operands_.resize(" << nOperands() << ");\n";
+    OS << "\t\t" << "encode_(Opcode);\n";
     OS << "\t}\n\n";
 
     // opcode
@@ -140,16 +138,16 @@ public:
        << "\t}\n\n";
 
     // operand functions
-    OS << "\t" << "// returns index of the pushed operand\n";
-    OS << "\t" << "uint32_t addOperand(uint32_t OpVal, std::string Name) override {\n"
-       << "\t\t" << "Operands_.push_back(std::pair<uint32_t, std::string>(OpVal, Name));\n"
-       << "\t\t" << "return Operands_.size() - 1;\n"
+    OS << "\t" << "// sets the operand\n";
+    OS << "\t" << "void setOperand(uint32_t OpIdx, uint32_t OpVal) override {\n"
+       << "\t\t" << "assert(OpIdx < " << nOperands() << ");\n"
+       << "\t\t" << "Operands_[OpIdx] = OpVal;\n"
        << "\t" << "}\n\n";
     OS << "\t" << "uint32_t getOperand(uint32_t OpIdx) const override {\n"
-       << "\t\t" << "return Operands_[OpIdx].first;\n"
+       << "\t\t" << "return Operands_[OpIdx];\n"
        << "\t" << "}\n\n";
     OS << "\t" << "uint32_t nOperands() const override {\n"
-       << "\t\t" << "return Operands_.size();\n"
+       << "\t\t" << "return " << nOperands() << ";\n"
        << "\t" << "}\n\n";
 
     // encode
@@ -164,13 +162,32 @@ public:
        << "\t" << "uint32_t encode(std::vector<uint32_t> Operands) override {\n"
        << "\t\t" << "(void) Operands; // unused var warning for insns w/o operands\n";
     for (uint32_t OpIdx = 0; OpIdx != nOperands(); ++OpIdx) {
-      OS << "\t\t" << "Opcode_ |= Operands.at(" << OpIdx << ") << "
+      OS << "\t\t" << "Opcode_     |= Operands.at(" << OpIdx << ") << "
                    << getOperandMaskLSB(OpIdx) << "; // "
                    << getOperandName(OpIdx) << "\n";
-      OS << "\t\t" << "Operands_[" << OpIdx << "].first = Operands.at(" << OpIdx << ");\n";
+      OS << "\t\t" << "Operands_[" << OpIdx << "] = Operands.at(" << OpIdx << ");\n";
     }
     OS << "\t\t" << "return Opcode_;\n";
     OS << "\t" << "}\n\n";
+
+    // encode (new Opcode)
+    OS << "private:\n\t";
+    OS << "// encode\n\t";
+	  OS << "void encode_(uint32_t NewOpcode) {\n\t\t";
+	  OS << "assert((Opcode_ & getTypeMask()) == (NewOpcode & getTypeMask()));\n\t\t";
+    for (uint32_t OpIdx = 0, NOps = nOperands(); OpIdx != NOps; ++OpIdx)
+      OS << "setOperand(" << OpIdx << ", (NewOpcode & " << getOperandMask(OpIdx)
+         << ") >> " << getOperandMaskLSB(OpIdx)
+         << ");\n\t\t";
+    OS << "Opcode_ = NewOpcode;\n\t";
+    OS << "}\n\n";
+
+    // encode (new Opcode)
+    OS << "public:\n";
+    OS << "\t" << "// encode\n";
+	  OS << "\t" << "void encode(uint32_t NewOpcode) override {\n\t\t";
+	  OS << "\t" << "encode_(NewOpcode);\n";
+    OS << "}\n\n";
 
     // execute
     OS << "\t" << "void execute(rv32i_sim::IRVModel &Model) const override {\n"
@@ -201,7 +218,7 @@ class DecoderEmitter final {
                                std::vector<EncodingField> &EncFields,
                                uint32_t &RawEncoding) const;
 
-  static void emitDecoderFunc(raw_ostream &OS,
+  static void emitDecoder(raw_ostream &OS,
                               const std::vector<InstructionInfo> &InsnInfos);
   static void emitTypesEnum(raw_ostream &OS,
                             const std::vector<InstructionInfo> &InsnInfos);
@@ -342,23 +359,37 @@ uint32_t DecoderEmitter::formEncodingFields(const Record * const Def,
   return EncodingMask;
 }
 
-void DecoderEmitter::emitDecoderFunc(raw_ostream &OS,
-                                     const std::vector<InstructionInfo> &InsnInfos) {
-  OS << "std::unique_ptr<IRVInsn> decode(uint32_t Opcode) {\n";
-  for (auto &II : InsnInfos) {
-    OS << "\t""if (uint32_t RawOpcode = "
-                        "Opcode & " << II.getName()  << "::getTypeMask()) {\n"
-       << "\t\t""if (RawOpcode == 0b" << std::bitset<32>(II.getRawEncoding()).to_string() << ") {\n"
-       << "\t\t\t""std::unique_ptr<IRVInsn>Insn(new " << II.getName() << "(Opcode));\n";
-    OS << "\t\t\t""return Insn;\n"
-      << "\t\t""}\n"
-      << "\t""}\n";
+void DecoderEmitter::emitDecoder(raw_ostream &OS,
+                                 const std::vector<InstructionInfo> &InsnInfos) {
+  OS << "class Decoder : public IDecoder {\n\t";
+  OS << "std::unordered_map<uint64_t, std::shared_ptr<IRVInsn>> Insns_;\n";
+  OS << "public:\n\t";
+
+  OS << "Decoder() {\n\t\t";
+  for (auto &II: InsnInfos) {
+    OS << "Insns_[((uint64_t)" << II.getTypeMask() << " << 32) | "
+                    << II.getRawEncoding() << "] = std::make_shared<"
+                    << II.getName() << ">();\n\t\t";
   }
 
-  OS << "\t""std::cerr << \"Fatal - failed to decode [\" << std::hex << std::showbase "
-                      "<< Opcode << std::dec << \"]\\n\\n\";\n";
-  OS << "\t""return nullptr;\n";
+  OS << "}\n\t";
+
+  OS << "std::shared_ptr<IRVInsn> decode(uint32_t Opcode) override {\n\t\t";
+
+  std::set<uint32_t> UniqueMasks;
+  for (auto &II: InsnInfos) UniqueMasks.insert(II.getTypeMask());
+
+  OS << "auto ";
+  for (auto &M : UniqueMasks) {
+    OS << "It = Insns_.find(((uint64_t)" << M << " << 32) | " << "(Opcode & " << M << "));\n\t\t";
+    OS << "if (It != Insns_.end()) { It->second->encode(Opcode); return It->second; }\n\n\t\t";
+  }
+
+  OS << "return nullptr;\n\t";
+
   OS << "} // decode()\n";
+
+  OS << "};\n";
   return;
 }
 
@@ -383,17 +414,16 @@ void DecoderEmitter::run(raw_ostream &OS) {
      << "#include <bitset>\n"
      << "#include <cstdint>\n"
      << "#include <cmath>\n"
-     << "#include <memory>\n"
      << "#include <vector>\n"
-     << "#include <iomanip>\n"
      << "\n"
+     << "#include \"idecoder.hpp\"\n"
      << "#include \"decoder_helpers.hpp\"\n\n"
      << "namespace Sim = rv32i_sim;\n\n"
      << "using namespace RVDecoder;\n\n";
 
   std::vector<InstructionInfo> InsnInfos;
 
-  for (auto D : RK_.getAllDerivedDefinitions("RVInsn")) {
+  for (const auto *D : RK_.getAllDerivedDefinitions("RVInsn")) {
     std::vector<EncodingField> EncodingFields;
 
     uint32_t RawEncoding = 0;
@@ -442,7 +472,7 @@ void DecoderEmitter::run(raw_ostream &OS) {
     OS << '\n';
   }
 
-  emitDecoderFunc(OS, InsnInfos);
+  emitDecoder(OS, InsnInfos);
 
   OS << "} // RVISA\n";
 }

@@ -16,6 +16,7 @@
 #include "instruction.hpp"
 #include "io.hpp"
 #include "isim.hpp"
+#include "idecoder.hpp"
 #include "memory.hpp"
 #include "register_file.hpp"
 #include "registers.hpp"
@@ -26,6 +27,7 @@ namespace elf = ELFIO;
 
 namespace rv32i_sim {
 class RVModel final : public IRVModel {
+  std::unique_ptr<IDecoder> decoder_ = std::make_unique<RVISA::Decoder>();
   MemoryModel mem_;
   RegisterFile regs_;
   ExecEnv env_;
@@ -90,7 +92,7 @@ public:
   void setPC(uint32_t pc_new) override;
 
 private:
-  std::unique_ptr<RVISA::IRVInsn> decode(uint32_t insn_code);
+  std::shared_ptr<RVISA::IRVInsn> decode(uint32_t Opcode);
   void printInsn(std::ostream& out, const RVISA::IRVInsn& insn);
 
 public:
@@ -154,8 +156,8 @@ void RVModel::writeByte(uint32_t addr, uint8_t val)  { mem_.writeByte(addr, val)
 void RVModel::writeHalf(uint32_t addr, uint16_t val) { mem_.writeHalf(addr, val); }
 void RVModel::writeWord(uint32_t addr, uint32_t val) { mem_.writeWord(addr, val); }
 
-std::unique_ptr<RVISA::IRVInsn> RVModel::decode(uint32_t insn_code) {
-  return RVISA::decode(insn_code);
+std::shared_ptr<RVISA::IRVInsn> RVModel::decode(uint32_t Opcode) {
+  return decoder_->decode(Opcode);
 }
 
 uint32_t RVModel::execute() {
@@ -164,17 +166,17 @@ uint32_t RVModel::execute() {
   execution_ = true;
 
   while (execution_ && is_valid_) {
-    uint32_t insn_code = mem_.readWord(pc_); // fetch
-    std::unique_ptr<RVISA::IRVInsn> insn = RVISA::decode(insn_code);
-    if (!insn) break;
+    uint32_t insn_code = mem_.readWord(pc_);
+    std::shared_ptr<RVISA::IRVInsn> Insn = decode(insn_code);
+    if (!Insn) break;
 
-    if (logs_ == 2) printInsn(std::cerr, *insn);
+    if (logs_ == 2) printInsn(std::cerr, *Insn);
 
-    if (insn->getType() == RVISA::RVInsnTypes::UNDEF_TYPE_INSN) {
+    if (Insn->getType() == RVISA::RVInsnTypes::UNDEF_TYPE_INSN) {
       break;
     }
 
-    insn->execute(*this);
+    Insn->execute(*this);
 
     if (!execution_) break;
   }
