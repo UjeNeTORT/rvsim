@@ -18,7 +18,7 @@ public:
 	virtual std::string getName() const = 0;
 
 	// @returns index of the pushed operand
-	virtual void setOperand(uint32_t OpIdx, uint32_t OpVal, std::string Name) = 0;
+	virtual void setOperand(uint32_t OpIdx, uint32_t OpVal) = 0;
 	virtual uint32_t getOperand(uint32_t OpIdx) const = 0;
 	virtual uint32_t nOperands() const = 0;
 

@@ -13,12 +13,12 @@ int32_t sign_extend_32_to_32(uint32_t val);
 uint32_t zero_extend_16_to_32(uint16_t val);
 
 std::vector<uint32_t> createJalArgs(uint32_t Offset, uint32_t Rd);
-std::pair<uint32_t, uint32_t> getJalArgs(std::vector<std::pair<uint32_t, std::string>> Encods);
+std::pair<uint32_t, uint32_t> getJalArgs(std::vector<uint32_t> Encods);
 
 std::vector<uint32_t> createBArgs(uint32_t Offset, uint32_t Rd);
-std::tuple<uint32_t, uint32_t, uint32_t> getBArgs(std::vector<std::pair<uint32_t, std::string>> Encods);
+std::tuple<uint32_t, uint32_t, uint32_t> getBArgs(std::vector<uint32_t> Encods);
 
-uint32_t getSTOREImm(std::vector<std::pair<uint32_t, std::string>> Encods);
+uint32_t getSTOREImm(std::vector<uint32_t> Encods);
 
 uint32_t classifyS(float Op);
 float floatDivide(float Op1, float Op2);

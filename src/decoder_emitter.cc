@@ -109,7 +109,7 @@ public:
     OS << "\t" << "uint32_t Opcode_ = RawEncoding_; // fully encoded instruction\n";
     OS << "\t" << "std::string AsmStr_ = \"" << AsmStr_ << "\";\n";
 
-    OS << "\t" << "std::vector<std::pair<uint32_t, std::string>> Operands_;\n\n";
+    OS << "\t" << "std::vector<uint32_t> Operands_;\n\n";
 
     OS << "public:\n";
 
@@ -139,13 +139,12 @@ public:
 
     // operand functions
     OS << "\t" << "// sets the operand\n";
-    OS << "\t" << "void setOperand(uint32_t OpIdx, uint32_t OpVal, std::string Name) override {\n"
+    OS << "\t" << "void setOperand(uint32_t OpIdx, uint32_t OpVal) override {\n"
        << "\t\t" << "assert(OpIdx < " << nOperands() << ");\n"
-       << "\t\t" << "Operands_[OpIdx].first = OpVal;\n"
-       << "\t\t" << "Operands_[OpIdx].second = Name;\n"
+       << "\t\t" << "Operands_[OpIdx] = OpVal;\n"
        << "\t" << "}\n\n";
     OS << "\t" << "uint32_t getOperand(uint32_t OpIdx) const override {\n"
-       << "\t\t" << "return Operands_[OpIdx].first;\n"
+       << "\t\t" << "return Operands_[OpIdx];\n"
        << "\t" << "}\n\n";
     OS << "\t" << "uint32_t nOperands() const override {\n"
        << "\t\t" << "return " << nOperands() << ";\n"
@@ -163,25 +162,24 @@ public:
        << "\t" << "uint32_t encode(std::vector<uint32_t> Operands) override {\n"
        << "\t\t" << "(void) Operands; // unused var warning for insns w/o operands\n";
     for (uint32_t OpIdx = 0; OpIdx != nOperands(); ++OpIdx) {
-      OS << "\t\t" << "Opcode_ |= Operands.at(" << OpIdx << ") << "
+      OS << "\t\t" << "Opcode_     |= Operands.at(" << OpIdx << ") << "
                    << getOperandMaskLSB(OpIdx) << "; // "
                    << getOperandName(OpIdx) << "\n";
-      OS << "\t\t" << "Operands_[" << OpIdx << "].first = Operands.at(" << OpIdx << ");\n";
+      OS << "\t\t" << "Operands_[" << OpIdx << "] = Operands.at(" << OpIdx << ");\n";
     }
     OS << "\t\t" << "return Opcode_;\n";
     OS << "\t" << "}\n\n";
 
     // encode (new Opcode)
-    OS << "private:\n";
-    OS << "\t" << "// encode\n";
-	  OS << "\t" << "void encode_(uint32_t NewOpcode) {\n\t\t";
-	  OS << "\t" << "assert((Opcode_ & getTypeMask()) == (NewOpcode & getTypeMask()));\n\t\t";
+    OS << "private:\n\t";
+    OS << "// encode\n\t";
+	  OS << "void encode_(uint32_t NewOpcode) {\n\t\t";
+	  OS << "assert((Opcode_ & getTypeMask()) == (NewOpcode & getTypeMask()));\n\t\t";
     for (uint32_t OpIdx = 0, NOps = nOperands(); OpIdx != NOps; ++OpIdx)
-      OS << "\t\t""setOperand(" << OpIdx << ", (NewOpcode & " << getOperandMask(OpIdx)
-         << ") >> " << getOperandMaskLSB(OpIdx) << ", "
-         << "\""   << getOperandName(OpIdx) << "\""
-         << ");\n\t";
-    OS << "Opcode_ = NewOpcode;\n";
+      OS << "setOperand(" << OpIdx << ", (NewOpcode & " << getOperandMask(OpIdx)
+         << ") >> " << getOperandMaskLSB(OpIdx)
+         << ");\n\t\t";
+    OS << "Opcode_ = NewOpcode;\n\t";
     OS << "}\n\n";
 
     // encode (new Opcode)
